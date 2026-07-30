@@ -14,6 +14,30 @@ export type Database = {
   };
   public: {
     Tables: {
+      accommodation_types: {
+        Row: {
+          created_at: string;
+          description: string | null;
+          id: string;
+          name: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          description?: string | null;
+          id?: string;
+          name: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          description?: string | null;
+          id?: string;
+          name?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       amenities: {
         Row: {
           created_at: string;
@@ -205,26 +229,41 @@ export type Database = {
         Row: {
           created_at: string;
           display_order: number;
+          file_size: number | null;
+          height: number | null;
           id: string;
+          is_cover: boolean | null;
           listing_id: string;
+          mime_type: string | null;
           storage_path: string;
           updated_at: string;
+          width: number | null;
         };
         Insert: {
           created_at?: string;
           display_order?: number;
+          file_size?: number | null;
+          height?: number | null;
           id?: string;
+          is_cover?: boolean | null;
           listing_id: string;
+          mime_type?: string | null;
           storage_path: string;
           updated_at?: string;
+          width?: number | null;
         };
         Update: {
           created_at?: string;
           display_order?: number;
+          file_size?: number | null;
+          height?: number | null;
           id?: string;
+          is_cover?: boolean | null;
           listing_id?: string;
+          mime_type?: string | null;
           storage_path?: string;
           updated_at?: string;
+          width?: number | null;
         };
         Relationships: [
           {
@@ -245,6 +284,8 @@ export type Database = {
           id: string;
           listing_id: string;
           maintenance_fee: number;
+          maintenance_fee_period:
+            Database['public']['Enums']['billing_period'] | null;
           maximum_duration: number | null;
           minimum_duration: number;
           security_deposit: number;
@@ -258,6 +299,8 @@ export type Database = {
           id?: string;
           listing_id: string;
           maintenance_fee?: number;
+          maintenance_fee_period?:
+            Database['public']['Enums']['billing_period'] | null;
           maximum_duration?: number | null;
           minimum_duration?: number;
           security_deposit?: number;
@@ -271,6 +314,8 @@ export type Database = {
           id?: string;
           listing_id?: string;
           maintenance_fee?: number;
+          maintenance_fee_period?:
+            Database['public']['Enums']['billing_period'] | null;
           maximum_duration?: number | null;
           minimum_duration?: number;
           security_deposit?: number;
@@ -286,95 +331,80 @@ export type Database = {
           },
         ];
       };
-      listing_types: {
-        Row: {
-          created_at: string;
-          description: string | null;
-          id: string;
-          name: string;
-          updated_at: string;
-        };
-        Insert: {
-          created_at?: string;
-          description?: string | null;
-          id?: string;
-          name: string;
-          updated_at?: string;
-        };
-        Update: {
-          created_at?: string;
-          description?: string | null;
-          id?: string;
-          name?: string;
-          updated_at?: string;
-        };
-        Relationships: [];
-      };
       listings: {
         Row: {
+          accommodation_type_id: string;
           city: string | null;
           country: string | null;
           country_code: string | null;
           created_at: string;
           description: string | null;
           formatted_address: string | null;
+          furnishing: Database['public']['Enums']['furnishing'];
+          gender_preference: Database['public']['Enums']['gender_preference'];
           host_id: string;
           id: string;
           latitude: number | null;
           locality: string | null;
           longitude: number | null;
           max_occupants: number;
+          occupancy_type: Database['public']['Enums']['occupancy_type'];
           postal_code: string | null;
           property_type: string;
           public_id: string;
           state: string | null;
           status: Database['public']['Enums']['listing_status'];
           title: string;
-          type_id: string;
           updated_at: string;
         };
         Insert: {
+          accommodation_type_id: string;
           city?: string | null;
           country?: string | null;
           country_code?: string | null;
           created_at?: string;
           description?: string | null;
           formatted_address?: string | null;
+          furnishing?: Database['public']['Enums']['furnishing'];
+          gender_preference?: Database['public']['Enums']['gender_preference'];
           host_id: string;
           id?: string;
           latitude?: number | null;
           locality?: string | null;
           longitude?: number | null;
           max_occupants?: number;
+          occupancy_type?: Database['public']['Enums']['occupancy_type'];
           postal_code?: string | null;
           property_type?: string;
           public_id?: string;
           state?: string | null;
           status?: Database['public']['Enums']['listing_status'];
           title: string;
-          type_id: string;
           updated_at?: string;
         };
         Update: {
+          accommodation_type_id?: string;
           city?: string | null;
           country?: string | null;
           country_code?: string | null;
           created_at?: string;
           description?: string | null;
           formatted_address?: string | null;
+          furnishing?: Database['public']['Enums']['furnishing'];
+          gender_preference?: Database['public']['Enums']['gender_preference'];
           host_id?: string;
           id?: string;
           latitude?: number | null;
           locality?: string | null;
           longitude?: number | null;
           max_occupants?: number;
+          occupancy_type?: Database['public']['Enums']['occupancy_type'];
           postal_code?: string | null;
           property_type?: string;
           public_id?: string;
           state?: string | null;
           status?: Database['public']['Enums']['listing_status'];
           title?: string;
-          type_id?: string;
           updated_at?: string;
         };
         Relationships: [
@@ -387,39 +417,51 @@ export type Database = {
           },
           {
             foreignKeyName: 'listings_type_id_fkey';
-            columns: ['type_id'];
+            columns: ['accommodation_type_id'];
             isOneToOne: false;
-            referencedRelation: 'listing_types';
+            referencedRelation: 'accommodation_types';
             referencedColumns: ['id'];
           },
         ];
       };
       profiles: {
         Row: {
-          avatar_url: string | null;
+          avatar_path: string | null;
+          bio: string | null;
+          city: string | null;
           created_at: string;
+          date_of_birth: string | null;
           display_name: string | null;
           full_name: string | null;
+          gender: string | null;
           id: string;
           phone: string | null;
           role: Database['public']['Enums']['user_role'];
           updated_at: string;
         };
         Insert: {
-          avatar_url?: string | null;
+          avatar_path?: string | null;
+          bio?: string | null;
+          city?: string | null;
           created_at?: string;
+          date_of_birth?: string | null;
           display_name?: string | null;
           full_name?: string | null;
+          gender?: string | null;
           id: string;
           phone?: string | null;
           role?: Database['public']['Enums']['user_role'];
           updated_at?: string;
         };
         Update: {
-          avatar_url?: string | null;
+          avatar_path?: string | null;
+          bio?: string | null;
+          city?: string | null;
           created_at?: string;
+          date_of_birth?: string | null;
           display_name?: string | null;
           full_name?: string | null;
+          gender?: string | null;
           id?: string;
           phone?: string | null;
           role?: Database['public']['Enums']['user_role'];
@@ -568,47 +610,6 @@ export type Database = {
       is_admin: { Args: never; Returns: boolean };
       is_host: { Args: never; Returns: boolean };
       is_listing_owner: { Args: { listing_id: string }; Returns: boolean };
-      search_listings: {
-        Args: {
-          p_city?: string | null;
-          p_locality?: string | null;
-          p_accommodation_type_id?: string | null;
-          p_furnishing?: Database['public']['Enums']['furnishing'] | null;
-          p_gender_preference?:
-            Database['public']['Enums']['gender_preference'] | null;
-          p_occupancy_type?:
-            Database['public']['Enums']['occupancy_type'] | null;
-          p_billing_period?:
-            Database['public']['Enums']['billing_period'] | null;
-          p_amenities?: string[] | null;
-          p_min_price?: number | null;
-          p_max_price?: number | null;
-          p_available_from?: string | null;
-          p_sort?: string | null;
-          p_page?: number | null;
-          p_page_size?: number | null;
-        };
-        Returns: {
-          total_count: number;
-          listing_id: string;
-          public_id: string;
-          title: string;
-          accommodation_type_name: string;
-          furnishing: Database['public']['Enums']['furnishing'];
-          gender_preference: Database['public']['Enums']['gender_preference'];
-          occupancy_type: Database['public']['Enums']['occupancy_type'];
-          max_occupants: number;
-          locality: string | null;
-          city: string | null;
-          country: string | null;
-          formatted_address: string | null;
-          price_amount: number;
-          price_currency: string;
-          price_billing_period: Database['public']['Enums']['billing_period'];
-          price_minimum_duration: number;
-          image_url: string | null;
-        }[];
-      };
     };
     Enums: {
       availability_status: 'available' | 'occupied' | 'unavailable';
@@ -618,7 +619,12 @@ export type Database = {
       furnishing: 'unfurnished' | 'semi_furnished' | 'fully_furnished';
       gender_preference: 'any' | 'male' | 'female';
       listing_status:
-        'draft' | 'ready' | 'pending_review' | 'published' | 'paused' | 'archived';
+        | 'draft'
+        | 'ready'
+        | 'pending_review'
+        | 'published'
+        | 'paused'
+        | 'archived';
       occupancy_type: 'private' | 'shared' | 'mixed';
       stay_status:
         'upcoming' | 'active' | 'extended' | 'completed' | 'terminated';
