@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createClient } from '@/lib/supabase/server';
 import { ListingCardData, ListingDetailData } from '../types';
+import { type SearchFilters } from '@/features/search/lib/search-params';
+import { resolveAccommodationTypeId } from '@/features/search/lib/accommodation-types';
 
 function resolveImageUrl(path: string | null): string | null {
   if (!path) return null;
@@ -207,5 +209,94 @@ export async function getListingDetail(
       icon: am.icon,
     })),
     createdAt: raw.created_at,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Search (URL-driven, /s page)
+// ---------------------------------------------------------------------------
+
+export interface SearchResult {
+  data: ListingCardData[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+/**
+ * Execute a filtered, sorted, paginated search via the `search_listings` RPC.
+ * Accepts the validated `SearchFilters` produced by `parseSearchParams()`.
+ */
+export async function searchListings(
+  filters: SearchFilters
+): Promise<SearchResult> {
+  const supabase = await createClient();
+
+  const accommodationTypeId = resolveAccommodationTypeId(
+    filters.accommodationType
+  );
+
+  const { data, error } = await supabase.rpc('search_listings', {
+    p_city: filters.city,
+    p_locality: filters.locality,
+    p_accommodation_type_id: accommodationTypeId,
+    p_furnishing: filters.furnishing,
+    p_gender_preference: filters.genderPreference,
+    p_occupancy_type: filters.occupancyType,
+    p_billing_period: filters.billingPeriod,
+    p_amenities: filters.amenities.length > 0 ? filters.amenities : null,
+    p_min_price: filters.minPrice,
+    p_max_price: filters.maxPrice,
+    p_available_from: filters.availableFrom,
+    p_sort: filters.sort,
+    p_page: filters.page,
+    p_page_size: filters.pageSize,
+  });
+
+  if (error) {
+    console.error('Error in searchListings RPC:', error);
+    return {
+      data: [],
+      total: 0,
+      page: filters.page,
+      pageSize: filters.pageSize,
+      totalPages: 0,
+    };
+  }
+
+  const rows = (data || []) as any[];
+  const total = rows.length > 0 ? Number(rows[0].total_count) : 0;
+  const totalPages = Math.ceil(total / filters.pageSize);
+
+  const mappedData: ListingCardData[] = rows.map((row: any) => ({
+    publicId: row.public_id,
+    title: row.title,
+    accommodationType: row.accommodation_type_name,
+    furnishing: row.furnishing,
+    genderPreference: row.gender_preference,
+    occupancyType: row.occupancy_type,
+    location: {
+      locality: row.locality,
+      city: row.city,
+      country: row.country,
+      formattedAddress: row.formatted_address,
+    },
+    maxOccupants: row.max_occupants,
+    pricing: {
+      amount: row.price_amount,
+      currency: row.price_currency,
+      billingPeriod: row.price_billing_period,
+      minimumDuration: row.price_minimum_duration,
+    },
+    imageUrl: resolveImageUrl(row.image_url),
+  }));
+
+  return {
+    data: mappedData,
+    total,
+    page: filters.page,
+    pageSize: filters.pageSize,
+    totalPages,
   };
 }

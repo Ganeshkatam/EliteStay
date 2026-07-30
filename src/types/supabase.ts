@@ -533,14 +533,58 @@ export type Database = {
       is_admin: { Args: never; Returns: boolean };
       is_host: { Args: never; Returns: boolean };
       is_listing_owner: { Args: { listing_id: string }; Returns: boolean };
+      search_listings: {
+        Args: {
+          p_city?: string | null;
+          p_locality?: string | null;
+          p_accommodation_type_id?: string | null;
+          p_furnishing?: Database['public']['Enums']['furnishing'] | null;
+          p_gender_preference?:
+            Database['public']['Enums']['gender_preference'] | null;
+          p_occupancy_type?:
+            Database['public']['Enums']['occupancy_type'] | null;
+          p_billing_period?:
+            Database['public']['Enums']['billing_period'] | null;
+          p_amenities?: string[] | null;
+          p_min_price?: number | null;
+          p_max_price?: number | null;
+          p_available_from?: string | null;
+          p_sort?: string | null;
+          p_page?: number | null;
+          p_page_size?: number | null;
+        };
+        Returns: {
+          total_count: number;
+          listing_id: string;
+          public_id: string;
+          title: string;
+          accommodation_type_name: string;
+          furnishing: Database['public']['Enums']['furnishing'];
+          gender_preference: Database['public']['Enums']['gender_preference'];
+          occupancy_type: Database['public']['Enums']['occupancy_type'];
+          max_occupants: number;
+          locality: string | null;
+          city: string | null;
+          country: string | null;
+          formatted_address: string | null;
+          price_amount: number;
+          price_currency: string;
+          price_billing_period: Database['public']['Enums']['billing_period'];
+          price_minimum_duration: number;
+          image_url: string | null;
+        }[];
+      };
     };
     Enums: {
       availability_status: 'available' | 'occupied' | 'unavailable';
       billing_period: 'day' | 'week' | 'month' | 'semester' | 'year';
       booking_status:
         'pending' | 'approved' | 'rejected' | 'cancelled' | 'expired';
+      furnishing: 'unfurnished' | 'semi_furnished' | 'fully_furnished';
+      gender_preference: 'any' | 'male' | 'female';
       listing_status:
         'draft' | 'pending_review' | 'published' | 'paused' | 'archived';
+      occupancy_type: 'private' | 'shared' | 'mixed';
       stay_status:
         'upcoming' | 'active' | 'extended' | 'completed' | 'terminated';
       user_role: 'guest' | 'host' | 'admin';
@@ -680,6 +724,8 @@ export const Constants = {
         'cancelled',
         'expired',
       ],
+      furnishing: ['unfurnished', 'semi_furnished', 'fully_furnished'],
+      gender_preference: ['any', 'male', 'female'],
       listing_status: [
         'draft',
         'pending_review',
@@ -687,6 +733,7 @@ export const Constants = {
         'paused',
         'archived',
       ],
+      occupancy_type: ['private', 'shared', 'mixed'],
       stay_status: [
         'upcoming',
         'active',
