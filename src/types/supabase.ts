@@ -166,6 +166,41 @@ export type Database = {
           },
         ];
       };
+      listing_build_progress: {
+        Row: {
+          created_at: string;
+          last_step: string;
+          listing_id: string;
+          percent_complete: number;
+          step_completed: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          last_step?: string;
+          listing_id: string;
+          percent_complete?: number;
+          step_completed?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          last_step?: string;
+          listing_id?: string;
+          percent_complete?: number;
+          step_completed?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'listing_build_progress_listing_id_fkey';
+            columns: ['listing_id'];
+            isOneToOne: true;
+            referencedRelation: 'listings';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       listing_images: {
         Row: {
           created_at: string;
@@ -583,7 +618,7 @@ export type Database = {
       furnishing: 'unfurnished' | 'semi_furnished' | 'fully_furnished';
       gender_preference: 'any' | 'male' | 'female';
       listing_status:
-        'draft' | 'pending_review' | 'published' | 'paused' | 'archived';
+        'draft' | 'ready' | 'pending_review' | 'published' | 'paused' | 'archived';
       occupancy_type: 'private' | 'shared' | 'mixed';
       stay_status:
         'upcoming' | 'active' | 'extended' | 'completed' | 'terminated';
@@ -728,6 +763,7 @@ export const Constants = {
       gender_preference: ['any', 'male', 'female'],
       listing_status: [
         'draft',
+        'ready',
         'pending_review',
         'published',
         'paused',
