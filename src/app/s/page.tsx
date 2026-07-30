@@ -5,72 +5,10 @@ import {
   normalizeFilters,
   buildSearchUrl,
   SEARCH_DEFAULTS,
-  type SearchFilters,
 } from '@/features/search/lib/search-params';
 import Link from 'next/link';
-
-// ---------------------------------------------------------------------------
-// Active filter label helpers
-// ---------------------------------------------------------------------------
-
-function getActiveFilterLabels(filters: SearchFilters): string[] {
-  const labels: string[] = [];
-  if (filters.city) labels.push(filters.city);
-  if (filters.locality) labels.push(filters.locality);
-  if (filters.accommodationType) {
-    labels.push(
-      filters.accommodationType
-        .replace(/-/g, ' ')
-        .replace(/\b\w/g, (c) => c.toUpperCase())
-    );
-  }
-  if (filters.minPrice !== null || filters.maxPrice !== null) {
-    const fmt = (n: number) =>
-      new Intl.NumberFormat('en-IN', {
-        style: 'currency',
-        currency: 'INR',
-        minimumFractionDigits: 0,
-      }).format(n);
-    if (filters.minPrice !== null && filters.maxPrice !== null) {
-      labels.push(`${fmt(filters.minPrice)} - ${fmt(filters.maxPrice)}`);
-    } else if (filters.minPrice !== null) {
-      labels.push(`From ${fmt(filters.minPrice)}`);
-    } else if (filters.maxPrice !== null) {
-      labels.push(`Up to ${fmt(filters.maxPrice)}`);
-    }
-  }
-  if (filters.billingPeriod) {
-    labels.push(`Per ${filters.billingPeriod}`);
-  }
-  if (filters.furnishing) {
-    labels.push(
-      filters.furnishing
-        .replace(/_/g, ' ')
-        .replace(/\b\w/g, (c) => c.toUpperCase())
-    );
-  }
-  if (filters.genderPreference && filters.genderPreference !== 'any') {
-    labels.push(
-      filters.genderPreference === 'female' ? 'Girls Only' : 'Boys Only'
-    );
-  }
-  if (filters.occupancyType) {
-    labels.push(
-      `${filters.occupancyType.charAt(0).toUpperCase()}${filters.occupancyType.slice(1)} occupancy`
-    );
-  }
-  if (filters.amenities.length > 0) {
-    labels.push(
-      filters.amenities
-        .map((a) => a.charAt(0).toUpperCase() + a.slice(1))
-        .join(', ')
-    );
-  }
-  if (filters.availableFrom) {
-    labels.push(`From ${filters.availableFrom}`);
-  }
-  return labels;
-}
+import { SearchFilterBar } from '@/features/search/components/SearchFilterBar';
+import { ActiveFilters } from '@/features/search/components/ActiveFilters';
 
 // ---------------------------------------------------------------------------
 // Page component
@@ -90,8 +28,6 @@ export default async function SearchPage({
     totalPages,
   } = await searchListings(filters);
 
-  const activeLabels = getActiveFilterLabels(filters);
-  const hasActiveFilters = activeLabels.length > 0;
   const sortLabel =
     filters.sort !== SEARCH_DEFAULTS.sort
       ? filters.sort.replace('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase())
@@ -99,41 +35,21 @@ export default async function SearchPage({
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      {/* Header */}
-      <div className="mb-8 border-b pb-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Explore Stays</h1>
-            <p className="mt-2 text-sm text-gray-500">
-              {total > 0
-                ? `${total} ${total === 1 ? 'property' : 'properties'} found`
-                : 'No properties found'}
-              {sortLabel && ` -- sorted by ${sortLabel}`}
-            </p>
-          </div>
-          {hasActiveFilters && (
-            <Link
-              href="/s"
-              className="text-sm font-semibold text-blue-600 hover:text-blue-500"
-            >
-              Clear all filters
-            </Link>
-          )}
-        </div>
+      {/* Search Header and Interactive Filters */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-6">Explore Stays</h1>
 
-        {/* Active filter labels */}
-        {hasActiveFilters && (
-          <div className="mt-3 flex flex-wrap gap-2">
-            {activeLabels.map((label) => (
-              <span
-                key={label}
-                className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700"
-              >
-                {label}
-              </span>
-            ))}
-          </div>
-        )}
+        <SearchFilterBar filters={filters} />
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <p className="text-sm text-gray-500">
+            {total > 0
+              ? `${total} ${total === 1 ? 'property' : 'properties'} found`
+              : 'No properties found'}
+            {sortLabel && ` -- sorted by ${sortLabel}`}
+          </p>
+          <ActiveFilters filters={filters} />
+        </div>
       </div>
 
       {/* Listings grid */}
