@@ -25,6 +25,7 @@ export interface ListingCardData {
 }
 
 export interface ListingDetailData {
+  id: string;
   publicId: string;
   title: string;
   description: string | null;

@@ -20,3 +20,7 @@ The service_role key must never exist outside trusted server infrastructure.
 - No RLS bypass
 - No admin backdoors
 - No hidden privileged API endpoints
+
+# Supabase Tooling Rule
+
+Always use the Supabase MCP tools (`mcp_supabase_*` or via `call_mcp_tool`) for interacting with Supabase. Do NOT use the `supabase` CLI directly.

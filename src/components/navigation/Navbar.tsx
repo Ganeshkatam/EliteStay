@@ -1,8 +1,10 @@
 // src/components/navigation/Navbar.tsx
 import { createClient } from '@/lib/supabase/server';
+import Link from 'next/link';
 import { Logo } from './Logo';
 import { SearchTrigger } from './SearchTrigger';
 import { UserMenu } from './UserMenu';
+import { NotificationBell } from '@/features/notifications/components/NotificationBell';
 import { Container } from '@/components/layout/Container';
 import { cn } from '@/lib/utils';
 import { type ExtendedProfile } from '@/features/auth/components/ProfileForm';
@@ -47,8 +49,18 @@ export async function Navbar() {
             <SearchTrigger />
           </div>
 
-          <div className="flex flex-1 items-center justify-end">
-            <UserMenu user={user} profile={profile} />
+          <div className="flex flex-1 items-center justify-end space-x-4">
+            {user ? (
+              <>
+                <Link href="/host/dashboard" className="text-sm font-medium text-muted-foreground hover:text-primary hidden md:block">
+                  Switch to hosting
+                </Link>
+                <NotificationBell />
+                <UserMenu user={user} profile={profile} />
+              </>
+            ) : (
+              <UserMenu user={user} profile={profile} />
+            )}
           </div>
         </div>
       </Container>

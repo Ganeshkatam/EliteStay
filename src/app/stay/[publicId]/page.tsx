@@ -1,5 +1,6 @@
 import { getListingDetail } from '@/features/listings/api/queries';
 import { ImageGallery } from '@/features/listings/components/ImageGallery';
+import { BookingWidget } from '@/features/bookings/components/BookingWidget';
 import { notFound } from 'next/navigation';
 import Image from 'next/image';
 import { Metadata } from 'next';
@@ -205,92 +206,18 @@ export default async function ListingPage({ params }: ListingPageProps) {
 
         {/* Right Column - Booking Widget Sidebar */}
         <div className="lg:col-span-1">
-          <div className="sticky top-24 rounded-2xl border border-gray-200 bg-white p-6 shadow-xl">
-            <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-bold text-gray-900">
-                {new Intl.NumberFormat('en-IN', {
-                  style: 'currency',
-                  currency: listing.pricing.currency || 'INR',
-                  minimumFractionDigits: 0,
-                }).format(listing.pricing.amount)}
-              </span>
-              <span className="text-gray-500">
-                / {listing.pricing.billingPeriod}
-              </span>
-            </div>
-            <div className="mt-1 text-sm text-gray-500">
-              Minimum stay: {listing.pricing.minimumDuration}{' '}
-              {listing.pricing.billingPeriod}
-              {listing.pricing.minimumDuration > 1 ? 's' : ''}
-            </div>
-
-            <div className="mt-6">
-              {/* Note: This booking form is a UI placeholder. 
-                  Implementation of booking actions will be done in the Booking engine phase. */}
-              <div className="rounded-xl border border-gray-300">
-                <div className="flex border-b border-gray-300">
-                  <div className="flex-1 p-3 border-r border-gray-300">
-                    <label className="block text-xs font-bold uppercase text-gray-700">
-                      Move-in
-                    </label>
-                    <div className="text-sm text-gray-500">Add date</div>
-                  </div>
-                  <div className="flex-1 p-3">
-                    <label className="block text-xs font-bold uppercase text-gray-700">
-                      Move-out
-                    </label>
-                    <div className="text-sm text-gray-500">Add date</div>
-                  </div>
-                </div>
-                <div className="p-3">
-                  <label className="block text-xs font-bold uppercase text-gray-700">
-                    Occupants
-                  </label>
-                  <div className="text-sm text-gray-500">1 occupant</div>
-                </div>
-              </div>
-            </div>
-
-            <button className="mt-4 w-full rounded-xl bg-rose-600 py-3.5 text-base font-semibold text-white shadow-sm transition hover:bg-rose-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-600">
-              Check availability
-            </button>
-
-            <div className="mt-4 text-center text-sm text-gray-500 pb-4 border-b border-gray-200">
-              You won&apos;t be charged yet
-            </div>
-
-            <div className="mt-4 space-y-3">
-              {listing.pricing.securityDeposit > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600 underline decoration-dashed underline-offset-4">
-                    Security Deposit
-                  </span>
-                  <span className="font-medium text-gray-900">
-                    {new Intl.NumberFormat('en-IN', {
-                      style: 'currency',
-                      currency: listing.pricing.currency || 'INR',
-                      minimumFractionDigits: 0,
-                    }).format(listing.pricing.securityDeposit)}
-                  </span>
-                </div>
-              )}
-              {listing.pricing.maintenanceFee > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600 underline decoration-dashed underline-offset-4">
-                    Maintenance Fee
-                  </span>
-                  <span className="font-medium text-gray-900">
-                    {new Intl.NumberFormat('en-IN', {
-                      style: 'currency',
-                      currency: listing.pricing.currency || 'INR',
-                      minimumFractionDigits: 0,
-                    }).format(listing.pricing.maintenanceFee)}{' '}
-                    / {listing.pricing.maintenanceFeePeriod}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
+          <BookingWidget 
+            listingId={listing.id} 
+            pricing={{
+              amount: listing.pricing.amount,
+              currency: listing.pricing.currency,
+              billingPeriod: listing.pricing.billingPeriod,
+              securityDeposit: listing.pricing.securityDeposit,
+              maintenanceFee: listing.pricing.maintenanceFee,
+              maintenanceFeePeriod: listing.pricing.maintenanceFeePeriod,
+              minimumDuration: listing.pricing.minimumDuration
+            }} 
+          />
         </div>
       </div>
     </div>

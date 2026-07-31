@@ -159,6 +159,7 @@ export async function getListingDetail(
   const raw = data as any;
 
   return {
+    id: raw.id,
     publicId: raw.public_id,
     title: raw.title,
     description: raw.description,

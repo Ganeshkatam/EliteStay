@@ -1,0 +1,146 @@
+/*
+==================================================
+Domain: Listings
+Purpose: Core marketplace domain for property listings.
+Contains: 
+- listings
+- listing_amenities
+- listing_build_progress
+- listings triggers
+- listings RLS
+==================================================
+*/
+
+CREATE TABLE public.listings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    public_id TEXT UNIQUE NOT NULL DEFAULT public.generate_public_id(),
+    host_id UUID REFERENCES public.profiles(id) ON DELETE RESTRICT NOT NULL,
+    accommodation_type_id UUID REFERENCES public.accommodation_types(id) ON DELETE RESTRICT NOT NULL,
+    property_type TEXT DEFAULT 'Apartment' NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT,
+    max_occupants INTEGER DEFAULT 1 NOT NULL,
+    occupancy_type public.occupancy_type DEFAULT 'private'::public.occupancy_type NOT NULL,
+    gender_preference public.gender_preference DEFAULT 'any'::public.gender_preference NOT NULL,
+    furnishing public.furnishing DEFAULT 'unfurnished'::public.furnishing NOT NULL,
+    
+    -- Location Fields
+    country_code TEXT,
+    country TEXT,
+    state TEXT,
+    city TEXT,
+    locality TEXT,
+    postal_code TEXT,
+    latitude NUMERIC,
+    longitude NUMERIC,
+    formatted_address TEXT,
+    
+    status public.listing_status DEFAULT 'draft'::public.listing_status NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
+
+CREATE INDEX idx_listings_public_id ON public.listings(public_id);
+CREATE INDEX idx_listings_host_id ON public.listings(host_id);
+
+CREATE TABLE public.listing_amenities (
+    listing_id UUID REFERENCES public.listings(id) ON DELETE CASCADE NOT NULL,
+    amenity_id UUID REFERENCES public.amenities(id) ON DELETE CASCADE NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    PRIMARY KEY (listing_id, amenity_id)
+);
+
+CREATE TABLE public.listing_build_progress (
+    listing_id UUID PRIMARY KEY REFERENCES public.listings(id) ON DELETE CASCADE,
+    step_completed TEXT,
+    last_step TEXT NOT NULL DEFAULT 'accommodation',
+    percent_complete INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Triggers
+CREATE TRIGGER listings_updated_at 
+  BEFORE UPDATE ON public.listings 
+  FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
+
+CREATE TRIGGER listing_amenities_updated_at 
+  BEFORE UPDATE ON public.listing_amenities 
+  FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
+
+CREATE TRIGGER listing_build_progress_updated_at 
+  BEFORE UPDATE ON public.listing_build_progress 
+  FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
+
+-- RLS
+ALTER TABLE public.listings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.listing_amenities ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.listing_build_progress ENABLE ROW LEVEL SECURITY;
+
+-- Listings Policies
+CREATE POLICY "Public can read published listings" ON public.listings
+  FOR SELECT USING (status = 'published'::public.listing_status OR host_id = auth.uid() OR public.is_admin());
+
+CREATE POLICY "Hosts can insert listings" ON public.listings
+  FOR INSERT WITH CHECK (
+    auth.uid() IS NOT NULL AND 
+    (public.is_host() OR public.is_admin()) AND
+    host_id = auth.uid()
+  );
+
+CREATE POLICY "Hosts can update own listings" ON public.listings
+  FOR UPDATE USING (host_id = auth.uid() OR public.is_admin());
+
+CREATE POLICY "Hosts can delete own listings" ON public.listings
+  FOR DELETE USING (host_id = auth.uid() OR public.is_admin());
+
+-- Listing Amenities Policies
+CREATE POLICY "Public can view listing amenities" ON public.listing_amenities
+  FOR SELECT USING (true);
+
+CREATE POLICY "Hosts can manage own listing amenities" ON public.listing_amenities
+  FOR ALL USING (
+    EXISTS (
+        SELECT 1 FROM public.listings l 
+        WHERE l.id = listing_amenities.listing_id 
+        AND l.host_id = auth.uid()
+    )
+  );
+
+-- Listing Build Progress Policies
+CREATE POLICY "Hosts can view own listing progress" ON public.listing_build_progress
+  FOR SELECT USING (
+    EXISTS (
+        SELECT 1 FROM public.listings l 
+        WHERE l.id = listing_build_progress.listing_id 
+        AND l.host_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Hosts can insert own listing progress" ON public.listing_build_progress
+  FOR INSERT WITH CHECK (
+    EXISTS (
+        SELECT 1 FROM public.listings l 
+        WHERE l.id = listing_build_progress.listing_id 
+        AND l.host_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Hosts can update own listing progress" ON public.listing_build_progress
+  FOR UPDATE USING (
+    EXISTS (
+        SELECT 1 FROM public.listings l 
+        WHERE l.id = listing_build_progress.listing_id 
+        AND l.host_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Hosts can delete own listing progress" ON public.listing_build_progress
+  FOR DELETE USING (
+    EXISTS (
+        SELECT 1 FROM public.listings l 
+        WHERE l.id = listing_build_progress.listing_id 
+        AND l.host_id = auth.uid()
+    )
+  );
