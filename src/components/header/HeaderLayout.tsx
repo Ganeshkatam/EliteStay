@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { useHeaderState, HEADER_SCROLL } from './useHeaderState';
 import { cn } from '@/lib/utils';
 import { Container } from '@/components/layout/Container';
@@ -10,6 +10,10 @@ import { useSearchContext } from '@/features/search/components/GlobalSearch/Sear
 import { SearchOverlay } from '@/features/search/components/GlobalSearch/SearchOverlay';
 import { type ExtendedProfile } from '@/types/profile';
 import { type User } from '@supabase/supabase-js';
+import { parseSearchParams } from '@/features/search/lib/search-params';
+import { SearchProvider } from '@/features/search/context/SearchProvider';
+import { ToolbarRenderer } from '@/features/search/components/toolbar/ToolbarRenderer';
+import { type SearchWorkspaceViewModel } from '@/features/search/types';
 
 interface HeaderLayoutProps {
   user?: User | null;
@@ -18,11 +22,41 @@ interface HeaderLayoutProps {
 
 export function HeaderLayout({ user, profile }: HeaderLayoutProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const isSearchRoute = pathname === '/s';
   const { variant, isExpanded: isHeaderExpanded } = useHeaderState();
   const { isExpanded: isSearchExpanded, setIsExpanded: setIsSearchExpanded } =
     useSearchContext();
   const headerRef = useRef<HTMLElement>(null);
+
+  // Parse filters from query parameters for the local SearchProvider
+  const filters = parseSearchParams(
+    searchParams ? Object.fromEntries(searchParams.entries()) : {}
+  );
+
+  const dummyViewModel: SearchWorkspaceViewModel = {
+    filters,
+    summary: { title: '', subtitle: '', total: 0, updatedAt: new Date() },
+    results: {
+      listings: [],
+      pagination: { currentPage: 1, totalPages: 1, hasMore: false },
+    },
+    map: {},
+    insights: {
+      listingCount: 0,
+      averageRent: 0,
+      medianRent: 0,
+      furnishedPercentage: 0,
+      popularAreas: [],
+      updatedAt: new Date(),
+    },
+    recovery: {
+      nearbyLocalities: [],
+      suggestedCities: [],
+      popularSearches: [],
+      actions: [],
+    },
+  };
 
   // Ensure manual expansion turns off whenever the public header collapses on scroll
   useEffect(() => {
@@ -158,12 +192,17 @@ export function HeaderLayout({ user, profile }: HeaderLayoutProps) {
             />
           </Container>
 
-          {/* React Portal Destination for search filters toolbar */}
+          {/* Directly render the search filters toolbar as part of the header */}
           {isSearchRoute && (
-            <div
-              id="search-header-portal"
-              className="h-16 flex items-center border-t border-gray-100/80 w-full"
-            />
+            <SearchProvider viewModel={dummyViewModel}>
+              <div className="h-16 flex items-center border-t border-gray-100/80 w-full">
+                <Container className="h-full flex items-center py-0">
+                  <div className="w-full overflow-x-auto no-scrollbar">
+                    <ToolbarRenderer />
+                  </div>
+                </Container>
+              </div>
+            </SearchProvider>
           )}
         </div>
       </header>

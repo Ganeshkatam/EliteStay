@@ -2,7 +2,7 @@
 
 import { useCallback, useState, useEffect, useRef } from 'react';
 import { useSearchData } from '../context/SearchProvider';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 
 export interface MapViewport {
   center: {
@@ -35,6 +35,7 @@ export function isSameViewport(
 export function useMapSearch() {
   const { filters } = useSearchData();
   const router = useRouter();
+  const pathname = usePathname();
 
   // Initialize preference state from localStorage if available, otherwise fallback to true
   const [searchAsMapMoves, setSearchAsMapMoves] = useState<boolean>(() => {
@@ -93,10 +94,10 @@ export function useMapSearch() {
         params.set('centerLng', String(vp.center.lng));
         params.set('page', '1'); // Reset page
 
-        router.replace(`?${params.toString()}`, { scroll: false });
+        router.replace(`${pathname}?${params.toString()}`, { scroll: false });
       }
     },
-    [router]
+    [router, pathname]
   );
 
   // Debounced search trigger when pendingViewport changes and searchAsMapMoves is active

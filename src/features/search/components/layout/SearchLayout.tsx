@@ -19,35 +19,29 @@ export function SearchLayout({ viewMode, children }: SearchLayoutProps) {
 
   if (viewMode === SearchViewMode.LIST) {
     return (
-      <div className="w-full max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+      <div className="w-full max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8 h-full overflow-y-auto">
         {resultsPane}
       </div>
     );
   }
 
   if (viewMode === SearchViewMode.MAP) {
-    return (
-      <div className="w-full flex-1 relative flex h-[calc(100vh-140px)]">
-        {mapPane}
-      </div>
-    );
+    return <div className="w-full flex-1 relative flex h-full">{mapPane}</div>;
   }
 
   // SPLIT Mode
   return (
     <div
-      className="w-full flex-1 flex flex-col lg:flex-row items-start px-4 sm:px-6 lg:px-8 py-6"
+      className="w-full h-full flex flex-col lg:flex-row items-stretch px-4 sm:px-6 lg:px-8 py-6 overflow-hidden"
       style={{ gap: SPACING.SEARCH_LAYOUT.panelPadding }}
     >
-      {/* Results Pane: Takes roughly 60% on XL */}
-      <div className="w-full lg:w-[64%] xl:w-[60%] 2xl:w-[58%] flex-shrink-0">
+      {/* Results Pane: Takes roughly 60% on XL (scrollable) */}
+      <div className="w-full lg:w-[64%] xl:w-[60%] 2xl:w-[58%] flex-shrink-0 h-full overflow-y-auto pr-2">
         {resultsPane}
       </div>
 
-      {/* Map Pane: Takes the remaining width (sticky compact) */}
-      <div className="hidden lg:flex flex-1 min-w-0 sticky top-[140px] h-[540px]">
-        {mapPane}
-      </div>
+      {/* Map Pane: Takes the remaining width (fills layout height) */}
+      <div className="hidden lg:flex flex-1 min-w-0 h-full">{mapPane}</div>
     </div>
   );
 }

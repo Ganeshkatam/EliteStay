@@ -7,6 +7,7 @@ import { useSearchData, useSearchUI } from '../../context/SearchProvider';
 import { TypeDropdown } from './TypeDropdown';
 import { FurnishingDropdown } from './FurnishingDropdown';
 import { GenderDropdown } from './GenderDropdown';
+import { PriceDropdown } from './PriceDropdown';
 
 export function ToolbarRenderer() {
   const { filters } = useSearchData();
@@ -31,6 +32,10 @@ export function ToolbarRenderer() {
               active={false}
             />
           );
+        }
+
+        if (def.id === 'price') {
+          return <PriceDropdown key={def.id} />;
         }
 
         if (def.id === 'type') {
