@@ -13,20 +13,17 @@ Contains:
 
 CREATE TABLE public.listings (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    public_id TEXT UNIQUE NOT NULL DEFAULT public.generate_public_id(),
+    public_id TEXT UNIQUE NOT NULL,
     host_id UUID REFERENCES public.profiles(id) ON DELETE RESTRICT NOT NULL,
     accommodation_type_id UUID REFERENCES public.accommodation_types(id) ON DELETE RESTRICT NOT NULL,
     property_type TEXT DEFAULT 'Apartment' NOT NULL,
     title TEXT NOT NULL,
     description TEXT,
-    max_occupants INTEGER DEFAULT 1 NOT NULL,
     occupancy_type public.occupancy_type DEFAULT 'private'::public.occupancy_type NOT NULL,
     gender_preference public.gender_preference DEFAULT 'any'::public.gender_preference NOT NULL,
     furnishing public.furnishing DEFAULT 'unfurnished'::public.furnishing NOT NULL,
     
     -- Location Fields
-    country_code TEXT,
-    country TEXT,
     state TEXT,
     city TEXT,
     locality TEXT,
@@ -64,6 +61,14 @@ CREATE TABLE public.listing_build_progress (
 CREATE TRIGGER listings_updated_at 
   BEFORE UPDATE ON public.listings 
   FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
+
+CREATE TRIGGER listings_set_public_id
+  BEFORE INSERT ON public.listings
+  FOR EACH ROW EXECUTE PROCEDURE public.trigger_set_public_id();
+
+CREATE TRIGGER listings_prevent_public_id_update
+  BEFORE UPDATE ON public.listings
+  FOR EACH ROW EXECUTE PROCEDURE public.trigger_prevent_public_id_update();
 
 CREATE TRIGGER listing_amenities_updated_at 
   BEFORE UPDATE ON public.listing_amenities 

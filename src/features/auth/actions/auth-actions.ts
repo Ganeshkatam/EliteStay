@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { type AuthResult } from '../types/errors';
+import * as NotificationService from '@/features/notifications/actions/notification-actions';
 import {
   loginSchema,
   signupSchema,
@@ -80,6 +81,14 @@ export async function signup(data: SignupInput): Promise<AuthResult> {
     };
   }
 
+  // We can only trigger this if user was created and we have the session/user.
+  // SignUp doesn't guarantee an immediate user object if email confirmation is required.
+  // But we can try to fire it if we have the user ID.
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) {
+    NotificationService.notifyWelcome(user.id).catch(console.error);
+  }
+
   // Redirect to a verification page or login
   redirect('/verify-email');
 }
@@ -147,6 +156,11 @@ export async function resetPassword(
         message: error.message,
       },
     };
+  }
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) {
+    NotificationService.notifyPasswordChanged(user.id).catch(console.error);
   }
 
   redirect('/login');

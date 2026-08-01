@@ -20,14 +20,11 @@ BEGIN
             l.public_id,
             l.title,
             l.description,
-            l.max_occupants,
             l.status,
             l.furnishing,
             l.gender_preference,
             l.occupancy_type,
             l.created_at,
-            l.country_code,
-            l.country,
             l.state,
             l.city,
             l.locality,
@@ -75,7 +72,7 @@ BEGIN
                 SELECT row_to_json(av)
                 FROM (
                     SELECT 
-                        available_from,
+                        start_date,
                         available_units,
                         status
                     FROM public.listing_availability
@@ -106,6 +103,8 @@ BEGIN
                 ) am
             ) as amenities
         FROM public.listings l
+        JOIN public.accommodation_types act ON act.id = l.accommodation_type_id
+        JOIN public.listing_prices lpr ON lpr.listing_id = l.id
         WHERE l.public_id = p_public_id
         AND (
             l.status = 'published' 
@@ -144,11 +143,11 @@ RETURNS TABLE (
   furnishing public.furnishing,
   gender_preference public.gender_preference,
   occupancy_type public.occupancy_type,
-  max_occupants INTEGER,
   locality TEXT,
   city TEXT,
-  country TEXT,
   formatted_address TEXT,
+  latitude NUMERIC,
+  longitude NUMERIC,
   price_amount NUMERIC,
   price_currency TEXT,
   price_billing_period public.billing_period,
@@ -176,11 +175,11 @@ BEGIN
     l.furnishing,
     l.gender_preference,
     l.occupancy_type,
-    l.max_occupants,
     l.locality,
     l.city,
-    l.country,
     l.formatted_address,
+    l.latitude,
+    l.longitude,
     lp.amount AS price_amount,
     lp.currency AS price_currency,
     lp.billing_period AS price_billing_period,
@@ -194,7 +193,7 @@ BEGIN
     ) AS image_url
   FROM public.listings l
   JOIN public.accommodation_types at ON at.id = l.accommodation_type_id
-  LEFT JOIN public.listing_prices lp ON lp.listing_id = l.id
+  JOIN public.listing_prices lp ON lp.listing_id = l.id
   WHERE
     -- Only published listings
     l.status = 'published'
@@ -225,7 +224,7 @@ BEGIN
         SELECT 1 FROM public.listing_availability la
         WHERE la.listing_id = l.id
           AND la.status = 'available'
-          AND la.available_from <= p_available_from
+          AND la.start_date <= p_available_from
       )
     )
 

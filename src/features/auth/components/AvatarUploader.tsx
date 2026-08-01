@@ -18,13 +18,13 @@ export function AvatarUploader({ currentPath, fullName }: AvatarUploaderProps) {
 
   // Helper to resolve avatar path to a public URL.
   // Accepts string, null, or undefined because the prop may be undefined.
-  const getAvatarUrl = (path: string | null | undefined) => {
+  const getAvatarStorageUrl = (path: string | null | undefined) => {
     if (!path) return undefined;
     if (path.startsWith('http://') || path.startsWith('https://')) return path;
     return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatars/${path}`;
   };
 
-  const avatarUrl = getAvatarUrl(currentPath);
+  const avatarUrl = getAvatarStorageUrl(currentPath);
   const initials = fullName
     ? fullName
         .split(' ')

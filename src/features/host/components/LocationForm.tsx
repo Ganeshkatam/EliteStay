@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @next/next/no-img-element */
 'use client';
 
 import { useState } from 'react';
@@ -11,16 +10,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 
 const formSchema = z.object({
-  country: z.string().min(1, 'Country is required'),
   state: z.string().min(1, 'State is required'),
   city: z.string().min(1, 'City is required'),
   locality: z.string().min(1, 'Locality is required'),
@@ -53,7 +44,7 @@ export function LocationForm({ listingId, initialData }: LocationFormProps) {
   const onSubmit = async (data: FormValues) => {
     setIsPending(true);
     setError('');
-    
+
     try {
       await updateLocation(listingId, data);
     } catch (err: any) {
@@ -71,41 +62,25 @@ export function LocationForm({ listingId, initialData }: LocationFormProps) {
       )}
 
       <div className="space-y-6">
-        <div className="space-y-2">
-          <Label htmlFor="country">Country / Region</Label>
-          <Select 
-            value={watch('country')} 
-            onValueChange={(val) => setValue('country', val, { shouldValidate: true })}
-            disabled // Locked to India for V1
-          >
-            <SelectTrigger className="h-12 bg-slate-50">
-              <SelectValue placeholder="Select country..." />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="India">India</SelectItem>
-            </SelectContent>
-          </Select>
-          {errors.country && <p className="text-sm text-red-500">{errors.country.message}</p>}
-        </div>
 
         <div className="space-y-2">
           <Label htmlFor="address_line1">Street Address</Label>
-          <Input 
-            id="address_line1" 
-            placeholder="House number, street name" 
-            {...register('address_line1')} 
+          <Input
+            id="address_line1"
+            placeholder="House number, street name"
+            {...register('address_line1')}
             className="h-12"
           />
           {errors.address_line1 && <p className="text-sm text-red-500">{errors.address_line1.message}</p>}
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
             <Label htmlFor="city">City</Label>
-            <Input 
-              id="city" 
-              placeholder="e.g. Bangalore" 
-              {...register('city')} 
+            <Input
+              id="city"
+              placeholder="e.g. Bangalore"
+              {...register('city')}
               className="h-12"
             />
             {errors.city && <p className="text-sm text-red-500">{errors.city.message}</p>}
@@ -113,10 +88,10 @@ export function LocationForm({ listingId, initialData }: LocationFormProps) {
 
           <div className="space-y-2">
             <Label htmlFor="locality">Locality / Neighborhood</Label>
-            <Input 
-              id="locality" 
-              placeholder="e.g. HSR Layout" 
-              {...register('locality')} 
+            <Input
+              id="locality"
+              placeholder="e.g. HSR Layout"
+              {...register('locality')}
               className="h-12"
             />
             {errors.locality && <p className="text-sm text-red-500">{errors.locality.message}</p>}
@@ -126,10 +101,10 @@ export function LocationForm({ listingId, initialData }: LocationFormProps) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
             <Label htmlFor="state">State</Label>
-            <Input 
-              id="state" 
-              placeholder="e.g. Karnataka" 
-              {...register('state')} 
+            <Input
+              id="state"
+              placeholder="e.g. Karnataka"
+              {...register('state')}
               className="h-12"
             />
             {errors.state && <p className="text-sm text-red-500">{errors.state.message}</p>}
@@ -137,10 +112,10 @@ export function LocationForm({ listingId, initialData }: LocationFormProps) {
 
           <div className="space-y-2">
             <Label htmlFor="postal_code">Postal Code</Label>
-            <Input 
-              id="postal_code" 
-              placeholder="e.g. 560102" 
-              {...register('postal_code')} 
+            <Input
+              id="postal_code"
+              placeholder="e.g. 560102"
+              {...register('postal_code')}
               className="h-12"
             />
             {errors.postal_code && <p className="text-sm text-red-500">{errors.postal_code.message}</p>}
@@ -149,9 +124,9 @@ export function LocationForm({ listingId, initialData }: LocationFormProps) {
       </div>
 
       <div className="flex justify-between pt-4 border-t">
-        <Button 
-          type="button" 
-          variant="ghost" 
+        <Button
+          type="button"
+          variant="ghost"
           onClick={() => window.history.back()}
           className="text-slate-600 h-12"
         >

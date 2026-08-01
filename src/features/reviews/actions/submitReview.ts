@@ -1,5 +1,8 @@
+'use server';
+
 import { revalidatePath } from 'next/cache';
-import { createNotification } from '@/features/notifications/actions/createNotification';
+import { createNotification } from '@/features/notifications/actions/notification-actions';
+import { NotificationType } from '@/features/notifications/types';
 import { safeAction } from '@/lib/safeAction';
 
 export async function submitReview(params: {
@@ -37,13 +40,13 @@ export async function submitReview(params: {
     // Notify host
     await createNotification({
       userId: (data.listings as any).host_id,
-      type: 'review_received',
+      type: NotificationType.REVIEW_RECEIVED,
       title: 'New Review',
       message: `You received a new review for ${(data.listings as any).title}.`,
       link: '/host/reviews'
     });
 
-    revalidatePath('/profile/trips');
+    revalidatePath('/users');
     revalidatePath(`/stay/${data.listing_id}`);
     
     return { success: true };
@@ -66,13 +69,13 @@ export async function submitHostResponse(reviewId: string, response: string) {
     // Notify guest
     await createNotification({
       userId: data.guest_id,
-      type: 'host_response',
+      type: NotificationType.HOST_RESPONSE,
       title: 'Host Responded to Your Review',
       message: `The host of ${(data.listings as any).title} responded to your review.`,
-      link: '/profile/trips'
+      link: '/users'
     });
 
-    revalidatePath('/profile/trips');
+    revalidatePath('/users');
     return { success: true };
   });
 }

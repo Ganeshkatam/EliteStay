@@ -11,6 +11,12 @@
 export interface LocationFilters {
   city: string | null;
   locality: string | null;
+  minLat: number | null;
+  maxLat: number | null;
+  minLng: number | null;
+  maxLng: number | null;
+  centerLat: number | null;
+  centerLng: number | null;
 }
 
 export interface PricingFilters {
@@ -34,7 +40,7 @@ export interface AvailabilityFilters {
 }
 
 export interface SortingFilters {
-  sort: 'recommended' | 'price_asc' | 'price_desc' | 'newest';
+  sort: 'recommended' | 'price_asc' | 'price_desc' | 'newest' | 'distance';
 }
 
 export interface PaginationFilters {
@@ -56,6 +62,12 @@ export type SearchFilters = LocationFilters &
 export const SEARCH_DEFAULTS: Readonly<SearchFilters> = {
   city: null,
   locality: null,
+  minLat: null,
+  maxLat: null,
+  minLng: null,
+  maxLng: null,
+  centerLat: null,
+  centerLng: null,
   minPrice: null,
   maxPrice: null,
   accommodationType: null,
@@ -93,6 +105,7 @@ const SORT_VALUES = new Set([
   'price_asc',
   'price_desc',
   'newest',
+  'distance',
 ]);
 
 const MAX_PAGE_SIZE = 48;
@@ -143,6 +156,13 @@ type RawSearchParams = Record<string, string | string[] | undefined>;
 export function parseSearchParams(raw: RawSearchParams): SearchFilters {
   const cityRaw = firstString(raw.city)?.trim() || null;
   const localityRaw = firstString(raw.locality)?.trim() || null;
+
+  const minLatRaw = parsePositiveNumber(firstString(raw.minLat));
+  const maxLatRaw = parsePositiveNumber(firstString(raw.maxLat));
+  const minLngRaw = parsePositiveNumber(firstString(raw.minLng));
+  const maxLngRaw = parsePositiveNumber(firstString(raw.maxLng));
+  const centerLatRaw = parsePositiveNumber(firstString(raw.centerLat));
+  const centerLngRaw = parsePositiveNumber(firstString(raw.centerLng));
 
   const accommodationTypeRaw =
     firstString(raw.accommodationType)?.trim().toLowerCase() || null;
@@ -204,6 +224,12 @@ export function parseSearchParams(raw: RawSearchParams): SearchFilters {
   return {
     city: cityRaw,
     locality: localityRaw,
+    minLat: minLatRaw,
+    maxLat: maxLatRaw,
+    minLng: minLngRaw,
+    maxLng: maxLngRaw,
+    centerLat: centerLatRaw,
+    centerLng: centerLngRaw,
     accommodationType: accommodationTypeRaw,
     minPrice: minPriceRaw,
     maxPrice: maxPriceRaw,
@@ -259,6 +285,12 @@ export function normalizeFilters(filters: SearchFilters): SearchFilters {
 const PARAM_ORDER: readonly (keyof SearchFilters)[] = [
   'city',
   'locality',
+  'minLat',
+  'maxLat',
+  'minLng',
+  'maxLng',
+  'centerLat',
+  'centerLng',
   'accommodationType',
   'minPrice',
   'maxPrice',

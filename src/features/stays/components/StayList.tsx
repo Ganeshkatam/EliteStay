@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { checkInStay, checkOutStay, completeStay } from '../actions/stayActions';
-import { getOrCreateConversation } from '@/features/messaging/actions/messageActions';
+import { getOrCreateConversation } from '@/features/messaging/actions/message-actions';
 import { Button } from '@/components/ui/button';
 import { Loader2, MessageSquare } from 'lucide-react';
 import Image from 'next/image';
@@ -23,8 +23,8 @@ export function StayList({ initialStays, viewType }: { initialStays: Stay[], vie
   const handleMessage = async (stayId: string) => {
     setMessagingId(stayId);
     const res = await getOrCreateConversation({ stayId });
-    if (res.data?.conversationId) {
-      router.push(`/messages/${res.data.conversationId}`);
+    if (res.conversationId) {
+      router.push(`/users/inbox/${res.conversationId}`);
     } else {
       alert(res.error || 'Failed to open messages');
       setMessagingId(null);
@@ -62,7 +62,7 @@ export function StayList({ initialStays, viewType }: { initialStays: Stay[], vie
       {stays.map((stay) => {
         const otherUser = viewType === 'host' ? stay.guest : stay.listings?.host;
         const otherUserName = otherUser?.full_name || (viewType === 'host' ? 'Anonymous Guest' : 'Host');
-        const otherUserAvatar = otherUser?.avatar_path;
+        const otherUserAvatar = otherUser?.avatar_storage_path;
         
         return (
           <div key={stay.id} className="overflow-hidden rounded-xl bg-white shadow border border-gray-200">

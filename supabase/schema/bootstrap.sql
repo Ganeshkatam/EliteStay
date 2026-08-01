@@ -26,6 +26,9 @@
 \echo 'Creating Pricing Schema...'
 \i 07_pricing.sql
 
+\echo 'Creating Availability Schema...'
+\i 08_availability.sql
+
 \echo 'Creating Bookings Schema...'
 \i 09_bookings.sql
 
@@ -35,11 +38,20 @@
 \echo 'Creating Reviews Schema...'
 \i 11_reviews.sql
 
+\echo 'Creating Notifications Schema...'
+\i 12_notifications.sql
+
+\echo 'Creating Messaging Schema...'
+\i 13_messaging.sql
+
 \echo 'Creating Storage Configuration...'
 \i 14_storage.sql
 
 \echo 'Creating Search Functions...'
 \i 08_search.sql
+
+\echo 'Creating Performance Indexes...'
+\i 18_indexes.sql
 
 \echo 'Done! Schema bootstrap complete.'
 
@@ -48,4 +60,3 @@
 
 \echo 'Seeding Demo Data...'
 \i 17_seed_demo_data.sql
-

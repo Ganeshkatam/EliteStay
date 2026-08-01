@@ -21,13 +21,16 @@ export async function getFeaturedListings(): Promise<ListingCardData[]> {
       `
       public_id,
       title,
-      max_occupants,
       locality,
       city,
-      country,
       formatted_address,
-      accommodation_types ( name ),
-      listing_prices ( amount, currency, billing_period, minimum_duration ),
+      latitude,
+      longitude,
+      furnishing,
+      gender_preference,
+      occupancy_type,
+      accommodation_types!inner ( name ),
+      listing_prices!inner ( amount, currency, billing_period, minimum_duration ),
       listing_images ( storage_path, display_order )
     `
     )
@@ -49,10 +52,10 @@ export async function getFeaturedListings(): Promise<ListingCardData[]> {
     location: {
       locality: row.locality,
       city: row.city,
-      country: row.country,
       formattedAddress: row.formatted_address,
+      latitude: row.latitude || null,
+      longitude: row.longitude || null,
     },
-    maxOccupants: row.max_occupants,
     pricing: {
       amount: row.listing_prices[0].amount,
       currency: row.listing_prices[0].currency,
@@ -80,13 +83,16 @@ export async function getDiscoverListings(
       id,
       public_id,
       title,
-      max_occupants,
       locality,
       city,
-      country,
       formatted_address,
-      accommodation_types ( name ),
-      listing_prices ( amount, currency, billing_period, minimum_duration ),
+      latitude,
+      longitude,
+      furnishing,
+      gender_preference,
+      occupancy_type,
+      accommodation_types!inner ( name ),
+      listing_prices!inner ( amount, currency, billing_period, minimum_duration ),
       listing_images ( storage_path, display_order )
     `
     )
@@ -115,10 +121,10 @@ export async function getDiscoverListings(
     location: {
       locality: row.locality,
       city: row.city,
-      country: row.country,
       formattedAddress: row.formatted_address,
+      latitude: row.latitude || null,
+      longitude: row.longitude || null,
     },
-    maxOccupants: row.max_occupants,
     pricing: {
       amount: row.listing_prices[0].amount,
       currency: row.listing_prices[0].currency,
@@ -168,10 +174,7 @@ export async function getListingDetail(
     genderPreference: raw.gender_preference,
     occupancyType: raw.occupancy_type,
     status: raw.status,
-    maxOccupants: raw.max_occupants,
     location: {
-      countryCode: raw.country_code,
-      country: raw.country,
       state: raw.state,
       city: raw.city,
       locality: raw.locality,
@@ -253,6 +256,12 @@ export async function searchListings(
     p_sort: filters.sort,
     p_page: filters.page,
     p_page_size: filters.pageSize,
+    p_min_lat: filters.minLat,
+    p_max_lat: filters.maxLat,
+    p_min_lng: filters.minLng,
+    p_max_lng: filters.maxLng,
+    p_center_lat: filters.centerLat,
+    p_center_lng: filters.centerLng,
   });
 
   if (error) {
@@ -280,10 +289,10 @@ export async function searchListings(
     location: {
       locality: row.locality,
       city: row.city,
-      country: row.country,
       formattedAddress: row.formatted_address,
+      latitude: row.latitude || null,
+      longitude: row.longitude || null,
     },
-    maxOccupants: row.max_occupants,
     pricing: {
       amount: row.price_amount,
       currency: row.price_currency,

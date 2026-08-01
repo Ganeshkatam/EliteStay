@@ -42,6 +42,7 @@ CREATE TYPE public.availability_status AS ENUM ('available', 'occupied', 'unavai
 CREATE TYPE public.occupancy_type AS ENUM ('private', 'shared', 'mixed');
 CREATE TYPE public.gender_preference AS ENUM ('any', 'male', 'female');
 CREATE TYPE public.furnishing AS ENUM ('unfurnished', 'semi_furnished', 'fully_furnished');
+CREATE TYPE public.availability_source AS ENUM ('booking', 'manual_block', 'external_calendar', 'maintenance');
 
 
 -- SOURCE: 15_shared.sql
@@ -63,19 +64,74 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION public.generate_public_id()
+/*
+  uuid_to_public_id()
+  Contract:
+  - Deterministic
+  - One-to-one mapping
+  - Immutable output
+  - Entire 128-bit UUID encoded
+  - No randomness
+  - URL safe (Crockford Base32)
+  - Case insensitive
+  - Never change algorithm (Treat as permanent contract)
+*/
+CREATE OR REPLACE FUNCTION public.uuid_to_public_id(input_uuid UUID)
 RETURNS TEXT AS $$
 DECLARE
-  chars TEXT := 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  result TEXT := '';
-  i INTEGER;
+    bytes BYTEA := uuid_send(input_uuid);
+    res TEXT := '';
+    chars TEXT := '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+    n NUMERIC := 0;
+    i INTEGER;
 BEGIN
-  FOR i IN 1..8 LOOP
-    result := result || substr(chars, floor(random() * length(chars) + 1)::integer, 1);
-  END LOOP;
-  RETURN result;
+    IF input_uuid IS NULL THEN
+        RETURN NULL;
+    END IF;
+
+    -- Convert 16 bytes to a single numeric value safely
+    FOR i IN 0..15 LOOP
+        n := n * 256 + get_byte(bytes, i);
+    END LOOP;
+    
+    -- Edge case for 00000000-0000-0000-0000-000000000000
+    IF n = 0 THEN
+        RETURN lpad('0', 26, '0');
+    END IF;
+    
+    WHILE n > 0 LOOP
+        res := substr(chars, (n % 32)::integer + 1, 1) || res;
+        n := floor(n / 32);
+    END LOOP;
+    
+    RETURN lpad(res, 26, '0');
 END;
-$$ LANGUAGE plpgsql VOLATILE;
+$$ LANGUAGE plpgsql IMMUTABLE STRICT;
+
+CREATE OR REPLACE FUNCTION public.trigger_set_public_id()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.id IS NULL THEN
+        NEW.id := gen_random_uuid();
+    END IF;
+    
+    IF NEW.public_id IS NULL THEN
+        NEW.public_id := public.uuid_to_public_id(NEW.id);
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION public.trigger_prevent_public_id_update()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF OLD.public_id IS NOT NULL AND NEW.public_id IS DISTINCT FROM OLD.public_id THEN
+        RAISE EXCEPTION 'public_id is immutable and cannot be updated';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
 
 -- SOURCE: 02_identity.sql
@@ -150,6 +206,10 @@ BEGIN
     NOW(),
     NOW()
   );
+
+  INSERT INTO public.user_preferences (user_id)
+  VALUES (NEW.id);
+
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -249,20 +309,17 @@ Contains:
 
 CREATE TABLE public.listings (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    public_id TEXT UNIQUE NOT NULL DEFAULT public.generate_public_id(),
+    public_id TEXT UNIQUE NOT NULL,
     host_id UUID REFERENCES public.profiles(id) ON DELETE RESTRICT NOT NULL,
     accommodation_type_id UUID REFERENCES public.accommodation_types(id) ON DELETE RESTRICT NOT NULL,
     property_type TEXT DEFAULT 'Apartment' NOT NULL,
     title TEXT NOT NULL,
     description TEXT,
-    max_occupants INTEGER DEFAULT 1 NOT NULL,
     occupancy_type public.occupancy_type DEFAULT 'private'::public.occupancy_type NOT NULL,
     gender_preference public.gender_preference DEFAULT 'any'::public.gender_preference NOT NULL,
     furnishing public.furnishing DEFAULT 'unfurnished'::public.furnishing NOT NULL,
     
     -- Location Fields
-    country_code TEXT,
-    country TEXT,
     state TEXT,
     city TEXT,
     locality TEXT,
@@ -300,6 +357,14 @@ CREATE TABLE public.listing_build_progress (
 CREATE TRIGGER listings_updated_at 
   BEFORE UPDATE ON public.listings 
   FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
+
+CREATE TRIGGER listings_set_public_id
+  BEFORE INSERT ON public.listings
+  FOR EACH ROW EXECUTE PROCEDURE public.trigger_set_public_id();
+
+CREATE TRIGGER listings_prevent_public_id_update
+  BEFORE UPDATE ON public.listings
+  FOR EACH ROW EXECUTE PROCEDURE public.trigger_prevent_public_id_update();
 
 CREATE TRIGGER listing_amenities_updated_at 
   BEFORE UPDATE ON public.listing_amenities 
@@ -740,6 +805,8 @@ CREATE TABLE public.conversations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     booking_id UUID REFERENCES public.bookings(id) ON DELETE SET NULL,
     stay_id UUID REFERENCES public.stays(id) ON DELETE SET NULL,
+    guest_last_read_at TIMESTAMPTZ,
+    host_last_read_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
     closed_at TIMESTAMPTZ,
     
@@ -782,6 +849,23 @@ CREATE POLICY "Users can view their conversations" ON public.conversations
 
 CREATE POLICY "System can create conversations" ON public.conversations
   FOR INSERT WITH CHECK (true); -- Typically created via Server Action
+
+CREATE POLICY "Users can update their own read state" ON public.conversations
+  FOR UPDATE USING (
+    (booking_id IS NOT NULL AND EXISTS (
+        SELECT 1 FROM public.bookings b
+        JOIN public.listings l ON l.id = b.listing_id
+        WHERE b.id = conversations.booking_id
+        AND (b.guest_id = auth.uid() OR l.host_id = auth.uid())
+    ))
+    OR
+    (stay_id IS NOT NULL AND EXISTS (
+        SELECT 1 FROM public.stays s
+        JOIN public.listings l ON l.id = s.listing_id
+        WHERE s.id = conversations.stay_id
+        AND (s.guest_id = auth.uid() OR l.host_id = auth.uid())
+    ))
+  );
 
 -- Messages RLS
 CREATE POLICY "Users can view messages in their conversations" ON public.messages
@@ -886,9 +970,11 @@ Contains:
 CREATE TABLE public.listing_availability (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     listing_id UUID REFERENCES public.listings(id) ON DELETE CASCADE NOT NULL,
-    available_from DATE NOT NULL,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
     available_units INTEGER DEFAULT 1 NOT NULL,
     status public.availability_status DEFAULT 'available'::public.availability_status NOT NULL,
+    source public.availability_source DEFAULT 'manual_block'::public.availability_source NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
 );
@@ -936,7 +1022,6 @@ BEGIN
             l.public_id,
             l.title,
             l.description,
-            l.max_occupants,
             l.status,
             l.furnishing,
             l.gender_preference,
@@ -991,7 +1076,7 @@ BEGIN
                 SELECT row_to_json(av)
                 FROM (
                     SELECT 
-                        available_from,
+                        start_date,
                         available_units,
                         status
                     FROM public.listing_availability
@@ -1022,6 +1107,8 @@ BEGIN
                 ) am
             ) as amenities
         FROM public.listings l
+        JOIN public.accommodation_types act ON act.id = l.accommodation_type_id
+        JOIN public.listing_prices lpr ON lpr.listing_id = l.id
         WHERE l.public_id = p_public_id
         AND (
             l.status = 'published' 
@@ -1060,11 +1147,12 @@ RETURNS TABLE (
   furnishing public.furnishing,
   gender_preference public.gender_preference,
   occupancy_type public.occupancy_type,
-  max_occupants INTEGER,
   locality TEXT,
   city TEXT,
   country TEXT,
   formatted_address TEXT,
+  latitude NUMERIC,
+  longitude NUMERIC,
   price_amount NUMERIC,
   price_currency TEXT,
   price_billing_period public.billing_period,
@@ -1092,11 +1180,12 @@ BEGIN
     l.furnishing,
     l.gender_preference,
     l.occupancy_type,
-    l.max_occupants,
     l.locality,
     l.city,
     l.country,
     l.formatted_address,
+    l.latitude,
+    l.longitude,
     lp.amount AS price_amount,
     lp.currency AS price_currency,
     lp.billing_period AS price_billing_period,
@@ -1110,7 +1199,7 @@ BEGIN
     ) AS image_url
   FROM public.listings l
   JOIN public.accommodation_types at ON at.id = l.accommodation_type_id
-  LEFT JOIN public.listing_prices lp ON lp.listing_id = l.id
+  JOIN public.listing_prices lp ON lp.listing_id = l.id
   WHERE
     -- Only published listings
     l.status = 'published'
@@ -1141,7 +1230,7 @@ BEGIN
         SELECT 1 FROM public.listing_availability la
         WHERE la.listing_id = l.id
           AND la.status = 'available'
-          AND la.available_from <= p_available_from
+          AND la.start_date <= p_available_from
       )
     )
 
@@ -1169,6 +1258,39 @@ BEGIN
   OFFSET v_offset;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+
+-- SOURCE: 18_indexes.sql
+/*
+==================================================
+Domain: Indexes
+Purpose: Database performance optimizations using composite and partial indexes.
+==================================================
+*/
+
+-- Bookings
+CREATE INDEX IF NOT EXISTS idx_bookings_guest_status ON public.bookings (guest_id, status);
+CREATE INDEX IF NOT EXISTS idx_bookings_listing_status ON public.bookings (listing_id, status);
+
+-- Stays
+CREATE INDEX IF NOT EXISTS idx_stays_guest_status ON public.stays (guest_id, status);
+CREATE INDEX IF NOT EXISTS idx_stays_listing_status ON public.stays (listing_id, status);
+
+-- Messaging
+CREATE INDEX IF NOT EXISTS idx_conversations_booking_id ON public.conversations (booking_id);
+CREATE INDEX IF NOT EXISTS idx_conversations_stay_id ON public.conversations (stay_id);
+CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON public.messages (conversation_id);
+
+-- Reviews
+CREATE INDEX IF NOT EXISTS idx_reviews_listing_id ON public.reviews (listing_id);
+
+-- Notifications (Partial Index for active/unread notifications)
+CREATE INDEX IF NOT EXISTS idx_notifications_unread ON public.notifications (user_id) WHERE read_at IS NULL;
+-- General index for fetching all notifications sorted by time
+CREATE INDEX IF NOT EXISTS idx_notifications_user_created ON public.notifications (user_id, created_at DESC);
+
+-- Availability (Composite for range queries)
+CREATE INDEX IF NOT EXISTS idx_listing_availability_range ON public.listing_availability (listing_id, available_from);
 
 
 -- SOURCE: 16_seed_reference_data.sql
@@ -1215,31 +1337,31 @@ WITH test_host AS (
   SELECT id FROM public.profiles LIMIT 1
 )
 INSERT INTO public.listings (
-  id, host_id, accommodation_type_id, title, description, max_occupants,
+  id, host_id, accommodation_type_id, title, description,
   country_code, country, state, city, locality, postal_code, latitude, longitude, formatted_address,
   status, public_id, furnishing, gender_preference, occupancy_type
 ) VALUES
 (
   'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380c11', (SELECT id FROM test_host), 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', -- PG
-  'Premium Boys PG in HSR Layout', 'Spacious shared rooms with all amenities included.', 2,
+  'Premium Boys PG in HSR Layout', 'Spacious shared rooms with all amenities included.',
   'IN', 'India', 'Karnataka', 'Bangalore', 'HSR Layout', '560102', 12.9081, 77.6476, 'HSR Layout Sector 2, Bangalore, Karnataka',
   'published', 'lst_pg_hsr', 'fully_furnished', 'male', 'shared'
 ),
 (
   'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380c12', (SELECT id FROM test_host), 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12', -- Hostel
-  'Girls Hostel - Gachibowli', 'Safe and secure girls hostel near major tech parks.', 3,
+  'Girls Hostel - Gachibowli', 'Safe and secure girls hostel near major tech parks.',
   'IN', 'India', 'Telangana', 'Hyderabad', 'Gachibowli', '500032', 17.4401, 78.3489, 'Gachibowli, Hyderabad, Telangana',
   'published', 'lst_hst_gcb', 'fully_furnished', 'female', 'shared'
 ),
 (
   'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380c13', (SELECT id FROM test_host), 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a19', -- Co-living
-  'Modern Co-living Space Koramangala', 'Experience community living in the heart of the city.', 1,
+  'Modern Co-living Space Koramangala', 'Experience community living in the heart of the city.',
   'IN', 'India', 'Karnataka', 'Bangalore', 'Koramangala', '560034', 12.9279, 77.6271, 'Koramangala 5th Block, Bangalore, Karnataka',
   'published', 'lst_col_krm', 'fully_furnished', 'any', 'mixed'
 ),
 (
   'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380c14', (SELECT id FROM test_host), 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a13', -- Apartment
-  '2BHK Apartment in Kondapur', 'Semi-furnished 2BHK perfect for small families.', 4,
+  '2BHK Apartment in Kondapur', 'Semi-furnished 2BHK perfect for small families.',
   'IN', 'India', 'Telangana', 'Hyderabad', 'Kondapur', '500084', 17.4622, 78.3568, 'Kondapur Main Road, Hyderabad, Telangana',
   'published', 'lst_apt_knd', 'semi_furnished', 'any', 'private'
 );
@@ -1258,12 +1380,12 @@ INSERT INTO public.listing_availability (listing_id, available_from, available_u
 ('c0eebc99-9c0b-4ef8-bb6d-6bb9bd380c13', CURRENT_DATE, 2, 'available'),
 ('c0eebc99-9c0b-4ef8-bb6d-6bb9bd380c14', CURRENT_DATE + INTERVAL '15 days', 1, 'available');
 
--- Add Images (Sample Unsplash Links)
+-- Add Images (Sample Placehold Links)
 INSERT INTO public.listing_images (listing_id, storage_path, display_order) VALUES
-('c0eebc99-9c0b-4ef8-bb6d-6bb9bd380c11', 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800&q=80', 1),
-('c0eebc99-9c0b-4ef8-bb6d-6bb9bd380c12', 'https://images.unsplash.com/photo-1555854877-bab0e564b8d5?w=800&q=80', 1),
-('c0eebc99-9c0b-4ef8-bb6d-6bb9bd380c13', 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&q=80', 1),
-('c0eebc99-9c0b-4ef8-bb6d-6bb9bd380c14', 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&q=80', 1);
+('c0eebc99-9c0b-4ef8-bb6d-6bb9bd380c11', 'https://placehold.co/800x600/e2e8f0/1e293b?text=EliteStay', 1),
+('c0eebc99-9c0b-4ef8-bb6d-6bb9bd380c12', 'https://placehold.co/800x600/e2e8f0/1e293b?text=EliteStay', 1),
+('c0eebc99-9c0b-4ef8-bb6d-6bb9bd380c13', 'https://placehold.co/800x600/e2e8f0/1e293b?text=EliteStay', 1),
+('c0eebc99-9c0b-4ef8-bb6d-6bb9bd380c14', 'https://placehold.co/800x600/e2e8f0/1e293b?text=EliteStay', 1);
 
 -- Link Amenities to Listings
 -- PG gets Wi-Fi, Water, Electricity, Meals, Bike Parking
@@ -1287,7 +1409,6 @@ BEGIN
             l.public_id,
             l.title,
             l.description,
-            l.max_occupants,
             l.status,
             l.furnishing,
             l.gender_preference,
@@ -1372,6 +1493,8 @@ BEGIN
                 ) am
             ) as amenities
         FROM public.listings l
+        JOIN public.accommodation_types act ON act.id = l.accommodation_type_id
+        JOIN public.listing_prices lpr ON lpr.listing_id = l.id
         WHERE l.public_id = p_public_id
         AND (
             l.status = 'published' 
@@ -1393,5 +1516,113 @@ ADD COLUMN IF NOT EXISTS maintenance_fee_period billing_period DEFAULT 'semester
 
 -- 2. Create Storage Buckets with strict size limits
 -- listings: max 2MB
+
+
+-- SOURCE: 21_calendar_sync.sql
+/*
+==================================================
+Domain: Calendar Sync (V1.2)
+Purpose: Manage iCal feeds and synchronize external blocks.
+Contains: 
+- ical_feeds
+- external_calendar_events
+- triggers
+- RLS
+==================================================
+*/
+
+CREATE TYPE public.sync_direction AS ENUM ('import', 'export', 'both');
+
+CREATE TABLE public.ical_feeds (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    listing_id UUID REFERENCES public.listings(id) ON DELETE CASCADE NOT NULL,
+    feed_url TEXT NOT NULL,
+    provider TEXT NOT NULL,
+    enabled BOOLEAN DEFAULT true NOT NULL,
+    sync_direction public.sync_direction DEFAULT 'import'::public.sync_direction NOT NULL,
+    last_synced_at TIMESTAMPTZ,
+    last_success_at TIMESTAMPTZ,
+    last_error TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
+
+CREATE TRIGGER ical_feeds_updated_at 
+  BEFORE UPDATE ON public.ical_feeds 
+  FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
+
+ALTER TABLE public.ical_feeds ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Hosts can manage their ical feeds" ON public.ical_feeds
+  FOR ALL USING (
+    EXISTS (
+        SELECT 1 FROM public.listings l 
+        WHERE l.id = ical_feeds.listing_id 
+        AND l.host_id = auth.uid()
+    )
+  );
+
+CREATE TABLE public.external_calendar_events (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    feed_id UUID REFERENCES public.ical_feeds(id) ON DELETE CASCADE NOT NULL,
+    external_uid TEXT NOT NULL,
+    listing_id UUID REFERENCES public.listings(id) ON DELETE CASCADE NOT NULL,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    summary TEXT,
+    last_seen_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    UNIQUE(feed_id, external_uid)
+);
+
+CREATE TRIGGER external_calendar_events_updated_at 
+  BEFORE UPDATE ON public.external_calendar_events 
+  FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
+
+ALTER TABLE public.external_calendar_events ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Hosts can view their external events" ON public.external_calendar_events
+  FOR SELECT USING (
+    EXISTS (
+        SELECT 1 FROM public.listings l 
+        WHERE l.id = external_calendar_events.listing_id 
+        AND l.host_id = auth.uid()
+    )
+  );
+
+
+-- SOURCE: 22_cron_jobs.sql
+/*
+==================================================
+Domain: Calendar Sync (V1.2)
+Purpose: Schedule pg_cron to trigger the sync-ical edge function.
+Contains: 
+- pg_cron schedule
+==================================================
+*/
+
+-- Ensure pg_cron and pg_net extensions are available.
+-- (Note: In Supabase, these are enabled via the dashboard or 00_extensions.sql, 
+-- but we include them here for completeness).
+CREATE EXTENSION IF NOT EXISTS pg_cron;
+CREATE EXTENSION IF NOT EXISTS pg_net;
+
+-- Schedule the sync job to run every hour.
+-- IMPORTANT: You must replace 'YOUR_SUPABASE_PROJECT_URL' and 'YOUR_ANON_KEY' 
+-- with your actual project URL and anon/service_role key.
+-- In a production Supabase project, you would store the URL and KEY securely 
+-- or use Vault to retrieve them.
+
+SELECT cron.schedule(
+    'sync-ical-hourly',
+    '0 * * * *', -- Run at minute 0 past every hour
+    $$
+    SELECT net.http_post(
+        url:='YOUR_SUPABASE_PROJECT_URL/functions/v1/sync-ical',
+        headers:='{"Content-Type": "application/json", "Authorization": "Bearer YOUR_ANON_KEY"}'::jsonb
+    );
+    $$
+);
 
 

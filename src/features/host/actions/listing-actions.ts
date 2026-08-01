@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { LocationService } from '@/features/location/services/location-service';
 
 /**
  * Creates a new Draft listing and initializes its build progress.
@@ -133,7 +134,6 @@ export async function updateAccommodation(listingId: string, data: {
  * Step 2: Update Location Details
  */
 export async function updateLocation(listingId: string, data: {
-  country: string;
   state: string;
   city: string;
   locality: string;
@@ -148,49 +148,56 @@ export async function updateLocation(listingId: string, data: {
   // Verify ownership first
   const { data: listing } = await supabase
     .from('listings')
-    .select('id')
+    .select('id, state, city, locality, postal_code, formatted_address, latitude, longitude')
     .eq('id', listingId)
     .eq('host_id', user.id)
     .single();
 
   if (!listing) throw new Error('Unauthorized or listing not found');
 
-  // Check if location exists
-  const { data: existingLoc } = await supabase
-    .from('listing_locations')
-    .select('id')
-    .eq('listing_id', listingId)
-    .single();
+  let latitude = listing.latitude;
+  let longitude = listing.longitude;
+  let formatted_address = listing.formatted_address || data.address_line1;
 
-  if (existingLoc) {
-    const { error } = await supabase
-      .from('listing_locations')
-      .update({
-        country: data.country,
-        state: data.state,
-        city: data.city,
-        locality: data.locality,
-        postal_code: data.postal_code,
-        address_line1: data.address_line1,
-      })
-      .eq('id', existingLoc.id);
+  const addressChanged = 
+    listing.state !== data.state ||
+    listing.city !== data.city ||
+    listing.locality !== data.locality ||
+    listing.postal_code !== data.postal_code ||
+    !listing.latitude ||
+    !listing.longitude;
 
-    if (error) throw new Error('Failed to update location');
-  } else {
-    const { error } = await supabase
-      .from('listing_locations')
-      .insert({
-        listing_id: listingId,
-        country: data.country,
-        state: data.state,
-        city: data.city,
-        locality: data.locality,
-        postal_code: data.postal_code,
-        address_line1: data.address_line1,
-      });
-
-    if (error) throw new Error('Failed to insert location');
+  if (addressChanged) {
+    try {
+      const fullAddress = `${data.address_line1}, ${data.locality}, ${data.city}, ${data.state}, India`;
+      const geocodeResult = await LocationService.geocode(fullAddress);
+      latitude = geocodeResult.latitude;
+      longitude = geocodeResult.longitude;
+      formatted_address = geocodeResult.formattedAddress;
+    } catch (error) {
+      console.error('Geocoding error:', error);
+      // We could throw here, but for now we can either throw or proceed without coordinates.
+      // Since the constraint requires coordinates for publish, throwing is safer so the host knows.
+      throw new Error('We could not locate this address. Please double check the details.');
+    }
   }
+
+  // Update location fields directly on listings table
+  const { error: updateError } = await supabase
+    .from('listings')
+    .update({
+      state: data.state,
+      city: data.city,
+      locality: data.locality,
+      postal_code: data.postal_code,
+      formatted_address,
+      latitude,
+      longitude,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', listingId);
+
+  if (updateError) throw new Error('Failed to update location');
 
   // Update progress
   await supabase

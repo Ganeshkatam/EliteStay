@@ -8,8 +8,6 @@ html {
 
 html,
 body {
-  max-width: 100vw;
-  overflow-x: hidden;
 }
 
 body {
@@ -43,8 +41,8 @@ a {
     --font-sans: var(--font-sans);
   }
   :root {
-    /* Background: Warm white */
-    --background: oklch(0.985 0.002 90); 
+    /* Background: Pure white */
+    --background: oklch(1 0 0); 
     /* Foreground: Charcoal */
     --foreground: oklch(0.2 0.01 270);
     
@@ -54,8 +52,8 @@ a {
     --popover: oklch(1 0 0);
     --popover-foreground: oklch(0.2 0.01 270);
     
-    /* Primary buttons (Deep blue or Charcoal) */
-    --primary: oklch(0.3 0.05 260); 
+    /* Primary buttons (Deep Premium Navy) */
+    --primary: oklch(0.2 0.05 260); 
     --primary-foreground: oklch(0.985 0 0);
     
     /* Secondary (Muted surface) */
@@ -66,9 +64,9 @@ a {
     --muted: oklch(0.96 0.01 90);
     --muted-foreground: oklch(0.55 0.01 270);
     
-    /* Accent (Hover states) */
-    --accent: oklch(0.95 0.02 260);
-    --accent-foreground: oklch(0.3 0.05 260);
+    /* Accent (Soft Trust Blue) */
+    --accent: oklch(0.6 0.15 250);
+    --accent-foreground: oklch(0.985 0 0);
     
     /* Utility States */
     --destructive: oklch(0.6 0.2 20);
@@ -88,7 +86,13 @@ a {
     --chart-4: oklch(0.371 0 0);
     --chart-5: oklch(0.269 0 0);
     
-    --radius: 0.5rem;
+    --radius: 0.75rem; /* rounded-xl by default for surfaces */
+
+    /* Custom Motion Language */
+    --motion-header: 220ms cubic-bezier(0.4, 0, 0.2, 1);
+    --motion-search: 180ms ease-out;
+    --motion-hover: 140ms linear;
+    --motion-modal: 240ms cubic-bezier(0.16, 1, 0.3, 1);
     
     /* Sidebar */
     --sidebar: oklch(0.985 0.002 90);
@@ -158,5 +162,38 @@ a {
   ::selection {
     background-color: var(--primary);
     color: var(--primary-foreground);
+  }
+
+  /* Utility to hide scrollbar but keep functionality */
+  .scrollbar-hide {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none; /* Chrome, Safari and Opera */
+  }
+
+  /* Custom Premium Scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: oklch(0.85 0.01 270);
+    border-radius: 9999px; /* Fully rounded */
+    border: 2px solid var(--background); /* Creates a padded effect */
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: oklch(0.7 0.01 270);
+  }
+  
+  .dark ::-webkit-scrollbar-thumb {
+    background: oklch(0.3 0.01 270);
+  }
+  .dark ::-webkit-scrollbar-thumb:hover {
+    background: oklch(0.4 0.01 270);
   }
 }

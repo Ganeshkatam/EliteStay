@@ -13,6 +13,8 @@ CREATE TABLE public.conversations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     booking_id UUID REFERENCES public.bookings(id) ON DELETE SET NULL,
     stay_id UUID REFERENCES public.stays(id) ON DELETE SET NULL,
+    guest_last_read_at TIMESTAMPTZ,
+    host_last_read_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
     closed_at TIMESTAMPTZ,
     
@@ -55,6 +57,23 @@ CREATE POLICY "Users can view their conversations" ON public.conversations
 
 CREATE POLICY "System can create conversations" ON public.conversations
   FOR INSERT WITH CHECK (true); -- Typically created via Server Action
+
+CREATE POLICY "Users can update their own read state" ON public.conversations
+  FOR UPDATE USING (
+    (booking_id IS NOT NULL AND EXISTS (
+        SELECT 1 FROM public.bookings b
+        JOIN public.listings l ON l.id = b.listing_id
+        WHERE b.id = conversations.booking_id
+        AND (b.guest_id = auth.uid() OR l.host_id = auth.uid())
+    ))
+    OR
+    (stay_id IS NOT NULL AND EXISTS (
+        SELECT 1 FROM public.stays s
+        JOIN public.listings l ON l.id = s.listing_id
+        WHERE s.id = conversations.stay_id
+        AND (s.guest_id = auth.uid() OR l.host_id = auth.uid())
+    ))
+  );
 
 -- Messages RLS
 CREATE POLICY "Users can view messages in their conversations" ON public.messages

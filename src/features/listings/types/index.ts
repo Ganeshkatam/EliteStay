@@ -11,10 +11,10 @@ export interface ListingCardData {
   location: {
     locality: string | null;
     city: string | null;
-    country: string | null;
     formattedAddress: string | null;
+    latitude: number | null;
+    longitude: number | null;
   };
-  maxOccupants: number;
   pricing: {
     amount: number;
     currency: string;
@@ -34,10 +34,7 @@ export interface ListingDetailData {
   genderPreference: 'any' | 'male' | 'female';
   occupancyType: 'private' | 'shared' | 'mixed';
   status: 'draft' | 'pending_review' | 'published' | 'paused' | 'archived';
-  maxOccupants: number;
   location: {
-    countryCode: string | null;
-    country: string | null;
     state: string | null;
     city: string | null;
     locality: string | null;

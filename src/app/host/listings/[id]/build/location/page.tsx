@@ -40,7 +40,6 @@ export default async function LocationPage({
       <LocationForm 
         listingId={id} 
         initialData={{
-          country: location?.country || 'India', // Default to India for V1
           state: location?.state || '',
           city: location?.city || '',
           locality: location?.locality || '',

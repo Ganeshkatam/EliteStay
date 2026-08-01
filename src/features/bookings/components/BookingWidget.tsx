@@ -10,6 +10,7 @@ import { requestBooking } from '../actions/bookingActions';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { PLATFORM } from '@/config/platform';
 import { Calendar } from '@/components/ui/calendar';
 import {
   Form,
@@ -78,17 +79,17 @@ export function BookingWidget({ listingId, pricing }: BookingWidgetProps) {
       setError(result.error);
     } else if (result.success) {
       setIsSuccess(true);
-      // In a real app, we might redirect to a success page or user trips dashboard
+      // In a real app, we might redirect to a success page or user bookings dashboard
       setTimeout(() => {
-        router.push('/profile/trips');
+        router.push('/users');
       }, 2000);
     }
   };
 
   const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat('en-IN', {
+    new Intl.NumberFormat(PLATFORM.LOCALE, {
       style: 'currency',
-      currency: pricing.currency || 'INR',
+      currency: PLATFORM.CURRENCY,
       minimumFractionDigits: 0,
     }).format(amount);
 
@@ -102,7 +103,7 @@ export function BookingWidget({ listingId, pricing }: BookingWidgetProps) {
         </div>
         <h3 className="text-lg font-semibold text-gray-900">Request Sent!</h3>
         <p className="mt-2 text-sm text-gray-500">
-          The host has been notified of your request. You will be redirected to your trips dashboard shortly.
+          The host has been notified of your request. You will be redirected to your bookings dashboard shortly.
         </p>
       </div>
     );
@@ -136,6 +137,8 @@ export function BookingWidget({ listingId, pricing }: BookingWidgetProps) {
                       <FormControl>
                         <Button
                           variant={"outline"}
+                          aria-label="Select move-in date"
+                          aria-expanded={field.value ? true : false}
                           className={cn(
                             "w-full pl-3 text-left font-normal",
                             !field.value && "text-muted-foreground"
@@ -189,7 +192,9 @@ export function BookingWidget({ listingId, pricing }: BookingWidgetProps) {
           </div>
 
           {error && (
-            <div className="text-sm font-medium text-destructive">{error}</div>
+            <div className="text-sm font-medium text-destructive" role="alert" aria-live="assertive">
+              {error}
+            </div>
           )}
 
           <Button 

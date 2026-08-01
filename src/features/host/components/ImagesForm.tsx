@@ -1,12 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @next/next/no-img-element */
 'use client';
 
 import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { addListingImage, removeListingImage, completeImagesStep } from '../actions/image-actions';
-import { Loader2, UploadCloud, X, Image as ImageIcon } from 'lucide-react';
+import { Loader2, UploadCloud, X } from 'lucide-react';
 import Image from 'next/image';
 
 interface ImagesFormProps {
@@ -21,8 +20,7 @@ export function ImagesForm({ listingId, initialImages }: ImagesFormProps) {
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [error, setError] = useState('');
   
-  // Create an optimistic local state to make the UI feel fast
-  const [images, setImages] = useState(initialImages);
+  const images = initialImages;
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -103,11 +101,13 @@ export function ImagesForm({ listingId, initialImages }: ImagesFormProps) {
           const imgUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/listings/${img.storage_path}`;
           return (
             <div key={img.id} className="relative aspect-video rounded-lg overflow-hidden group border border-slate-200 bg-slate-100">
-              {/* Using a standard img tag to avoid domain config issues during development */}
-              <img 
+              <Image 
                 src={imgUrl} 
                 alt={`Property photo ${index + 1}`}
-                className="w-full h-full object-cover"
+                fill
+                sizes="(max-width: 768px) 50vw, 33vw"
+                priority={index === 0}
+                className="object-cover"
               />
               {index === 0 && (
                 <div className="absolute top-2 left-2 bg-slate-900/70 text-white text-xs px-2 py-1 rounded">

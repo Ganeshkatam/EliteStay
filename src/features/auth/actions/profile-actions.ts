@@ -4,9 +4,10 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { profileSchema, type ProfileInput } from '../schemas/profile-schemas';
 import { type AuthResult } from '../types/errors';
+import * as NotificationService from '@/features/notifications/actions/notification-actions';
 
-export async function updateProfile(data: ProfileInput): Promise<AuthResult> {
-  const parsed = profileSchema.safeParse(data);
+export async function updateProfile(data: Partial<ProfileInput>): Promise<AuthResult> {
+  const parsed = profileSchema.partial().safeParse(data);
 
   if (!parsed.success) {
     return {
@@ -32,10 +33,11 @@ export async function updateProfile(data: ProfileInput): Promise<AuthResult> {
     };
   }
 
-  // Format phone to be null if empty string
+  // Format fields to be null if empty string
   const formattedData = {
     ...parsed.data,
     phone: parsed.data.phone === '' ? null : parsed.data.phone,
+    date_of_birth: parsed.data.date_of_birth === '' ? null : parsed.data.date_of_birth,
   };
 
   const { error } = await supabase
@@ -52,13 +54,16 @@ export async function updateProfile(data: ProfileInput): Promise<AuthResult> {
     };
   }
 
-  revalidatePath('/profile');
+  // Fire and forget notification
+  NotificationService.notifyProfileUpdated(user.id).catch(console.error);
+
+  revalidatePath('/', 'layout');
   return { data: undefined };
 }
 
 export async function uploadAvatar(
   formData: FormData
-): Promise<AuthResult<{ avatar_path: string }>> {
+): Promise<AuthResult<{ avatar_storage_path: string }>> {
   const file = formData.get('file') as File | null;
 
   if (!file) {
@@ -103,19 +108,17 @@ export async function uploadAvatar(
     };
   }
 
-  // Generate filename: user_id/avatar.webp
-  const extension = file.name.split('.').pop();
-  const fileName = `avatar_${Date.now()}.${extension}`;
-  const filePath = `${user.id}/${fileName}`;
-
   // Fetch current avatar to delete it later
   const { data: profile } = await supabase
     .from('profiles')
-    .select('avatar_path')
+    .select('avatar_storage_path')
     .eq('id', user.id)
     .single();
 
-  const currentAvatar = profile?.avatar_path;
+  const currentAvatar = profile?.avatar_storage_path;
+
+  // Generate filename: user.id/avatar.webp
+  const filePath = `${user.id}/avatar.webp`;
 
   // Upload to Supabase Storage
   const { error: uploadError } = await supabase.storage
@@ -132,14 +135,15 @@ export async function uploadAvatar(
   }
 
   // Update Profile
+  // We append a timestamp to the path in the DB so that the UI can bust the image cache
+  // Next time the UI fetches this, it will fetch `/avatar.webp?t=12345`
+  const dbPath = `${filePath}?t=${Date.now()}`;
   const { error: updateError } = await supabase
     .from('profiles')
-    .update({ avatar_path: filePath })
+    .update({ avatar_storage_path: dbPath })
     .eq('id', user.id);
 
   if (updateError) {
-    // Rollback storage upload
-    await supabase.storage.from('avatars').remove([filePath]);
     return {
       error: {
         code: 'server_error',
@@ -148,11 +152,12 @@ export async function uploadAvatar(
     };
   }
 
-  // Cleanup old avatar if it existed and is different
-  if (currentAvatar && currentAvatar !== filePath) {
-    await supabase.storage.from('avatars').remove([currentAvatar]);
+  // Cleanup old avatar if it existed and is different from the new path
+  const oldPathWithoutQuery = currentAvatar?.split('?')[0];
+  if (oldPathWithoutQuery && oldPathWithoutQuery !== filePath) {
+    await supabase.storage.from('avatars').remove([oldPathWithoutQuery]);
   }
 
-  revalidatePath('/profile');
-  return { data: { avatar_path: filePath } };
+  revalidatePath('/', 'layout');
+  return { data: { avatar_storage_path: dbPath } };
 }

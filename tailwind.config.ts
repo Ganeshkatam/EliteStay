@@ -14,6 +14,12 @@ const config: Config = {
       fontFamily: {
         sans: ['var(--font-sans)', 'system-ui', 'sans-serif'],
       },
+      transitionDuration: {
+        '140': '140ms',
+        '180': '180ms',
+        '220': '220ms',
+        '250': '250ms',
+      },
       colors: {
         background: 'var(--background)',
         foreground: 'var(--foreground)',

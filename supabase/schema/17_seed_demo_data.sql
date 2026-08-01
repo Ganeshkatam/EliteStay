@@ -88,7 +88,7 @@ BEGIN
   RETURNING id INTO list1;
   
   INSERT INTO public.listing_prices (listing_id, base_price_per_night, cleaning_fee) VALUES (list1, 75.00, 25.00);
-  INSERT INTO public.listing_images (listing_id, storage_path, display_order) VALUES (list1, 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&q=80&w=2000', 1);
+  INSERT INTO public.listing_images (listing_id, storage_path, display_order) VALUES (list1, 'https://placehold.co/800x600/e2e8f0/1e293b?text=EliteStay', 1);
   INSERT INTO public.listing_amenities (listing_id, amenity_id) VALUES (list1, am_wifi), (list1, am_kitchen), (list1, am_ac);
 
   -- Listing 2: Apartment
@@ -97,7 +97,7 @@ BEGIN
   RETURNING id INTO list2;
   
   INSERT INTO public.listing_prices (listing_id, base_price_per_night, cleaning_fee) VALUES (list2, 150.00, 50.00);
-  INSERT INTO public.listing_images (listing_id, storage_path, display_order) VALUES (list2, 'https://images.unsplash.com/photo-1502672260266-1c1de2d93688?auto=format&fit=crop&q=80&w=2000', 1);
+  INSERT INTO public.listing_images (listing_id, storage_path, display_order) VALUES (list2, 'https://placehold.co/800x600/e2e8f0/1e293b?text=EliteStay', 1);
   INSERT INTO public.listing_amenities (listing_id, amenity_id) VALUES (list2, am_wifi), (list2, am_ac), (list2, am_tv);
 
   -- Listing 3: Villa
@@ -106,7 +106,7 @@ BEGIN
   RETURNING id INTO list3;
   
   INSERT INTO public.listing_prices (listing_id, base_price_per_night, cleaning_fee) VALUES (list3, 1200.00, 200.00);
-  INSERT INTO public.listing_images (listing_id, storage_path, display_order) VALUES (list3, 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&q=80&w=2000', 1);
+  INSERT INTO public.listing_images (listing_id, storage_path, display_order) VALUES (list3, 'https://placehold.co/800x600/e2e8f0/1e293b?text=EliteStay', 1);
   INSERT INTO public.listing_amenities (listing_id, amenity_id) VALUES (list3, am_wifi), (list3, am_pool), (list3, am_parking), (list3, am_ac);
 
   -- Listing 4: Cabin
@@ -115,7 +115,7 @@ BEGIN
   RETURNING id INTO list4;
   
   INSERT INTO public.listing_prices (listing_id, base_price_per_night, cleaning_fee) VALUES (list4, 110.00, 40.00);
-  INSERT INTO public.listing_images (listing_id, storage_path, display_order) VALUES (list4, 'https://images.unsplash.com/photo-1587061949409-02df41d5e562?auto=format&fit=crop&q=80&w=2000', 1);
+  INSERT INTO public.listing_images (listing_id, storage_path, display_order) VALUES (list4, 'https://placehold.co/800x600/e2e8f0/1e293b?text=EliteStay', 1);
   INSERT INTO public.listing_amenities (listing_id, amenity_id) VALUES (list4, am_parking), (list4, am_kitchen);
 
   -- Listing 5: Beach House
@@ -124,7 +124,7 @@ BEGIN
   RETURNING id INTO list5;
   
   INSERT INTO public.listing_prices (listing_id, base_price_per_night, cleaning_fee) VALUES (list5, 650.00, 120.00);
-  INSERT INTO public.listing_images (listing_id, storage_path, display_order) VALUES (list5, 'https://images.unsplash.com/photo-1499793983690-e29da59ef1c2?auto=format&fit=crop&q=80&w=2000', 1);
+  INSERT INTO public.listing_images (listing_id, storage_path, display_order) VALUES (list5, 'https://placehold.co/800x600/e2e8f0/1e293b?text=EliteStay', 1);
   INSERT INTO public.listing_amenities (listing_id, amenity_id) VALUES (list5, am_wifi), (list5, am_kitchen), (list5, am_parking), (list5, am_washer);
 
   -- Listing 6: Beach House (Draft)
@@ -133,7 +133,7 @@ BEGIN
   RETURNING id INTO list6;
   
   INSERT INTO public.listing_prices (listing_id, base_price_per_night, cleaning_fee) VALUES (list6, 300.00, 80.00);
-  INSERT INTO public.listing_images (listing_id, storage_path, display_order) VALUES (list6, 'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?auto=format&fit=crop&q=80&w=2000', 1);
+  INSERT INTO public.listing_images (listing_id, storage_path, display_order) VALUES (list6, 'https://placehold.co/800x600/e2e8f0/1e293b?text=EliteStay', 1);
 
   -- Listing 7: Farm Stay
   INSERT INTO public.listings (host_id, type_id, title, description, max_guests, country_code, country, state, city, formatted_address, status)
@@ -141,7 +141,7 @@ BEGIN
   RETURNING id INTO list7;
   
   INSERT INTO public.listing_prices (listing_id, base_price_per_night, cleaning_fee, currency) VALUES (list7, 500.00, 100.00, 'EUR');
-  INSERT INTO public.listing_images (listing_id, storage_path, display_order) VALUES (list7, 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&q=80&w=2000', 1);
+  INSERT INTO public.listing_images (listing_id, storage_path, display_order) VALUES (list7, 'https://placehold.co/800x600/e2e8f0/1e293b?text=EliteStay', 1);
   INSERT INTO public.listing_amenities (listing_id, amenity_id) VALUES (list7, am_parking), (list7, am_kitchen), (list7, am_washer);
 
   -- Listing 8: Hotel Room
@@ -150,7 +150,7 @@ BEGIN
   RETURNING id INTO list8;
   
   INSERT INTO public.listing_prices (listing_id, base_price_per_night, cleaning_fee, currency) VALUES (list8, 280.00, 0.00, 'EUR');
-  INSERT INTO public.listing_images (listing_id, storage_path, display_order) VALUES (list8, 'https://images.unsplash.com/photo-1566665797739-1674de7a421a?auto=format&fit=crop&q=80&w=2000', 1);
+  INSERT INTO public.listing_images (listing_id, storage_path, display_order) VALUES (list8, 'https://placehold.co/800x600/e2e8f0/1e293b?text=EliteStay', 1);
   INSERT INTO public.listing_amenities (listing_id, amenity_id) VALUES (list8, am_wifi), (list8, am_ac), (list8, am_tv);
 
   -- Listing 9: Hostel
@@ -159,7 +159,7 @@ BEGIN
   RETURNING id INTO list9;
   
   INSERT INTO public.listing_prices (listing_id, base_price_per_night, cleaning_fee, currency) VALUES (list9, 25.00, 5.00, 'EUR');
-  INSERT INTO public.listing_images (listing_id, storage_path, display_order) VALUES (list9, 'https://images.unsplash.com/photo-1555854877-bab0e564b8d5?auto=format&fit=crop&q=80&w=2000', 1);
+  INSERT INTO public.listing_images (listing_id, storage_path, display_order) VALUES (list9, 'https://placehold.co/800x600/e2e8f0/1e293b?text=EliteStay', 1);
   INSERT INTO public.listing_amenities (listing_id, amenity_id) VALUES (list9, am_wifi);
 
   -- Listing 10: Homestay
@@ -168,7 +168,7 @@ BEGIN
   RETURNING id INTO list10;
   
   INSERT INTO public.listing_prices (listing_id, base_price_per_night, cleaning_fee) VALUES (list10, 130.00, 30.00);
-  INSERT INTO public.listing_images (listing_id, storage_path, display_order) VALUES (list10, 'https://images.unsplash.com/photo-1528360983277-13d401cdc186?auto=format&fit=crop&q=80&w=2000', 1);
+  INSERT INTO public.listing_images (listing_id, storage_path, display_order) VALUES (list10, 'https://placehold.co/800x600/e2e8f0/1e293b?text=EliteStay', 1);
   INSERT INTO public.listing_amenities (listing_id, amenity_id) VALUES (list10, am_wifi), (list10, am_kitchen);
 
   -- Ensure public_id is populated for seeded listings

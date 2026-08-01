@@ -5,7 +5,9 @@ import { Button } from '@/components/ui/button';
 import { useSearchUrl } from '../hooks/useSearchUrl';
 import { type SearchFilters, SEARCH_DEFAULTS } from '../lib/search-params';
 import { Search, SlidersHorizontal, MapPin } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { searchCitiesAction } from '@/features/location/actions/search-city';
+import { LocationCity } from '@/features/location/types';
 import {
   Select,
   SelectContent,
@@ -33,6 +35,9 @@ export function SearchFilterBar({ filters }: SearchFilterBarProps) {
   const { updateFilters, clearFilters, isPending } = useSearchUrl(filters);
   const [cityInput, setCityInput] = useState(filters.city || '');
   const [localFilters, setLocalFilters] = useState<Partial<SearchFilters>>({});
+  const [suggestions, setSuggestions] = useState<LocationCity[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
   // Sync city input if URL changes externally
   useEffect(() => {
@@ -42,7 +47,32 @@ export function SearchFilterBar({ filters }: SearchFilterBarProps) {
 
   const handleCitySearch = (e: React.FormEvent) => {
     e.preventDefault();
+    setShowSuggestions(false);
     updateFilters({ city: cityInput.trim() || null });
+  };
+
+  const handleCityInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setCityInput(val);
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    if (val.trim().length >= 2) {
+      debounceRef.current = setTimeout(async () => {
+        const results = await searchCitiesAction(val.trim());
+        setSuggestions(results);
+        setShowSuggestions(true);
+      }, 300);
+    } else {
+      setSuggestions([]);
+      setShowSuggestions(false);
+    }
+  };
+
+  const selectCity = (cityName: string) => {
+    setCityInput(cityName);
+    setShowSuggestions(false);
+    updateFilters({ city: cityName });
   };
 
   const handleSortChange = (val: string) => {
@@ -86,22 +116,50 @@ export function SearchFilterBar({ filters }: SearchFilterBarProps) {
           onSubmit={handleCitySearch}
           className="flex-1 relative flex items-center"
         >
-          <MapPin className="absolute left-3 text-gray-400 h-5 w-5" />
+          <MapPin className="absolute left-3 text-gray-400 h-5 w-5 z-10" />
           <Input
             type="text"
             placeholder="Search by city (e.g. Bangalore)"
-            className="pl-10 h-12 text-base rounded-lg border-gray-300 w-full focus-visible:ring-1"
+            className="pl-10 pr-24 h-12 text-base rounded-lg border-gray-300 w-full focus-visible:ring-1 relative z-10 bg-transparent"
             value={cityInput}
-            onChange={(e) => setCityInput(e.target.value)}
+            onChange={handleCityInputChange}
+            onFocus={() => {
+              if (suggestions.length > 0) setShowSuggestions(true);
+            }}
+            onBlur={() => {
+              // Delay hiding to allow click on suggestion
+              setTimeout(() => setShowSuggestions(false), 200);
+            }}
           />
+          <div className="absolute inset-0 bg-white rounded-lg pointer-events-none" />
+          
           <Button
             type="submit"
             size="sm"
-            className="absolute right-1.5 h-9 rounded-md bg-slate-900 text-white hover:bg-slate-800"
+            className="absolute right-1.5 h-9 rounded-md bg-slate-900 text-white hover:bg-slate-800 z-10"
           >
             <Search className="h-4 w-4 sm:mr-2" />
             <span className="hidden sm:inline">Search</span>
           </Button>
+
+          {showSuggestions && suggestions.length > 0 && (
+            <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden z-50">
+              <ul className="py-1">
+                {suggestions.map((city) => (
+                  <li key={city.id}>
+                    <button
+                      type="button"
+                      className="w-full text-left px-4 py-2 hover:bg-slate-50 focus:bg-slate-50 focus:outline-none flex items-center gap-2"
+                      onClick={() => selectCity(city.name)}
+                    >
+                      <MapPin className="h-4 w-4 text-gray-400" />
+                      <span className="font-medium text-slate-700">{city.name}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </form>
 
         <div className="flex gap-2">
@@ -138,6 +196,7 @@ export function SearchFilterBar({ filters }: SearchFilterBarProps) {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="recommended">Recommended</SelectItem>
+                <SelectItem value="distance">Distance</SelectItem>
                 <SelectItem value="newest">Newest First</SelectItem>
                 <SelectItem value="price_asc">Price: Low to High</SelectItem>
                 <SelectItem value="price_desc">Price: High to Low</SelectItem>

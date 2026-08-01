@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { sendMessage } from '../actions/messageActions';
+import { sendMessage } from '../actions/message-actions';
 import { Button } from '@/components/ui/button';
 import { Loader2, Send } from 'lucide-react';
 import { format } from 'date-fns';
@@ -44,10 +44,10 @@ export function MessageThread({
     const tempId = Math.random().toString();
     setMessages(prev => [...prev, { id: tempId, sender_id: currentUserId, content, created_at: new Date().toISOString() }]);
 
-    const res = await sendMessage(conversationId, content);
-    
-    if (res.error) {
-      alert(res.error);
+    try {
+      await sendMessage(conversationId, content);
+    } catch (err: any) {
+      alert(err.message || 'Failed to send message');
       setMessages(prev => prev.filter(m => m.id !== tempId));
     }
     

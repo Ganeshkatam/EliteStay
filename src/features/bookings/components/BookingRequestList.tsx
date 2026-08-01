@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { approveBooking, rejectBooking } from '../actions/bookingActions';
-import { getOrCreateConversation } from '@/features/messaging/actions/messageActions';
+import { getOrCreateConversation } from '@/features/messaging/actions/message-actions';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Loader2, MessageSquare } from 'lucide-react';
@@ -21,8 +21,8 @@ export function BookingRequestList({ initialBookings }: { initialBookings: Booki
   const handleMessage = async (bookingId: string) => {
     setMessagingId(bookingId);
     const res = await getOrCreateConversation({ bookingId });
-    if (res.data?.conversationId) {
-      router.push(`/messages/${res.data.conversationId}`);
+    if (res.conversationId) {
+      router.push(`/users/inbox/${res.conversationId}`);
     } else {
       alert(res.error || 'Failed to open messages');
       setMessagingId(null);
@@ -64,8 +64,8 @@ export function BookingRequestList({ initialBookings }: { initialBookings: Booki
           <div className="p-6 sm:flex sm:items-start sm:justify-between">
             <div className="flex items-start gap-4">
               <div className="relative h-12 w-12 flex-shrink-0 rounded-full bg-gray-200 overflow-hidden">
-                {booking.guest?.avatar_path ? (
-                   <Image src={booking.guest.avatar_path} alt={booking.guest.full_name || 'Guest'} fill className="object-cover" />
+                {booking.guest?.avatar_storage_path ? (
+                   <Image src={booking.guest.avatar_storage_path} alt={booking.guest.full_name || 'Guest'} fill className="object-cover" />
                 ) : (
                    <div className="flex h-full w-full items-center justify-center bg-slate-800 text-white font-medium">
                      {booking.guest?.full_name?.charAt(0) || 'G'}

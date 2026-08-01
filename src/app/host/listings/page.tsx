@@ -121,8 +121,7 @@ export default async function HostListingsPage() {
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-4">
                           <div className="relative h-16 w-20 flex-shrink-0 overflow-hidden rounded-md bg-slate-100">
-                            {/* we&apos;ll use a standard img tag here to avoid Next/Image config issues if domain isn't set, or use Next Image if configured */}
-                            <img src={coverImage} alt={listing.title || 'Untitled'} className="object-cover h-full w-full" />
+                            <Image src={coverImage} alt={listing.title || 'Untitled'} fill sizes="80px" className="object-cover" />
                           </div>
                           <div>
                             <div className="font-medium text-slate-900 max-w-xs truncate" title={listing.title || 'Untitled Listing'}>

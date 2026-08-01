@@ -19,7 +19,7 @@ export async function getHostBookings() {
       guest:profiles!bookings_guest_id_fkey (
         id,
         full_name,
-        avatar_path
+        avatar_storage_path
       )
     `)
     .eq('listings.host_id', user.id)

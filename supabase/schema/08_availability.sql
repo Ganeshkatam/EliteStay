@@ -11,9 +11,11 @@ Contains:
 CREATE TABLE public.listing_availability (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     listing_id UUID REFERENCES public.listings(id) ON DELETE CASCADE NOT NULL,
-    available_from DATE NOT NULL,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
     available_units INTEGER DEFAULT 1 NOT NULL,
     status public.availability_status DEFAULT 'available'::public.availability_status NOT NULL,
+    source public.availability_source DEFAULT 'manual_block'::public.availability_source NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
 );

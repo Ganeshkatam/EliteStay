@@ -41,31 +41,31 @@ WITH test_host AS (
   SELECT id FROM public.profiles LIMIT 1
 )
 INSERT INTO public.listings (
-  id, host_id, accommodation_type_id, title, description, max_occupants,
+  id, host_id, accommodation_type_id, title, description,
   country_code, country, state, city, locality, postal_code, latitude, longitude, formatted_address,
   status, public_id, furnishing, gender_preference, occupancy_type
 ) VALUES
 (
   'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380c11', (SELECT id FROM test_host), 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', -- PG
-  'Premium Boys PG in HSR Layout', 'Spacious shared rooms with all amenities included.', 2,
+  'Premium Boys PG in HSR Layout', 'Spacious shared rooms with all amenities included.',
   'IN', 'India', 'Karnataka', 'Bangalore', 'HSR Layout', '560102', 12.9081, 77.6476, 'HSR Layout Sector 2, Bangalore, Karnataka',
   'published', 'lst_pg_hsr', 'fully_furnished', 'male', 'shared'
 ),
 (
   'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380c12', (SELECT id FROM test_host), 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12', -- Hostel
-  'Girls Hostel - Gachibowli', 'Safe and secure girls hostel near major tech parks.', 3,
+  'Girls Hostel - Gachibowli', 'Safe and secure girls hostel near major tech parks.',
   'IN', 'India', 'Telangana', 'Hyderabad', 'Gachibowli', '500032', 17.4401, 78.3489, 'Gachibowli, Hyderabad, Telangana',
   'published', 'lst_hst_gcb', 'fully_furnished', 'female', 'shared'
 ),
 (
   'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380c13', (SELECT id FROM test_host), 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a19', -- Co-living
-  'Modern Co-living Space Koramangala', 'Experience community living in the heart of the city.', 1,
+  'Modern Co-living Space Koramangala', 'Experience community living in the heart of the city.',
   'IN', 'India', 'Karnataka', 'Bangalore', 'Koramangala', '560034', 12.9279, 77.6271, 'Koramangala 5th Block, Bangalore, Karnataka',
   'published', 'lst_col_krm', 'fully_furnished', 'any', 'mixed'
 ),
 (
   'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380c14', (SELECT id FROM test_host), 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a13', -- Apartment
-  '2BHK Apartment in Kondapur', 'Semi-furnished 2BHK perfect for small families.', 4,
+  '2BHK Apartment in Kondapur', 'Semi-furnished 2BHK perfect for small families.',
   'IN', 'India', 'Telangana', 'Hyderabad', 'Kondapur', '500084', 17.4622, 78.3568, 'Kondapur Main Road, Hyderabad, Telangana',
   'published', 'lst_apt_knd', 'semi_furnished', 'any', 'private'
 );
@@ -84,12 +84,12 @@ INSERT INTO public.listing_availability (listing_id, available_from, available_u
 ('c0eebc99-9c0b-4ef8-bb6d-6bb9bd380c13', CURRENT_DATE, 2, 'available'),
 ('c0eebc99-9c0b-4ef8-bb6d-6bb9bd380c14', CURRENT_DATE + INTERVAL '15 days', 1, 'available');
 
--- Add Images (Sample Unsplash Links)
+-- Add Images (Sample Placehold Links)
 INSERT INTO public.listing_images (listing_id, storage_path, display_order) VALUES
-('c0eebc99-9c0b-4ef8-bb6d-6bb9bd380c11', 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800&q=80', 1),
-('c0eebc99-9c0b-4ef8-bb6d-6bb9bd380c12', 'https://images.unsplash.com/photo-1555854877-bab0e564b8d5?w=800&q=80', 1),
-('c0eebc99-9c0b-4ef8-bb6d-6bb9bd380c13', 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&q=80', 1),
-('c0eebc99-9c0b-4ef8-bb6d-6bb9bd380c14', 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&q=80', 1);
+('c0eebc99-9c0b-4ef8-bb6d-6bb9bd380c11', 'https://placehold.co/800x600/e2e8f0/1e293b?text=EliteStay', 1),
+('c0eebc99-9c0b-4ef8-bb6d-6bb9bd380c12', 'https://placehold.co/800x600/e2e8f0/1e293b?text=EliteStay', 1),
+('c0eebc99-9c0b-4ef8-bb6d-6bb9bd380c13', 'https://placehold.co/800x600/e2e8f0/1e293b?text=EliteStay', 1),
+('c0eebc99-9c0b-4ef8-bb6d-6bb9bd380c14', 'https://placehold.co/800x600/e2e8f0/1e293b?text=EliteStay', 1);
 
 -- Link Amenities to Listings
 -- PG gets Wi-Fi, Water, Electricity, Meals, Bike Parking
@@ -113,7 +113,6 @@ BEGIN
             l.public_id,
             l.title,
             l.description,
-            l.max_occupants,
             l.status,
             l.furnishing,
             l.gender_preference,
@@ -198,6 +197,8 @@ BEGIN
                 ) am
             ) as amenities
         FROM public.listings l
+        JOIN public.accommodation_types act ON act.id = l.accommodation_type_id
+        JOIN public.listing_prices lpr ON lpr.listing_id = l.id
         WHERE l.public_id = p_public_id
         AND (
             l.status = 'published' 

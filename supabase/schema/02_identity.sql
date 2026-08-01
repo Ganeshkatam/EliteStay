@@ -69,6 +69,10 @@ BEGIN
     NOW(),
     NOW()
   );
+
+  INSERT INTO public.user_preferences (user_id)
+  VALUES (NEW.id);
+
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

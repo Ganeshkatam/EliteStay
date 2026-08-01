@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { useSearchUrl } from '../hooks/useSearchUrl';
 import { type SearchFilters } from '../lib/search-params';
 import { Button } from '@/components/ui/button';
+import { PLATFORM } from '@/config/platform';
 
 interface ActiveFiltersProps {
   filters: SearchFilters;
@@ -30,9 +31,9 @@ export function ActiveFilters({ filters }: ActiveFiltersProps) {
 
   if (filters.minPrice !== null || filters.maxPrice !== null) {
     const fmt = (n: number) =>
-      new Intl.NumberFormat('en-IN', {
+      new Intl.NumberFormat(PLATFORM.LOCALE, {
         style: 'currency',
-        currency: 'INR',
+        currency: PLATFORM.CURRENCY,
         minimumFractionDigits: 0,
       }).format(n);
     if (filters.minPrice !== null && filters.maxPrice !== null) {
