@@ -33,7 +33,7 @@ export async function getSectionListings(
       listing_images ( storage_path, display_order )
     `
     )
-    .in('status', ['published', 'draft']);
+    .eq('status', 'published');
 
   // Apply basic sorting based on config
   if (config.filter?.sort === 'newest') {
@@ -59,8 +59,32 @@ export async function getSectionListings(
   }
 
   // Map to Domain model
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const listings: ListingCardData[] = (featuredData || []).map((row: any) => ({
+  interface RawSectionRow {
+    public_id: string;
+    title: string;
+    accommodation_types: { name: string };
+    furnishing: ListingCardData['furnishing'];
+    gender_preference: ListingCardData['genderPreference'];
+    occupancy_type: ListingCardData['occupancyType'];
+    locality: string | null;
+    city: string | null;
+    formatted_address: string | null;
+    latitude: number | null;
+    longitude: number | null;
+    listing_prices: Array<{
+      amount: number;
+      currency: string;
+      billing_period: ListingCardData['pricing']['billingPeriod'];
+      minimum_duration: number;
+    }>;
+    listing_images: Array<{
+      display_order: number;
+      storage_path: string;
+    }> | null;
+  }
+
+  const rawRows = (featuredData || []) as unknown as RawSectionRow[];
+  const listings: ListingCardData[] = rawRows.map((row) => ({
     publicId: row.public_id,
     title: row.title,
     accommodationType: row.accommodation_types.name,
@@ -115,16 +139,7 @@ export async function getCategoryCounts(
         .eq('accommodation_type_id', id)
         .eq('status', 'published');
 
-      // Fallback to realistic numbers for V1 demonstration if DB is empty
-      if (count && count > 0) {
-        counts[id] = count;
-      } else {
-        // Deterministic pseudo-random count between 100 and 2000 based on ID
-        const pseudoRandom = id
-          .split('')
-          .reduce((acc, char) => acc + char.charCodeAt(0), 0);
-        counts[id] = (pseudoRandom % 1900) + 100;
-      }
+      counts[id] = count ?? 0;
     })
   );
 

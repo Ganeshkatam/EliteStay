@@ -8,7 +8,8 @@ export class LocationService {
 
   static async geocode(address: string): Promise<GeocodeResult> {
     // 1. Check Cache
-    const cachedResult = await GeocodingCacheRepository.getCachedResult(address);
+    const cachedResult =
+      await GeocodingCacheRepository.getCachedResult(address);
     if (cachedResult) {
       return cachedResult;
     }
@@ -30,18 +31,25 @@ export class LocationService {
       .eq('is_featured', true)
       .eq('is_active', true)
       .order('sort_order');
-      
-    if (!data) return [];
-    
-    // Add fallback realistic counts for V1 if DB is empty
-    return data.map(city => {
-      if (city.listing_count && city.listing_count > 0) return city;
-      const pseudoRandom = city.name.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
-      return {
-        ...city,
-        listing_count: (pseudoRandom % 4000) + 500
-      };
-    });
+
+    if (!data || data.length === 0) return [];
+
+    const citiesWithRealCounts = await Promise.all(
+      data.map(async (city) => {
+        const { count } = await supabase
+          .from('listings')
+          .select('*', { count: 'exact', head: true })
+          .ilike('city', `%${city.name}%`)
+          .eq('status', 'published');
+
+        return {
+          ...city,
+          listing_count: count ?? city.listing_count ?? 0,
+        };
+      })
+    );
+
+    return citiesWithRealCounts;
   }
 
   static async searchCities(query: string) {
