@@ -23,7 +23,7 @@ CREATE TABLE public.profiles (
     updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
     bio TEXT,
     date_of_birth DATE,
-    gender TEXT,
+    gender public.gender,
     occupation public.user_occupation,
     username TEXT CHECK (username IS NULL OR (char_length(username) >= 3 AND char_length(username) <= 30 AND username ~ '^[a-z0-9_]+$'::text)),
     timezone TEXT

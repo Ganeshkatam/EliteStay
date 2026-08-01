@@ -38,6 +38,7 @@ Contains:
 - availability_status
 - availability_source
 - occupancy_type
+- gender
 - gender_preference
 - furnishing
 - sync_direction
@@ -53,8 +54,10 @@ CREATE TYPE public.billing_period AS ENUM ('day', 'week', 'month', 'semester', '
 CREATE TYPE public.availability_status AS ENUM ('available', 'occupied', 'unavailable');
 CREATE TYPE public.availability_source AS ENUM ('booking', 'manual_block', 'external_calendar', 'maintenance');
 CREATE TYPE public.occupancy_type AS ENUM ('private', 'shared', 'mixed');
+CREATE TYPE public.gender AS ENUM ('male', 'female');
 CREATE TYPE public.gender_preference AS ENUM ('any', 'male', 'female');
 CREATE TYPE public.furnishing AS ENUM ('unfurnished', 'semi_furnished', 'fully_furnished');
+
 CREATE TYPE public.sync_direction AS ENUM ('import', 'export', 'both');
 
 
@@ -185,7 +188,7 @@ CREATE TABLE public.profiles (
     updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
     bio TEXT,
     date_of_birth DATE,
-    gender TEXT,
+    gender public.gender,
     occupation public.user_occupation,
     username TEXT CHECK (username IS NULL OR (char_length(username) >= 3 AND char_length(username) <= 30 AND username ~ '^[a-z0-9_]+$'::text)),
     timezone TEXT

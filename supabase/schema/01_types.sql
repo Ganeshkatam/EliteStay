@@ -12,6 +12,7 @@ Contains:
 - availability_status
 - availability_source
 - occupancy_type
+- gender
 - gender_preference
 - furnishing
 - sync_direction
@@ -27,6 +28,8 @@ CREATE TYPE public.billing_period AS ENUM ('day', 'week', 'month', 'semester', '
 CREATE TYPE public.availability_status AS ENUM ('available', 'occupied', 'unavailable');
 CREATE TYPE public.availability_source AS ENUM ('booking', 'manual_block', 'external_calendar', 'maintenance');
 CREATE TYPE public.occupancy_type AS ENUM ('private', 'shared', 'mixed');
+CREATE TYPE public.gender AS ENUM ('male', 'female');
 CREATE TYPE public.gender_preference AS ENUM ('any', 'male', 'female');
 CREATE TYPE public.furnishing AS ENUM ('unfurnished', 'semi_furnished', 'fully_furnished');
+
 CREATE TYPE public.sync_direction AS ENUM ('import', 'export', 'both');
