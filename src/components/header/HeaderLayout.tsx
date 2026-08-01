@@ -21,9 +21,13 @@ export function HeaderLayout({ user, profile }: HeaderLayoutProps) {
     useSearchContext();
   const headerRef = useRef<HTMLElement>(null);
 
-  // Ensure manual expansion turns off whenever the home page header collapses on scroll
+  // Ensure manual expansion turns off whenever the public header collapses on scroll
   useEffect(() => {
-    if (variant === 'public-home' && !isHeaderExpanded && isSearchExpanded) {
+    if (
+      (variant === 'public-home' || variant === 'public') &&
+      !isHeaderExpanded &&
+      isSearchExpanded
+    ) {
       setIsSearchExpanded(false);
     }
   }, [variant, isHeaderExpanded, isSearchExpanded, setIsSearchExpanded]);
@@ -88,7 +92,7 @@ export function HeaderLayout({ user, profile }: HeaderLayoutProps) {
   // If Auth, we only show a minimal top bar (e.g., logo only)
   if (variant === 'auth') {
     return (
-      <header className="sticky top-0 z-40 w-full bg-white border-b border-border/40">
+      <header className="sticky top-0 z-40 w-full bg-white border-b border-border/45">
         <Container>
           <div className="flex h-20 items-center justify-start">
             <TopBar variant="auth" />
@@ -101,7 +105,13 @@ export function HeaderLayout({ user, profile }: HeaderLayoutProps) {
   return (
     <>
       {/* Static placeholder prevents document flow jumps when the fixed header height animates */}
-      <div className={variant === 'public-home' ? 'h-[176px]' : 'h-[76px]'} />
+      <div
+        className={
+          variant === 'public-home' || variant === 'public'
+            ? 'h-[176px]'
+            : 'h-[76px]'
+        }
+      />
 
       <header
         ref={headerRef}
