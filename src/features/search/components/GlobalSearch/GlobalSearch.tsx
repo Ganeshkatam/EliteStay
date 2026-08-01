@@ -63,7 +63,12 @@ export function GlobalSearch({ variant }: GlobalSearchProps) {
   return (
     <>
       <SearchShell variant={variant} onClick={handleShellClick}>
-        <div className="flex flex-1 items-center h-full relative overflow-hidden">
+        <div
+          className={cn(
+            'flex flex-1 items-center h-full relative',
+            isCompact ? 'overflow-hidden' : 'overflow-visible'
+          )}
+        >
           {/* Compact Summary Panel */}
           <div
             className={cn(

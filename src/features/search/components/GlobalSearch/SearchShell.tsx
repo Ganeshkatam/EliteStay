@@ -32,7 +32,7 @@ export function SearchShell({ variant, children, onClick }: SearchShellProps) {
         variant === 'minimal' && 'w-[500px] h-[48px] shadow-sm hover:shadow-md'
       )}
       style={{
-        contain: 'layout paint style',
+        contain: variant === 'hero' ? 'layout style' : 'layout paint style',
       }}
     >
       <div

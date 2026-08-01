@@ -18,6 +18,49 @@ interface SearchWhereProps {
   variant: SearchVariant;
 }
 
+const cityColors = [
+  'bg-rose-50 text-rose-500 border-rose-100',
+  'bg-indigo-50 text-indigo-500 border-indigo-100',
+  'bg-emerald-50 text-emerald-500 border-emerald-100',
+  'bg-amber-50 text-amber-500 border-amber-100',
+  'bg-sky-50 text-sky-500 border-sky-100',
+];
+
+function getCityDetails(name: string) {
+  const normalized = name.toLowerCase();
+  if (normalized.includes('bangalore') || normalized.includes('bengaluru')) {
+    return {
+      title: 'Bengaluru, Karnataka',
+      subtitle: 'For sights like Lalbagh Botanical Garden',
+    };
+  }
+  if (normalized.includes('mumbai')) {
+    return {
+      title: 'Mumbai, Maharashtra',
+      subtitle: 'Popular beach and Bollywood destination',
+    };
+  }
+  if (normalized.includes('delhi')) {
+    return {
+      title: 'New Delhi, Delhi',
+      subtitle: 'For historic monuments & rich culture',
+    };
+  }
+  if (normalized.includes('pune')) {
+    return {
+      title: 'Pune, Maharashtra',
+      subtitle: 'For pleasant weather & educational hubs',
+    };
+  }
+  if (normalized.includes('hyderabad')) {
+    return {
+      title: 'Hyderabad, Telangana',
+      subtitle: 'For its top-notch biryani & dining',
+    };
+  }
+  return { title: `${name}, India`, subtitle: 'Popular destination' };
+}
+
 export function SearchWhere({ variant }: SearchWhereProps) {
   const { state, updateState, setIsExpanded } = useSearchContext();
   const isCompact = variant === 'compact';
@@ -127,27 +170,27 @@ export function SearchWhere({ variant }: SearchWhereProps) {
 
       {/* Dropdown */}
       {showDropdown && !isCompact && (
-        <div className="absolute top-[120%] left-0 w-[480px] bg-white rounded-3xl shadow-[0_8px_28px_rgba(0,0,0,0.15)] border p-4 z-50">
+        <div className="absolute top-[120%] left-0 w-[420px] bg-white rounded-3xl shadow-[0_8px_28px_rgba(0,0,0,0.15)] border p-4 z-50">
           <button
             type="button"
             onClick={handleNearbyMe}
-            className="w-full flex items-center gap-4 p-4 hover:bg-gray-100 rounded-2xl transition-colors text-left"
+            className="w-full flex items-center gap-4 p-3 hover:bg-gray-100 rounded-2xl transition-colors text-left"
           >
-            <div className="w-12 h-12 flex-shrink-0 bg-gray-100 flex items-center justify-center rounded-xl border">
-              <Navigation className="h-5 w-5 text-indigo-600" />
+            <div className="w-12 h-12 flex-shrink-0 bg-blue-50 text-blue-600 flex items-center justify-center rounded-2xl border border-blue-100">
+              <Navigation className="h-5 w-5" />
             </div>
             <div>
-              <div className="font-semibold text-gray-900">Nearby me</div>
-              <div className="text-sm text-gray-500">
-                Find places near your location
+              <div className="font-semibold text-gray-900 text-sm">Nearby</div>
+              <div className="text-xs text-gray-500">
+                Find what&apos;s around you
               </div>
             </div>
           </button>
 
-          <div className="mt-4 pt-4 border-t max-h-[320px] overflow-y-auto no-scrollbar">
+          <div className="mt-2 pt-2 border-t max-h-[360px] overflow-y-auto no-scrollbar">
             {hasSuggestions ? (
               <div className="space-y-1">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-2 px-2">
+                <h3 className="text-xs font-bold text-gray-900 mb-2 px-3">
                   Matching Destinations
                 </h3>
                 {suggestions.map((city) => (
@@ -168,23 +211,40 @@ export function SearchWhere({ variant }: SearchWhereProps) {
               <>
                 {popularCities.length > 0 && (
                   <div>
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-3 px-2">
-                      Popular Cities
+                    <h3 className="text-xs font-bold text-gray-900 mb-2 px-3">
+                      Suggested destinations
                     </h3>
-                    <div className="grid grid-cols-5 gap-2 px-1">
-                      {popularCities.map((city) => (
-                        <button
-                          key={city.id}
-                          type="button"
-                          onClick={() => handleCitySelect(city.name)}
-                          className="group relative h-20 overflow-hidden rounded-xl flex items-end p-2 border hover:border-gray-900 transition-colors"
-                        >
-                          <div className="absolute inset-0 z-0 bg-gradient-to-br from-indigo-500 to-purple-600 opacity-90 group-hover:opacity-100 transition-opacity duration-300" />
-                          <div className="relative z-10 text-white font-semibold text-[10px] tracking-wide text-shadow-sm leading-tight">
-                            {city.name}
-                          </div>
-                        </button>
-                      ))}
+                    <div className="space-y-1">
+                      {popularCities.map((city, index) => {
+                        const details = getCityDetails(city.name);
+                        const colorClass =
+                          cityColors[index % cityColors.length];
+                        return (
+                          <button
+                            key={city.id}
+                            type="button"
+                            onClick={() => handleCitySelect(city.name)}
+                            className="w-full flex items-center gap-4 p-3 hover:bg-gray-100 rounded-2xl transition-colors text-left"
+                          >
+                            <div
+                              className={cn(
+                                'w-12 h-12 flex-shrink-0 flex items-center justify-center rounded-2xl border',
+                                colorClass
+                              )}
+                            >
+                              <MapPin className="h-5 w-5" />
+                            </div>
+                            <div>
+                              <div className="font-semibold text-gray-900 text-sm">
+                                {details.title}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {details.subtitle}
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
