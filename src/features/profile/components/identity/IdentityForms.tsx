@@ -240,7 +240,13 @@ export function GenderForm({
 }) {
   return (
     <InlineForm
-      schema={z.object({ gender: z.string().optional().nullable() })}
+      schema={z.object({
+        gender: z
+          .enum(['male', 'female'])
+          .optional()
+          .nullable()
+          .or(z.literal('')),
+      })}
       defaultValues={{ gender: profile.gender || '' }}
       onSubmitData={(data) =>
         updateProfile(data as unknown as Parameters<typeof updateProfile>[0])
@@ -257,7 +263,6 @@ export function GenderForm({
             <option value="">Select Gender</option>
             <option value="male">Male</option>
             <option value="female">Female</option>
-            <option value="other">Other</option>
           </select>
         </div>
       )}

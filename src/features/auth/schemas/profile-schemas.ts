@@ -15,15 +15,34 @@ export const profileSchema = z.object({
     .optional()
     .nullable(),
   date_of_birth: z.string().optional().nullable(),
-  gender: z.string().optional().nullable(),
+  gender: z.enum(['male', 'female']).optional().nullable().or(z.literal('')),
   city: z.string().optional().nullable(),
   occupation: z.string().optional().nullable(),
-  username: z.string()
+  username: z
+    .string()
     .min(3, 'Username must be at least 3 characters')
     .max(30, 'Username must be less than 30 characters')
-    .regex(/^[a-z0-9_]+$/, 'Username can only contain lowercase letters, numbers, and underscores')
+    .regex(
+      /^[a-z0-9_]+$/,
+      'Username can only contain lowercase letters, numbers, and underscores'
+    )
     .refine(
-      (val) => !['admin', 'root', 'support', 'help', 'host', 'users', 'login', 'signup', 'settings', 'notifications', 'messages', 'profile', 'api'].includes(val ?? ''),
+      (val) =>
+        ![
+          'admin',
+          'root',
+          'support',
+          'help',
+          'host',
+          'users',
+          'login',
+          'signup',
+          'settings',
+          'notifications',
+          'messages',
+          'profile',
+          'api',
+        ].includes(val ?? ''),
       'This username is reserved'
     )
     .optional()

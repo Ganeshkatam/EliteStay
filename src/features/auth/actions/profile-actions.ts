@@ -6,7 +6,9 @@ import { profileSchema, type ProfileInput } from '../schemas/profile-schemas';
 import { type AuthResult } from '../types/errors';
 import * as NotificationService from '@/features/notifications/actions/notification-actions';
 
-export async function updateProfile(data: Partial<ProfileInput>): Promise<AuthResult> {
+export async function updateProfile(
+  data: Partial<ProfileInput>
+): Promise<AuthResult> {
   const parsed = profileSchema.partial().safeParse(data);
 
   if (!parsed.success) {
@@ -37,7 +39,12 @@ export async function updateProfile(data: Partial<ProfileInput>): Promise<AuthRe
   const formattedData = {
     ...parsed.data,
     phone: parsed.data.phone === '' ? null : parsed.data.phone,
-    date_of_birth: parsed.data.date_of_birth === '' ? null : parsed.data.date_of_birth,
+    date_of_birth:
+      parsed.data.date_of_birth === '' ? null : parsed.data.date_of_birth,
+    gender:
+      parsed.data.gender === ''
+        ? null
+        : (parsed.data.gender as 'male' | 'female' | null | undefined),
   };
 
   const { error } = await supabase
