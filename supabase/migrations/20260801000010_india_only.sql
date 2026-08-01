@@ -5,8 +5,9 @@ Purpose: Enforce India-only scope by constraining currency and removing denormal
 ==================================================
 */
 
--- 1. Enforce INR for all prices
+-- 1. Enforce INR for all prices and drop redundant generic constraints
 ALTER TABLE public.listing_prices 
+DROP CONSTRAINT IF EXISTS check_currency_not_empty,
 DROP CONSTRAINT IF EXISTS check_currency_inr;
 
 ALTER TABLE public.listing_prices 
