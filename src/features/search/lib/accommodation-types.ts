@@ -9,15 +9,17 @@
 // or a build-time code-generation step.
 
 const ACCOMMODATION_TYPE_MAP: Record<string, string> = {
-  pg: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
-  hostel: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12',
-  apartment: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a13',
+  pg: '147a6d96-47d0-428a-b541-6d83a82def8c',
+  hostel: '24aac50b-0999-49d2-9487-07c1b5068283',
+  apartment: '21cc18a1-ba31-4ede-89f4-2c8c15a53122',
+  coliving: '2c6e8ec1-7fda-4dee-8583-457ae38e584c',
+  'co-living': '2c6e8ec1-7fda-4dee-8583-457ae38e584c',
+  'student-housing': 'ebb7d465-07ed-47a9-bf6e-b8625048f6a5',
   'independent-house': 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a14',
   villa: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a15',
   'private-room': 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a16',
   'shared-room': 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a17',
   'service-apartment': 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a18',
-  'co-living': 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a19',
 };
 
 /**
