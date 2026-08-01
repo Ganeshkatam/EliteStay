@@ -1,4 +1,4 @@
-import { MapPin, Building, Home, ArrowRight } from 'lucide-react';
+import { MapPin, ArrowRight } from 'lucide-react';
 
 export function AuthInfoPanel() {
   return (
@@ -18,10 +18,9 @@ export function AuthInfoPanel() {
             Designed for
           </p>
           <ul className="space-y-2 font-light text-slate-300 text-lg">
-            <li>• Students</li>
-            <li>• Professionals</li>
-            <li>• Families</li>
-            <li>• Travelers</li>
+            <li>Students</li>
+            <li>Professionals</li>
+            <li>Families</li>
           </ul>
         </div>
       </div>
@@ -33,18 +32,19 @@ export function AuthInfoPanel() {
           <div className="w-16 h-16 bg-slate-500 rounded-t-sm" />
           <div className="w-8 h-32 bg-slate-500 rounded-t-sm" />
           <div className="w-14 h-20 bg-slate-500 rounded-t-sm flex flex-col justify-end p-2 gap-1">
-             <div className="w-full h-2 bg-slate-800" />
-             <div className="w-full h-2 bg-slate-800" />
+            <div className="w-full h-2 bg-slate-800" />
+            <div className="w-full h-2 bg-slate-800" />
           </div>
           <div className="w-10 h-12 bg-slate-500 rounded-t-sm" />
           <div className="w-20 h-28 bg-slate-500 rounded-t-sm" />
-          
+
           <MapPin className="absolute top-2 left-1/2 w-6 h-6 text-slate-300 -translate-x-1/2" />
         </div>
 
         <div className="h-px w-full max-w-[120px] bg-slate-800 mb-6" />
         <p className="text-xl font-light text-slate-400 flex items-center gap-3">
-          Your next stay starts here <ArrowRight className="w-5 h-5 text-slate-500" />
+          Your next stay starts here{' '}
+          <ArrowRight className="w-5 h-5 text-slate-500" />
         </p>
       </div>
     </div>

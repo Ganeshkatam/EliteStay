@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format, addMonths } from 'date-fns';
@@ -18,7 +18,7 @@ import {
   FormField,
   FormItem,
   FormMessage,
-  FormLabel
+  FormLabel,
 } from '@/components/ui/form';
 import {
   Popover,
@@ -53,14 +53,15 @@ export function BookingWidget({ listingId, pricing }: BookingWidgetProps) {
   const [isSuccess, setIsSuccess] = useState(false);
 
   const form = useForm<BookingFormValues>({
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    resolver: zodResolver(bookingSchema) as any,
+    resolver: zodResolver(
+      bookingSchema
+    ) as unknown as Resolver<BookingFormValues>,
     defaultValues: {
       duration: pricing.minimumDuration,
     },
   });
 
-  const duration = form.watch('duration');
+  const duration = useWatch({ control: form.control, name: 'duration' });
   const amountToPay = pricing.amount * (duration || 1);
 
   const onSubmit = async (data: BookingFormValues) => {
@@ -97,13 +98,24 @@ export function BookingWidget({ listingId, pricing }: BookingWidgetProps) {
     return (
       <div className="sticky top-24 rounded-2xl border border-gray-200 bg-white p-6 shadow-xl text-center">
         <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100 mb-4">
-          <svg className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+          <svg
+            className="h-6 w-6 text-green-600"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth="1.5"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M4.5 12.75l6 6 9-13.5"
+            />
           </svg>
         </div>
         <h3 className="text-lg font-semibold text-gray-900">Request Sent!</h3>
         <p className="mt-2 text-sm text-gray-500">
-          The host has been notified of your request. You will be redirected to your bookings dashboard shortly.
+          The host has been notified of your request. You will be redirected to
+          your bookings dashboard shortly.
         </p>
       </div>
     );
@@ -125,27 +137,28 @@ export function BookingWidget({ listingId, pricing }: BookingWidgetProps) {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="mt-6 space-y-4">
           <div className="rounded-xl border border-gray-300 p-3 space-y-4">
-            
             <FormField
               control={form.control}
               name="moveInDate"
               render={({ field }) => (
                 <FormItem className="flex flex-col">
-                  <FormLabel className="text-xs font-bold uppercase text-gray-700">Move-in Date</FormLabel>
+                  <FormLabel className="text-xs font-bold uppercase text-gray-700">
+                    Move-in Date
+                  </FormLabel>
                   <Popover>
                     <PopoverTrigger asChild>
                       <FormControl>
                         <Button
-                          variant={"outline"}
+                          variant={'outline'}
                           aria-label="Select move-in date"
                           aria-expanded={field.value ? true : false}
                           className={cn(
-                            "w-full pl-3 text-left font-normal",
-                            !field.value && "text-muted-foreground"
+                            'w-full pl-3 text-left font-normal',
+                            !field.value && 'text-muted-foreground'
                           )}
                         >
                           {field.value ? (
-                            format(field.value, "PPP")
+                            format(field.value, 'PPP')
                           ) : (
                             <span>Pick a date</span>
                           )}
@@ -159,7 +172,7 @@ export function BookingWidget({ listingId, pricing }: BookingWidgetProps) {
                         selected={field.value}
                         onSelect={field.onChange}
                         disabled={(date) =>
-                          date < new Date() || date < new Date("1900-01-01")
+                          date < new Date() || date < new Date('1900-01-01')
                         }
                       />
                     </PopoverContent>
@@ -178,31 +191,36 @@ export function BookingWidget({ listingId, pricing }: BookingWidgetProps) {
                     Duration ({pricing.billingPeriod}s)
                   </FormLabel>
                   <FormControl>
-                    <Input 
-                      type="number" 
-                      min={pricing.minimumDuration} 
-                      {...field} 
+                    <Input
+                      type="number"
+                      min={pricing.minimumDuration}
+                      {...field}
                     />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-
           </div>
 
           {error && (
-            <div className="text-sm font-medium text-destructive" role="alert" aria-live="assertive">
+            <div
+              className="text-sm font-medium text-destructive"
+              role="alert"
+              aria-live="assertive"
+            >
               {error}
             </div>
           )}
 
-          <Button 
-            type="submit" 
+          <Button
+            type="submit"
             className="w-full rounded-xl bg-rose-600 py-6 text-base font-semibold hover:bg-rose-700"
             disabled={form.formState.isSubmitting}
           >
-            {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {form.formState.isSubmitting && (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            )}
             Request to book
           </Button>
 
@@ -213,13 +231,15 @@ export function BookingWidget({ listingId, pricing }: BookingWidgetProps) {
           <div className="mt-4 space-y-3">
             <div className="flex justify-between text-sm">
               <span className="text-gray-600 underline decoration-dashed underline-offset-4">
-                Rent ({duration || pricing.minimumDuration} {pricing.billingPeriod}{(duration || pricing.minimumDuration) > 1 ? 's' : ''})
+                Rent ({duration || pricing.minimumDuration}{' '}
+                {pricing.billingPeriod}
+                {(duration || pricing.minimumDuration) > 1 ? 's' : ''})
               </span>
               <span className="font-medium text-gray-900">
                 {formatCurrency(amountToPay)}
               </span>
             </div>
-            
+
             {pricing.securityDeposit > 0 && (
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600 underline decoration-dashed underline-offset-4">
@@ -230,21 +250,24 @@ export function BookingWidget({ listingId, pricing }: BookingWidgetProps) {
                 </span>
               </div>
             )}
-            
+
             {pricing.maintenanceFee > 0 && (
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600 underline decoration-dashed underline-offset-4">
                   Maintenance Fee
                 </span>
                 <span className="font-medium text-gray-900">
-                  {formatCurrency(pricing.maintenanceFee)} / {pricing.maintenanceFeePeriod}
+                  {formatCurrency(pricing.maintenanceFee)} /{' '}
+                  {pricing.maintenanceFeePeriod}
                 </span>
               </div>
             )}
-            
+
             <div className="flex justify-between text-base font-bold pt-3 border-t">
               <span>Total (upfront)</span>
-              <span>{formatCurrency(amountToPay + pricing.securityDeposit)}</span>
+              <span>
+                {formatCurrency(amountToPay + pricing.securityDeposit)}
+              </span>
             </div>
           </div>
         </form>

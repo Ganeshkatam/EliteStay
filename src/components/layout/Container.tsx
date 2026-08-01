@@ -1,5 +1,4 @@
 import { cn } from '@/lib/utils';
-import { DESIGN } from '@/config/design';
 
 type ContainerProps = React.HTMLAttributes<HTMLDivElement>;
 

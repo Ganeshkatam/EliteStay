@@ -1,6 +1,5 @@
 import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/features/auth/server/auth-helpers';
-import Link from 'next/link';
 import { AuthInfoPanel } from '@/features/auth/components/AuthInfoPanel';
 
 export default async function AuthLayout({
@@ -19,9 +18,7 @@ export default async function AuthLayout({
       <div className="flex flex-1 flex-col lg:flex-row">
         {/* Form Column (45%) */}
         <div className="flex flex-1 flex-col justify-center px-4 py-12 sm:px-6 lg:w-[45%] lg:flex-none lg:px-20 xl:px-24 overflow-y-auto">
-          <div className="mx-auto w-full max-w-sm lg:w-96">
-            {children}
-          </div>
+          <div className="mx-auto w-full max-w-sm lg:w-96">{children}</div>
         </div>
 
         {/* Information Panel Column (55%) */}

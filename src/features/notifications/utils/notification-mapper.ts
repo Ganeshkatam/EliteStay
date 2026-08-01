@@ -1,5 +1,9 @@
 import { type NotificationRow } from '../types';
-import { type NotificationViewModel, type NotificationGroup, NotificationType } from '../types';
+import {
+  type NotificationViewModel,
+  type NotificationGroup,
+  NotificationType,
+} from '../types';
 import { formatNotificationTime } from '@/lib/formatters/time';
 import { isToday, isYesterday, isThisWeek, isThisMonth } from 'date-fns';
 
@@ -67,19 +71,21 @@ export function mapToViewModel(row: NotificationRow): NotificationViewModel {
   };
 }
 
-export function groupNotificationsByDate(rows: NotificationRow[]): NotificationGroup[] {
+export function groupNotificationsByDate(
+  rows: NotificationRow[]
+): NotificationGroup[] {
   const groups: Record<string, NotificationViewModel[]> = {
-    'Today': [],
-    'Yesterday': [],
+    Today: [],
+    Yesterday: [],
     'Earlier This Week': [],
     'Earlier This Month': [],
-    'Older': []
+    Older: [],
   };
 
-  rows.forEach(row => {
+  rows.forEach((row) => {
     const date = new Date(row.created_at);
     const vm = mapToViewModel(row);
-    
+
     if (isToday(date)) {
       groups['Today'].push(vm);
     } else if (isYesterday(date)) {
@@ -94,6 +100,6 @@ export function groupNotificationsByDate(rows: NotificationRow[]): NotificationG
   });
 
   return Object.entries(groups)
-    .filter(([_, items]) => items.length > 0)
+    .filter(([, items]) => items.length > 0)
     .map(([title, items]) => ({ title, items }));
 }

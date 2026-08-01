@@ -1,5 +1,4 @@
 import React from 'react';
-import Link from 'next/link';
 import { Logo } from '../navigation/Logo';
 import { UserMenu } from '../navigation/UserMenu';
 import { NotificationBell } from '@/features/notifications/components/NotificationBell';
@@ -28,10 +27,12 @@ export function TopBar({ variant, user, profile, isExpanded }: TopBarProps) {
       </div>
 
       {variant !== 'host' && variant !== 'dashboard' && (
-        <div className={cn(
-          "flex flex-1 items-center justify-center w-full transition-transform duration-220 ease-in-out",
-          isExpanded ? "translate-y-[88px]" : "translate-y-0"
-        )}>
+        <div
+          className={cn(
+            'flex flex-1 items-center justify-center w-full transition-transform duration-220 ease-in-out',
+            isExpanded ? 'translate-y-[88px]' : 'translate-y-0'
+          )}
+        >
           <GlobalSearch variant={isExpanded ? 'hero' : 'compact'} />
         </div>
       )}

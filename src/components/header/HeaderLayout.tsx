@@ -15,7 +15,7 @@ interface HeaderLayoutProps {
 
 export function HeaderLayout({ user, profile }: HeaderLayoutProps) {
   const { variant, isExpanded: isHeaderExpanded } = useHeaderState();
-  const { isExpanded: isSearchExpanded, setIsMobileModalOpen, isMobileModalOpen } = useSearchContext();
+  const { isExpanded: isSearchExpanded } = useSearchContext();
 
   const isExpanded = isHeaderExpanded || isSearchExpanded;
 
@@ -46,7 +46,12 @@ export function HeaderLayout({ user, profile }: HeaderLayoutProps) {
       >
         <Container className="h-full">
           <div className="flex h-[76px] items-center justify-between gap-4 relative">
-            <TopBar variant={variant} user={user} profile={profile} isExpanded={isExpanded} />
+            <TopBar
+              variant={variant}
+              user={user}
+              profile={profile}
+              isExpanded={isExpanded}
+            />
           </div>
         </Container>
       </header>

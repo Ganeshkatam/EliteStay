@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronDown, UserCircle } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import type { User } from '@supabase/supabase-js';
@@ -25,7 +25,7 @@ interface UserMenuProps {
   variant?: HeaderVariant;
 }
 
-export function UserMenu({ user, profile, variant = 'public' }: UserMenuProps) {
+export function UserMenu({ user, profile }: UserMenuProps) {
   // If no user, render the logged out menu
   if (!user) {
     return (
@@ -57,22 +57,22 @@ export function UserMenu({ user, profile, variant = 'public' }: UserMenuProps) {
   const avatarUrl = getAvatarStorageUrl(profile?.avatar_storage_path);
   const initials = profile?.full_name
     ? profile.full_name
-      .split(' ')
-      .map((n: string) => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2)
+        .split(' ')
+        .map((n: string) => n[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2)
     : 'U';
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button
-          className="flex items-center gap-2 rounded-xl p-1 pr-2 hover:bg-slate-50 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-slate-400 border border-transparent hover:border-slate-200"
-        >
+        <button className="flex items-center gap-2 rounded-xl p-1 pr-2 hover:bg-slate-50 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-slate-400 border border-transparent hover:border-slate-200">
           <Avatar className="h-8 w-8 rounded-lg">
             <AvatarImage src={avatarUrl} alt={profile?.full_name || 'User'} />
-            <AvatarFallback className="rounded-lg bg-slate-900 text-white text-xs">{initials}</AvatarFallback>
+            <AvatarFallback className="rounded-lg bg-slate-900 text-white text-xs">
+              {initials}
+            </AvatarFallback>
           </Avatar>
           <div className="hidden sm:flex flex-col items-start mr-1">
             <span className="text-sm font-semibold text-slate-900 leading-none">
@@ -96,7 +96,10 @@ export function UserMenu({ user, profile, variant = 'public' }: UserMenuProps) {
           <Link href="/users/settings">Account Settings</Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem asChild className="cursor-pointer font-medium text-blue-600 focus:text-blue-600 focus:bg-blue-50">
+        <DropdownMenuItem
+          asChild
+          className="cursor-pointer font-medium text-blue-600 focus:text-blue-600 focus:bg-blue-50"
+        >
           <Link href="/host">Switch to hosting</Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />

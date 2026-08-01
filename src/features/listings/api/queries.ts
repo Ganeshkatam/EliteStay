@@ -310,3 +310,176 @@ export async function searchListings(
     totalPages,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Real Location Insights & Discovery Queries (No Fake Data)
+// ---------------------------------------------------------------------------
+
+interface InsightListingRow {
+  furnishing: string | null;
+  locality: string | null;
+  listing_prices?: { amount: number | string }[];
+}
+
+export async function getLocationInsightsQuery(city?: string): Promise<{
+  listingCount: number;
+  averageRent: number;
+  medianRent: number;
+  furnishedPercentage: number;
+  popularAreas: string[];
+  updatedAt: Date;
+}> {
+  const supabase = await createClient();
+
+  let query = supabase
+    .from('listings')
+    .select(
+      `
+      furnishing,
+      locality,
+      listing_prices!inner ( amount )
+    `
+    )
+    .eq('status', 'published');
+
+  if (city) {
+    query = query.ilike('city', `%${city}%`);
+  }
+
+  const { data, error } = await query;
+
+  if (error || !data || data.length === 0) {
+    return {
+      listingCount: 0,
+      averageRent: 0,
+      medianRent: 0,
+      furnishedPercentage: 0,
+      popularAreas: [],
+      updatedAt: new Date(),
+    };
+  }
+
+  const rows = data as unknown as InsightListingRow[];
+  const listingCount = rows.length;
+
+  const rents: number[] = rows
+    .map((r) =>
+      r.listing_prices && r.listing_prices[0]?.amount
+        ? Number(r.listing_prices[0].amount)
+        : 0
+    )
+    .filter((amount) => amount > 0)
+    .sort((a, b) => a - b);
+
+  let averageRent = 0;
+  let medianRent = 0;
+
+  if (rents.length > 0) {
+    const totalRent = rents.reduce((sum, val) => sum + val, 0);
+    averageRent = Math.round(totalRent / rents.length);
+
+    const mid = Math.floor(rents.length / 2);
+    if (rents.length % 2 === 0) {
+      medianRent = Math.round((rents[mid - 1] + rents[mid]) / 2);
+    } else {
+      medianRent = rents[mid];
+    }
+  }
+
+  const furnishedCount = rows.filter(
+    (r) =>
+      r.furnishing === 'fully_furnished' || r.furnishing === 'semi_furnished'
+  ).length;
+  const furnishedPercentage = Math.round((furnishedCount / listingCount) * 100);
+
+  const localityCounts = rows.reduce(
+    (acc: Record<string, number>, r) => {
+      if (
+        r.locality &&
+        typeof r.locality === 'string' &&
+        r.locality.trim() !== ''
+      ) {
+        const loc = r.locality.trim();
+        acc[loc] = (acc[loc] || 0) + 1;
+      }
+      return acc;
+    },
+    {} as Record<string, number>
+  );
+
+  const popularAreas = Object.entries(localityCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([loc]) => loc);
+
+  return {
+    listingCount,
+    averageRent,
+    medianRent,
+    furnishedPercentage,
+    popularAreas,
+    updatedAt: new Date(),
+  };
+}
+
+interface SuggestionRow {
+  city: string | null;
+  locality: string | null;
+  accommodation_types?: { name?: string } | null;
+}
+
+export async function getDiscoverySuggestionsQuery(city?: string): Promise<{
+  nearbyLocalities: string[];
+  suggestedCities: string[];
+  popularSearches: string[];
+}> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from('listings')
+    .select('city, locality, accommodation_types!inner(name)')
+    .eq('status', 'published');
+
+  if (error || !data || data.length === 0) {
+    return {
+      nearbyLocalities: [],
+      suggestedCities: [],
+      popularSearches: [],
+    };
+  }
+
+  const rows = data as unknown as SuggestionRow[];
+
+  const citySet = new Set<string>();
+  const localitySet = new Set<string>();
+  const accSet = new Set<string>();
+
+  rows.forEach((row) => {
+    if (row.city) citySet.add(row.city.trim());
+    if (
+      city &&
+      row.city &&
+      row.city.toLowerCase() === city.toLowerCase() &&
+      row.locality
+    ) {
+      localitySet.add(row.locality.trim());
+    } else if (!city && row.locality) {
+      localitySet.add(row.locality.trim());
+    }
+    if (row.accommodation_types?.name) {
+      accSet.add(row.accommodation_types.name.trim());
+    }
+  });
+
+  const suggestedCities = Array.from(citySet).slice(0, 5);
+  const nearbyLocalities = Array.from(localitySet).slice(0, 5);
+  const popularSearches = Array.from(accSet)
+    .map((acc) => `${acc} listed in ${suggestedCities[0] || 'catalog'}`)
+    .slice(0, 3);
+
+  return {
+    nearbyLocalities,
+    suggestedCities,
+    popularSearches,
+  };
+}

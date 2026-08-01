@@ -1,4 +1,5 @@
 import { SearchFilters } from '../lib/search-params';
+import { getDiscoverySuggestionsQuery } from '@/features/listings/api/queries';
 
 export interface RecoveryAction {
   title: string;
@@ -16,12 +17,18 @@ export interface RecoveryViewModel {
 
 export class DiscoveryService {
   static async getRecoveryData(
-    _filters: SearchFilters | Record<string, unknown>
+    filters: SearchFilters | Record<string, unknown>
   ): Promise<RecoveryViewModel> {
+    const city =
+      'city' in filters && typeof filters.city === 'string'
+        ? filters.city
+        : undefined;
+    const suggestions = await getDiscoverySuggestionsQuery(city);
+
     return {
-      nearbyLocalities: [],
-      suggestedCities: ['Bangalore', 'Mumbai', 'Delhi', 'Pune'],
-      popularSearches: ['PGs under ₹10,000', 'Fully furnished apartments'],
+      nearbyLocalities: suggestions.nearbyLocalities,
+      suggestedCities: suggestions.suggestedCities,
+      popularSearches: suggestions.popularSearches,
       actions: [
         {
           title: 'Clear all filters',

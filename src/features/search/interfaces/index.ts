@@ -26,7 +26,7 @@ export interface SearchEventPublisher {
 
 export class NoopSearchEventPublisher implements SearchEventPublisher {
   publish(_event: SearchEvent): void {
-    // No-op for V1
+    void _event; // No-op for V1
   }
 }
 

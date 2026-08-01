@@ -1,3 +1,5 @@
+import { getLocationInsightsQuery } from '@/features/listings/api/queries';
+
 export interface LocationInsights {
   listingCount: number;
   averageRent: number;
@@ -9,16 +11,8 @@ export interface LocationInsights {
 
 export class LocationInsightsService {
   static async getInsights(
-    _city: string | undefined
+    city: string | undefined
   ): Promise<LocationInsights> {
-    // In V1, this returns static or softly aggregated data.
-    return {
-      listingCount: 1248,
-      averageRent: 18400,
-      medianRent: 16000,
-      furnishedPercentage: 92,
-      popularAreas: ['Koramangala', 'HSR Layout', 'Indiranagar'],
-      updatedAt: new Date(),
-    };
+    return getLocationInsightsQuery(city);
   }
 }
