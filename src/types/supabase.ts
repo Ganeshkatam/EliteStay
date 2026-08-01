@@ -195,7 +195,6 @@ export type Database = {
           latitude: number | null;
           longitude: number | null;
           name: string;
-          population: number | null;
           search_aliases: string[] | null;
           slug: string;
           sort_order: number;
@@ -216,7 +215,6 @@ export type Database = {
           latitude?: number | null;
           longitude?: number | null;
           name: string;
-          population?: number | null;
           search_aliases?: string[] | null;
           slug: string;
           sort_order?: number;
@@ -237,7 +235,6 @@ export type Database = {
           latitude?: number | null;
           longitude?: number | null;
           name?: string;
-          population?: number | null;
           search_aliases?: string[] | null;
           slug?: string;
           sort_order?: number;
@@ -976,7 +973,6 @@ export type Database = {
           external_code: string;
           id: number;
           name: string;
-          population: number | null;
           slug: string;
           updated_at: string;
         };
@@ -987,7 +983,6 @@ export type Database = {
           external_code: string;
           id?: never;
           name: string;
-          population?: number | null;
           slug: string;
           updated_at?: string;
         };
@@ -998,7 +993,6 @@ export type Database = {
           external_code?: string;
           id?: never;
           name?: string;
-          population?: number | null;
           slug?: string;
           updated_at?: string;
         };

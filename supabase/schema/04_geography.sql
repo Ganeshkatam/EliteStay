@@ -33,7 +33,6 @@ CREATE TABLE public.states (
     name TEXT NOT NULL,
     code TEXT NOT NULL,
     slug TEXT NOT NULL,
-    population BIGINT,
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
     UNIQUE(country_id, slug)
@@ -52,7 +51,6 @@ CREATE TABLE public.cities (
     timezone TEXT,
     cover_image_storage_path TEXT,
     description TEXT,
-    population BIGINT,
     is_capital BOOLEAN DEFAULT false NOT NULL,
     is_metro BOOLEAN DEFAULT false NOT NULL,
     is_featured BOOLEAN DEFAULT false NOT NULL,
