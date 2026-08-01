@@ -3,7 +3,6 @@ import Image from 'next/image';
 import { Container } from '@/components/layout/Container';
 import { LocationService } from '@/features/location/services/location-service';
 import { createClient } from '@/lib/supabase/server';
-import { HomepageRail } from './HomepageRail';
 
 export async function PopularLocations() {
   const cities = await LocationService.getFeaturedCities();
@@ -27,7 +26,7 @@ export async function PopularLocations() {
         </Link>
       </div>
 
-      <HomepageRail>
+      <div className="flex gap-4 sm:gap-6 overflow-x-auto pb-4 scrollbar-none [&::-webkit-scrollbar]:hidden snap-x snap-mandatory scroll-smooth">
         {cities.map((city) => {
           // Get public URL for cover image if it exists
           let imageUrl = '/images/placeholder-city.png'; // default placeholder
@@ -41,7 +40,7 @@ export async function PopularLocations() {
           return (
             <div
               key={city.id}
-              className="flex-shrink-0 w-[170px] sm:w-[210px] snap-start"
+              className="flex-shrink-0 w-[160px] sm:w-[200px] snap-start"
             >
               <Link
                 href={`/s?city=${city.slug}`}
@@ -68,7 +67,7 @@ export async function PopularLocations() {
             </div>
           );
         })}
-      </HomepageRail>
+      </div>
     </Container>
   );
 }

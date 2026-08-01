@@ -4,7 +4,6 @@ import { HomeSectionConfig } from '../config/sections';
 import { getSectionListings } from '../api/queries';
 import { ListingCard } from '@/features/listings/components/ListingCard';
 import { Container } from '@/components/layout/Container';
-import { HomepageRail } from './HomepageRail';
 
 interface HomeSectionProps {
   config: HomeSectionConfig;
@@ -49,16 +48,15 @@ export async function HomeSection({ config }: HomeSectionProps) {
           </p>
         </div>
       ) : (
-        <HomepageRail>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {listings.map((listing) => (
-            <div
+            <ListingCard
               key={`${config.id}-${listing.publicId}`}
-              className="flex-shrink-0 w-[280px] sm:w-[310px] snap-start"
-            >
-              <ListingCard listing={listing} aspectRatio="rail" />
-            </div>
+              listing={listing}
+              aspectRatio="square"
+            />
           ))}
-        </HomepageRail>
+        </div>
       )}
     </Container>
   );

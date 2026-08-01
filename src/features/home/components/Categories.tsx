@@ -2,7 +2,6 @@ import Link from 'next/link';
 import { HOME_CATEGORIES } from '../constants';
 import * as Icons from 'lucide-react';
 import { Container } from '@/components/layout/Container';
-import { HomepageRail } from './HomepageRail';
 import { createClient } from '@/lib/supabase/server';
 
 export async function Categories() {
@@ -16,7 +15,7 @@ export async function Categories() {
       <h2 className="text-xl font-bold tracking-tight text-slate-900 mb-4">
         Browse by category
       </h2>
-      <HomepageRail>
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
         {HOME_CATEGORIES.map((category) => {
           const iconKey = category.icon
             .split('-')
@@ -35,10 +34,7 @@ export async function Categories() {
           const description = dbType?.description || category.description;
 
           return (
-            <div
-              key={category.slug}
-              className="flex-shrink-0 min-w-[160px] snap-start"
-            >
+            <div key={category.slug} className="w-full">
               <Link
                 href={`/s?accommodationType=${category.slug}`}
                 className="group flex flex-col items-start justify-between gap-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] transition-all hover:border-blue-600 hover:shadow-lg w-full h-full"
@@ -58,7 +54,7 @@ export async function Categories() {
             </div>
           );
         })}
-      </HomepageRail>
+      </div>
     </Container>
   );
 }
