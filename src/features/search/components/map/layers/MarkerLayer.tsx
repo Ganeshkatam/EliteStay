@@ -1,6 +1,6 @@
 'use client';
 
-import { Marker } from 'react-map-gl/mapbox';
+import { Marker } from 'react-map-gl/maplibre';
 import { ListingCardData } from '@/features/listings/types';
 import { useSearchUI } from '../../../context/SearchProvider';
 

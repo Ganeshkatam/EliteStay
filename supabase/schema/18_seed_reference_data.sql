@@ -8,15 +8,16 @@ NOTE: No demo or fake user/listing data is seeded here.
 
 -- 1. Insert Accommodation Types
 INSERT INTO public.accommodation_types (id, name, description) VALUES
-  ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'PG', 'Paying Guest accommodation'),
-  ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12', 'Hostel', 'Shared hostel accommodation'),
-  ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a13', 'Apartment', 'Standard residential apartment'),
-  ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a14', 'Independent House', 'Standalone house or bungalow'),
-  ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a15', 'Villa', 'Luxury standalone villa'),
-  ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a16', 'Private Room', 'Private room within a shared property'),
-  ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a17', 'Shared Room', 'Shared room with other occupants'),
-  ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a18', 'Service Apartment', 'Furnished apartment with hotel-like services'),
-  ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a19', 'Co-living', 'Modern managed shared living spaces')
+  ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'PG', 'Managed stays with food & cleaning'),
+  ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12', 'Hostel', 'Vibrant student communities'),
+  ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a13', 'Apartment', 'Fully independent private flats'),
+  ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a14', 'Independent House', 'Spacious independent houses'),
+  ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a15', 'Villa', 'Luxe private estate stays'),
+  ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a16', 'Private Room', 'Private room in shared homes'),
+  ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a17', 'Shared Room', 'Affordable shared flatshares'),
+  ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a18', 'Service Apartment', 'Fully-serviced corporate stays'),
+  ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a19', 'Co-living', 'Social hubs for young professionals'),
+
 ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description;
 
 -- 2. Insert Amenities
@@ -52,6 +53,16 @@ ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, icon = EXCLUDED.icon;
 INSERT INTO public.amenities (id, name, icon) VALUES
   ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b23', 'Bike Parking', 'bike'),
   ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b24', 'Car Parking', 'car')
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, icon = EXCLUDED.icon;
+
+
+INSERT INTO public.amenities (id, name, icon) VALUES 
+  ('911cfcae-3f3a-4638-a375-db160ececf88', 'Air Conditioning', 'snowflake'),
+  ('e0b3bf05-9d7e-40c4-8566-e6402681f486', 'Kitchen', 'kitchen'),
+  ('347b67d2-2cbb-4b77-a855-26ad3435fb73', 'Parking', 'parking'),
+  ('ffd25b7b-7ed3-43bf-aea6-2aa8dbcf1326', 'Pool', 'pool'),
+  ('e85bbea1-df7e-47af-986e-52c6f39e2d26', 'Gym', 'dumbbell'),
+  ('c2d5152e-fd3d-4ff7-b7f0-1cdf7af7f22e', 'WiFi', 'wifi')
 ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, icon = EXCLUDED.icon;
 
 -- 3. Seed Country: India

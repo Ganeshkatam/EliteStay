@@ -35,7 +35,7 @@ Always use the Supabase MCP tools (`mcp_supabase_*` or via `call_mcp_tool`) for 
 4. Fix all errors introduced by the current changes before committing.
 5. Use clear Conventional Commit messages (`feat:`, `fix:`, `refactor:`, `chore:`, `docs:`, `test:`).
 6. Do not commit known broken code unless explicitly instructed by the user.
-7. Commit git changes only when the total line changes or file changes across the batch is greater than 5, unless explicitly requested.
+7. Commit git changes only when the total number of modified/added files is greater than 5, unless explicitly requested.
 
 # Database & SQL Synchronization Rule
 

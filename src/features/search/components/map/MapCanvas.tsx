@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useCallback } from 'react';
-import Map, { NavigationControl } from 'react-map-gl/mapbox';
+import Map, { NavigationControl } from 'react-map-gl/maplibre';
 import { useSearchData } from '../../context/SearchProvider';
+import { getMapConfig } from '@/lib/maps';
 
 interface MapCanvasProps {
   children: React.ReactNode;
@@ -10,10 +11,12 @@ interface MapCanvasProps {
 
 export function MapCanvas({ children }: MapCanvasProps) {
   const { map } = useSearchData();
+  const mapConfig = getMapConfig();
 
-  // Default to Bangalore center if no data
-  const initialLat = map.centerLat ?? 12.9716;
-  const initialLng = map.centerLng ?? 77.5946;
+  // Fallback to configured defaults if center not available
+  const initialLat = map.centerLat ?? mapConfig.defaultViewport.latitude;
+  const initialLng = map.centerLng ?? mapConfig.defaultViewport.longitude;
+  const initialZoom = map.zoom ?? mapConfig.defaultViewport.zoom;
 
   const handleMapMove = useCallback(() => {
     // We would update UI state context for map bounds here
@@ -24,10 +27,11 @@ export function MapCanvas({ children }: MapCanvasProps) {
       initialViewState={{
         longitude: initialLng,
         latitude: initialLat,
-        zoom: map.zoom ?? 12,
+        zoom: initialZoom,
       }}
-      mapStyle="mapbox://styles/mapbox/streets-v12"
-      mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN}
+      mapStyle={mapConfig.styleUrl}
+      minZoom={mapConfig.minZoom}
+      maxZoom={mapConfig.maxZoom}
       onMoveEnd={handleMapMove}
     >
       <NavigationControl position="top-right" />

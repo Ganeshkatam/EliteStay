@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
-import Map, { Marker, NavigationControl } from 'react-map-gl/mapbox';
+import Map, { Marker, NavigationControl } from 'react-map-gl/maplibre';
 import { ListingCardData } from '@/features/listings/types';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -10,6 +10,7 @@ import {
   parseSearchParams,
   SearchFilters,
 } from '@/features/search/lib/search-params';
+import { getMapConfig } from '@/lib/maps';
 
 interface MapMoveEvent {
   target: {
@@ -86,6 +87,8 @@ export function SearchMap({ listings }: { listings: ListingCardData[] }) {
     );
   }
 
+  const mapConfig = getMapConfig();
+
   // Calculate rough bounds or center
   const initialLat = mapListings[0].location.latitude!;
   const initialLng = mapListings[0].location.longitude!;
@@ -96,10 +99,11 @@ export function SearchMap({ listings }: { listings: ListingCardData[] }) {
         initialViewState={{
           longitude: initialLng,
           latitude: initialLat,
-          zoom: 12,
+          zoom: mapConfig.defaultViewport.zoom,
         }}
-        mapStyle="mapbox://styles/mapbox/streets-v12"
-        mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN}
+        mapStyle={mapConfig.styleUrl}
+        minZoom={mapConfig.minZoom}
+        maxZoom={mapConfig.maxZoom}
         onMoveEnd={handleMapMove}
       >
         <NavigationControl position="top-right" />
