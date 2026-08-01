@@ -1,20 +1,24 @@
 /*
 ==================================================
-Domain: Shared
+Domain: Shared Functions
 Purpose: Cross-cutting utilities and shared functions.
 Contains: 
 - updated_at trigger helper
 - public_id generator
+- public_id immutability triggers
 ==================================================
 */
 
 CREATE OR REPLACE FUNCTION public.handle_updated_at()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = ''
+AS $$
 BEGIN
     NEW.updated_at = NOW();
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 /*
   uuid_to_public_id()
@@ -29,7 +33,11 @@ $$ LANGUAGE plpgsql;
   - Never change algorithm (Treat as permanent contract)
 */
 CREATE OR REPLACE FUNCTION public.uuid_to_public_id(input_uuid UUID)
-RETURNS TEXT AS $$
+RETURNS TEXT
+LANGUAGE plpgsql
+IMMUTABLE STRICT
+SET search_path = ''
+AS $$
 DECLARE
     bytes BYTEA := uuid_send(input_uuid);
     res TEXT := '';
@@ -41,12 +49,10 @@ BEGIN
         RETURN NULL;
     END IF;
 
-    -- Convert 16 bytes to a single numeric value safely
     FOR i IN 0..15 LOOP
         n := n * 256 + get_byte(bytes, i);
     END LOOP;
     
-    -- Edge case for 00000000-0000-0000-0000-000000000000
     IF n = 0 THEN
         RETURN lpad('0', 26, '0');
     END IF;
@@ -58,10 +64,13 @@ BEGIN
     
     RETURN lpad(res, 26, '0');
 END;
-$$ LANGUAGE plpgsql IMMUTABLE STRICT;
+$$;
 
 CREATE OR REPLACE FUNCTION public.trigger_set_public_id()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = ''
+AS $$
 BEGIN
     IF NEW.id IS NULL THEN
         NEW.id := gen_random_uuid();
@@ -73,14 +82,17 @@ BEGIN
     
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 CREATE OR REPLACE FUNCTION public.trigger_prevent_public_id_update()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = ''
+AS $$
 BEGIN
     IF OLD.public_id IS NOT NULL AND NEW.public_id IS DISTINCT FROM OLD.public_id THEN
         RAISE EXCEPTION 'public_id is immutable and cannot be updated';
     END IF;
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$;

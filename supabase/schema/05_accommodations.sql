@@ -1,10 +1,11 @@
 /*
 ==================================================
-Domain: Accommodations
-Purpose: Reference entities describing properties.
+Domain: Accommodations Reference
+Purpose: Master entities describing property types and available amenities.
 Contains: 
 - accommodation_types
 - amenities
+- triggers & RLS policies
 ==================================================
 */
 
@@ -39,5 +40,11 @@ CREATE TRIGGER amenities_updated_at
 CREATE POLICY "Public can view accommodation types" ON public.accommodation_types
   FOR SELECT USING (true);
 
+CREATE POLICY "Admins can manage accommodation types" ON public.accommodation_types
+  FOR ALL USING (public.is_admin());
+
 CREATE POLICY "Public can view amenities" ON public.amenities
   FOR SELECT USING (true);
+
+CREATE POLICY "Admins can manage amenities" ON public.amenities
+  FOR ALL USING (public.is_admin());

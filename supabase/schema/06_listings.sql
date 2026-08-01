@@ -1,13 +1,13 @@
 /*
 ==================================================
 Domain: Listings
-Purpose: Core marketplace domain for property listings.
+Purpose: Core marketplace domain for property listings and host workflows.
 Contains: 
 - listings
 - listing_amenities
 - listing_build_progress
-- listings triggers
-- listings RLS
+- is_listing_owner helper function
+- triggers, RLS, & performance indexes
 ==================================================
 */
 
@@ -19,6 +19,7 @@ CREATE TABLE public.listings (
     property_type TEXT DEFAULT 'Apartment' NOT NULL,
     title TEXT NOT NULL,
     description TEXT,
+    max_occupants INTEGER DEFAULT 1 NOT NULL,
     occupancy_type public.occupancy_type DEFAULT 'private'::public.occupancy_type NOT NULL,
     gender_preference public.gender_preference DEFAULT 'any'::public.gender_preference NOT NULL,
     furnishing public.furnishing DEFAULT 'unfurnished'::public.furnishing NOT NULL,
@@ -26,19 +27,42 @@ CREATE TABLE public.listings (
     -- Location Fields
     state TEXT,
     city TEXT,
+    city_id BIGINT REFERENCES public.cities(id) ON DELETE SET NULL,
     locality TEXT,
     postal_code TEXT,
-    latitude NUMERIC,
-    longitude NUMERIC,
+    latitude DOUBLE PRECISION CHECK (latitude >= -90 AND latitude <= 90),
+    longitude DOUBLE PRECISION CHECK (longitude >= -180 AND longitude <= 180),
     formatted_address TEXT,
     
     status public.listing_status DEFAULT 'draft'::public.listing_status NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-    updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+    updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    
+    CONSTRAINT published_listing_requires_coordinates CHECK (
+        status <> 'published'
+        OR (latitude IS NOT NULL AND longitude IS NOT NULL AND formatted_address IS NOT NULL)
+    )
 );
 
-CREATE INDEX idx_listings_public_id ON public.listings(public_id);
-CREATE INDEX idx_listings_host_id ON public.listings(host_id);
+CREATE INDEX IF NOT EXISTS idx_listings_public_id ON public.listings(public_id);
+CREATE INDEX IF NOT EXISTS idx_listings_host_id ON public.listings(host_id);
+CREATE INDEX IF NOT EXISTS idx_listings_lat_lng ON public.listings(latitude, longitude);
+CREATE INDEX IF NOT EXISTS listings_city_idx ON public.listings(city_id);
+
+CREATE OR REPLACE FUNCTION public.is_listing_owner(p_listing_id uuid)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 
+    FROM public.listings 
+    WHERE id = p_listing_id AND host_id = auth.uid()
+  );
+END;
+$$;
 
 CREATE TABLE public.listing_amenities (
     listing_id UUID REFERENCES public.listings(id) ON DELETE CASCADE NOT NULL,
@@ -48,13 +72,15 @@ CREATE TABLE public.listing_amenities (
     PRIMARY KEY (listing_id, amenity_id)
 );
 
+CREATE INDEX IF NOT EXISTS listing_amenities_amenity_idx ON public.listing_amenities(amenity_id);
+
 CREATE TABLE public.listing_build_progress (
     listing_id UUID PRIMARY KEY REFERENCES public.listings(id) ON DELETE CASCADE,
     step_completed TEXT,
     last_step TEXT NOT NULL DEFAULT 'accommodation',
     percent_complete INTEGER NOT NULL DEFAULT 0,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
 );
 
 -- Triggers
@@ -109,7 +135,7 @@ CREATE POLICY "Hosts can manage own listing amenities" ON public.listing_ameniti
     EXISTS (
         SELECT 1 FROM public.listings l 
         WHERE l.id = listing_amenities.listing_id 
-        AND l.host_id = auth.uid()
+        AND (l.host_id = auth.uid() OR public.is_admin())
     )
   );
 
@@ -119,7 +145,7 @@ CREATE POLICY "Hosts can view own listing progress" ON public.listing_build_prog
     EXISTS (
         SELECT 1 FROM public.listings l 
         WHERE l.id = listing_build_progress.listing_id 
-        AND l.host_id = auth.uid()
+        AND (l.host_id = auth.uid() OR public.is_admin())
     )
   );
 
@@ -128,7 +154,7 @@ CREATE POLICY "Hosts can insert own listing progress" ON public.listing_build_pr
     EXISTS (
         SELECT 1 FROM public.listings l 
         WHERE l.id = listing_build_progress.listing_id 
-        AND l.host_id = auth.uid()
+        AND (l.host_id = auth.uid() OR public.is_admin())
     )
   );
 
@@ -137,7 +163,7 @@ CREATE POLICY "Hosts can update own listing progress" ON public.listing_build_pr
     EXISTS (
         SELECT 1 FROM public.listings l 
         WHERE l.id = listing_build_progress.listing_id 
-        AND l.host_id = auth.uid()
+        AND (l.host_id = auth.uid() OR public.is_admin())
     )
   );
 
@@ -146,6 +172,6 @@ CREATE POLICY "Hosts can delete own listing progress" ON public.listing_build_pr
     EXISTS (
         SELECT 1 FROM public.listings l 
         WHERE l.id = listing_build_progress.listing_id 
-        AND l.host_id = auth.uid()
+        AND (l.host_id = auth.uid() OR public.is_admin())
     )
   );

@@ -1,7 +1,7 @@
 /*
 ==================================================
 Domain: Search & Discovery
-Purpose: Discovery, indexing, and view models.
+Purpose: Discovery RPCs, indexing queries, and detailed listing view models.
 Contains: 
 - get_listing_detail RPC
 - search_listings RPC
@@ -9,7 +9,11 @@ Contains:
 */
 
 CREATE OR REPLACE FUNCTION public.get_listing_detail(p_public_id TEXT)
-RETURNS JSON AS $$
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
 DECLARE
     result JSON;
 BEGIN
@@ -46,7 +50,7 @@ BEGIN
                     SELECT 
                         p.id,
                         p.full_name,
-                        p.avatar_path as avatar_url,
+                        p.avatar_storage_path as avatar_url,
                         p.created_at
                     FROM public.profiles p
                     WHERE p.id = l.host_id
@@ -115,7 +119,7 @@ BEGIN
 
     RETURN result;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
 
 CREATE OR REPLACE FUNCTION public.search_listings(
@@ -132,7 +136,13 @@ CREATE OR REPLACE FUNCTION public.search_listings(
   p_available_from DATE DEFAULT NULL,
   p_sort TEXT DEFAULT 'recommended',
   p_page INTEGER DEFAULT 1,
-  p_page_size INTEGER DEFAULT 12
+  p_page_size INTEGER DEFAULT 12,
+  p_min_lat DOUBLE PRECISION DEFAULT NULL,
+  p_max_lat DOUBLE PRECISION DEFAULT NULL,
+  p_min_lng DOUBLE PRECISION DEFAULT NULL,
+  p_max_lng DOUBLE PRECISION DEFAULT NULL,
+  p_center_lat DOUBLE PRECISION DEFAULT NULL,
+  p_center_lng DOUBLE PRECISION DEFAULT NULL
 )
 RETURNS TABLE (
   total_count BIGINT,
@@ -146,14 +156,17 @@ RETURNS TABLE (
   locality TEXT,
   city TEXT,
   formatted_address TEXT,
-  latitude NUMERIC,
-  longitude NUMERIC,
+  latitude DOUBLE PRECISION,
+  longitude DOUBLE PRECISION,
   price_amount NUMERIC,
   price_currency TEXT,
   price_billing_period public.billing_period,
   price_minimum_duration INTEGER,
   image_url TEXT
 )
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
 AS $$
 DECLARE
   v_offset INTEGER;
@@ -198,11 +211,17 @@ BEGIN
     -- Only published listings
     l.status = 'published'
 
-    -- Location filters (ILIKE for V1; will move to ID-based in V2)
+    -- Location text filters
     AND (p_city IS NULL OR l.city ILIKE p_city)
     AND (p_locality IS NULL OR l.locality ILIKE p_locality)
 
-    -- Accommodation type filter (UUID-based)
+    -- Map bounding box filters
+    AND (p_min_lat IS NULL OR l.latitude >= p_min_lat)
+    AND (p_max_lat IS NULL OR l.latitude <= p_max_lat)
+    AND (p_min_lng IS NULL OR l.longitude >= p_min_lng)
+    AND (p_max_lng IS NULL OR l.longitude <= p_max_lng)
+
+    -- Accommodation type filter
     AND (p_accommodation_type_id IS NULL OR l.accommodation_type_id = p_accommodation_type_id)
 
     -- Property attribute filters
@@ -228,7 +247,7 @@ BEGIN
       )
     )
 
-    -- Amenities filter: listing must have ALL requested amenities
+    -- Amenities filter
     AND (
       p_amenities IS NULL
       OR array_length(p_amenities, 1) IS NULL
@@ -243,12 +262,20 @@ BEGIN
     )
 
   ORDER BY
+    -- Distance sorting using Haversine formula
+    CASE WHEN p_sort = 'distance' AND p_center_lat IS NOT NULL AND p_center_lng IS NOT NULL THEN
+      6371 * acos(
+        cos(radians(p_center_lat)) * cos(radians(l.latitude)) *
+        cos(radians(l.longitude) - radians(p_center_lng)) +
+        sin(radians(p_center_lat)) * sin(radians(l.latitude))
+      )
+    END ASC NULLS LAST,
     CASE WHEN p_sort = 'price_asc' THEN lp.amount END ASC NULLS LAST,
     CASE WHEN p_sort = 'price_desc' THEN lp.amount END DESC NULLS LAST,
     CASE WHEN p_sort = 'newest' THEN l.created_at END DESC,
-    CASE WHEN p_sort = 'recommended' OR p_sort IS NULL THEN l.created_at END DESC
+    CASE WHEN p_sort = 'recommended' OR (p_sort NOT IN ('price_asc', 'price_desc', 'newest', 'distance')) THEN l.created_at END DESC
 
   LIMIT p_page_size
   OFFSET v_offset;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;

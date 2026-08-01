@@ -1,11 +1,10 @@
 /*
 ==================================================
 Domain: Listing Images
-Purpose: Dedicated domain for property images.
+Purpose: Dedicated domain for property images and gallery metadata.
 Contains: 
 - listing_images
-- triggers
-- RLS
+- triggers & RLS policies
 ==================================================
 */
 
@@ -24,11 +23,11 @@ CREATE TABLE public.listing_images (
 );
 
 -- Ensure only one cover image per listing
-CREATE UNIQUE INDEX idx_listing_images_cover 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_listing_images_cover 
   ON public.listing_images (listing_id) 
   WHERE is_cover = true;
 
-CREATE INDEX idx_listing_images_listing_id ON public.listing_images(listing_id);
+CREATE INDEX IF NOT EXISTS idx_listing_images_listing_id ON public.listing_images(listing_id);
 
 CREATE TRIGGER listing_images_updated_at 
   BEFORE UPDATE ON public.listing_images 
@@ -44,6 +43,6 @@ CREATE POLICY "Hosts can manage own listing images" ON public.listing_images
     EXISTS (
         SELECT 1 FROM public.listings l 
         WHERE l.id = listing_images.listing_id 
-        AND l.host_id = auth.uid()
+        AND (l.host_id = auth.uid() OR public.is_admin())
     )
   );

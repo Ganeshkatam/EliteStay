@@ -4,15 +4,23 @@
 /*
 ==================================================
 Domain: Extensions
-Purpose: Enables PostgreSQL features required for the database.
+Purpose: Enables PostgreSQL extensions required by EliteStay.
 Contains: 
 - uuid-ossp
 - pgcrypto
+- pg_trgm
+- btree_gist
+- pg_cron
+- pg_net
 ==================================================
 */
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+CREATE EXTENSION IF NOT EXISTS "pg_trgm";
+CREATE EXTENSION IF NOT EXISTS "btree_gist";
+CREATE EXTENSION IF NOT EXISTS "pg_cron";
+CREATE EXTENSION IF NOT EXISTS "pg_net";
 
 
 -- SOURCE: 01_types.sql
@@ -22,47 +30,56 @@ Domain: Types
 Purpose: Defines shared types and enums used across all domains.
 Contains: 
 - user_role
+- user_occupation
 - listing_status
 - booking_status
 - stay_status
 - billing_period
 - availability_status
+- availability_source
 - occupancy_type
 - gender_preference
 - furnishing
+- sync_direction
 ==================================================
 */
 
 CREATE TYPE public.user_role AS ENUM ('guest', 'host', 'admin');
+CREATE TYPE public.user_occupation AS ENUM ('student', 'software_engineer', 'healthcare_professional', 'education', 'design_creative', 'finance_accounting', 'marketing_sales', 'entrepreneur_founder', 'freelancer', 'other');
 CREATE TYPE public.listing_status AS ENUM ('draft', 'ready', 'pending_review', 'published', 'paused', 'archived');
 CREATE TYPE public.booking_status AS ENUM ('pending', 'approved', 'rejected', 'cancelled', 'expired');
 CREATE TYPE public.stay_status AS ENUM ('upcoming', 'active', 'extended', 'checked_out', 'completed', 'terminated');
 CREATE TYPE public.billing_period AS ENUM ('day', 'week', 'month', 'semester', 'year');
 CREATE TYPE public.availability_status AS ENUM ('available', 'occupied', 'unavailable');
+CREATE TYPE public.availability_source AS ENUM ('booking', 'manual_block', 'external_calendar', 'maintenance');
 CREATE TYPE public.occupancy_type AS ENUM ('private', 'shared', 'mixed');
 CREATE TYPE public.gender_preference AS ENUM ('any', 'male', 'female');
 CREATE TYPE public.furnishing AS ENUM ('unfurnished', 'semi_furnished', 'fully_furnished');
-CREATE TYPE public.availability_source AS ENUM ('booking', 'manual_block', 'external_calendar', 'maintenance');
+CREATE TYPE public.sync_direction AS ENUM ('import', 'export', 'both');
 
 
--- SOURCE: 15_shared.sql
+-- SOURCE: 02_shared_functions.sql
 /*
 ==================================================
-Domain: Shared
+Domain: Shared Functions
 Purpose: Cross-cutting utilities and shared functions.
 Contains: 
 - updated_at trigger helper
 - public_id generator
+- public_id immutability triggers
 ==================================================
 */
 
 CREATE OR REPLACE FUNCTION public.handle_updated_at()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = ''
+AS $$
 BEGIN
     NEW.updated_at = NOW();
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 /*
   uuid_to_public_id()
@@ -77,7 +94,11 @@ $$ LANGUAGE plpgsql;
   - Never change algorithm (Treat as permanent contract)
 */
 CREATE OR REPLACE FUNCTION public.uuid_to_public_id(input_uuid UUID)
-RETURNS TEXT AS $$
+RETURNS TEXT
+LANGUAGE plpgsql
+IMMUTABLE STRICT
+SET search_path = ''
+AS $$
 DECLARE
     bytes BYTEA := uuid_send(input_uuid);
     res TEXT := '';
@@ -89,12 +110,10 @@ BEGIN
         RETURN NULL;
     END IF;
 
-    -- Convert 16 bytes to a single numeric value safely
     FOR i IN 0..15 LOOP
         n := n * 256 + get_byte(bytes, i);
     END LOOP;
     
-    -- Edge case for 00000000-0000-0000-0000-000000000000
     IF n = 0 THEN
         RETURN lpad('0', 26, '0');
     END IF;
@@ -106,10 +125,13 @@ BEGIN
     
     RETURN lpad(res, 26, '0');
 END;
-$$ LANGUAGE plpgsql IMMUTABLE STRICT;
+$$;
 
 CREATE OR REPLACE FUNCTION public.trigger_set_public_id()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = ''
+AS $$
 BEGIN
     IF NEW.id IS NULL THEN
         NEW.id := gen_random_uuid();
@@ -121,58 +143,155 @@ BEGIN
     
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 CREATE OR REPLACE FUNCTION public.trigger_prevent_public_id_update()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = ''
+AS $$
 BEGIN
     IF OLD.public_id IS NOT NULL AND NEW.public_id IS DISTINCT FROM OLD.public_id THEN
         RAISE EXCEPTION 'public_id is immutable and cannot be updated';
     END IF;
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 
--- SOURCE: 02_identity.sql
+-- SOURCE: 03_identity.sql
 /*
 ==================================================
-Domain: Identity
-Purpose: Everything related to users.
+Domain: Identity & Preferences
+Purpose: Everything related to users, roles, preferences, and authentication workflows.
 Contains: 
 - profiles
-- identity triggers
-- identity functions
-- identity RLS
+- user_preferences
+- identity functions & triggers
+- RLS policies
+- account deletion workflow
 ==================================================
 */
 
+-- 1. Profiles Table
 CREATE TABLE public.profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     display_name TEXT,
     full_name TEXT,
-    avatar_path TEXT,
-    bio TEXT,
-    city TEXT,
-    date_of_birth DATE,
-    gender TEXT,
+    avatar_storage_path TEXT,
     phone TEXT,
     role public.user_role DEFAULT 'guest'::public.user_role NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-    updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+    updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    bio TEXT,
+    date_of_birth DATE,
+    gender TEXT,
+    occupation public.user_occupation,
+    username TEXT CHECK (username IS NULL OR (char_length(username) >= 3 AND char_length(username) <= 30 AND username ~ '^[a-z0-9_]+$'::text)),
+    timezone TEXT
 );
+
+CREATE INDEX IF NOT EXISTS profiles_role_idx ON public.profiles(role);
+CREATE INDEX IF NOT EXISTS profiles_username_idx ON public.profiles(username);
 
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
+-- 2. User Preferences Table
+CREATE TABLE public.user_preferences (
+    user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    privacy JSONB NOT NULL DEFAULT '{
+      "allow_host_messages": true,
+      "show_profile_photo": true,
+      "show_reviews": true,
+      "allow_search_indexing": false
+    }'::jsonb,
+    notifications JSONB NOT NULL DEFAULT '{
+      "email": true,
+      "push": false,
+      "sms": false,
+      "marketing": false
+    }'::jsonb,
+    security JSONB NOT NULL DEFAULT '{
+      "two_factor_auth": false,
+      "allow_new_device_login": true,
+      "remember_device": true
+    }'::jsonb,
+    hosting JSONB NOT NULL DEFAULT '{
+      "accept_booking_requests": true,
+      "instant_booking": false,
+      "auto_approve_reservations": false
+    }'::jsonb,
+    communication JSONB NOT NULL DEFAULT '{
+      "promotional_messages": false,
+      "support_contact": true,
+      "share_contact_after_booking": true
+    }'::jsonb,
+    data JSONB NOT NULL DEFAULT '{
+      "share_analytics": false,
+      "personalized_recommendations": true,
+      "cookie_preferences": "essential"
+    }'::jsonb,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.user_preferences ENABLE ROW LEVEL SECURITY;
+
+-- 3. Helper Functions (Defined early for use in RLS and triggers)
+CREATE OR REPLACE FUNCTION public.is_host()
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  RETURN (
+    SELECT role = 'host'::public.user_role 
+    FROM public.profiles 
+    WHERE id = auth.uid()
+  );
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  RETURN (
+    SELECT role = 'admin'::public.user_role 
+    FROM public.profiles 
+    WHERE id = auth.uid()
+  );
+END;
+$$;
+
+-- 4. RLS Policies for Profiles
 CREATE POLICY "Users can read own profile" ON public.profiles
   FOR SELECT USING (auth.uid() = id OR public.is_admin());
 
 CREATE POLICY "Users can update own profile" ON public.profiles
   FOR UPDATE USING (auth.uid() = id OR public.is_admin());
 
--- Protect identity fields
+-- 5. RLS Policies for User Preferences
+CREATE POLICY "Users can read own preferences" ON public.user_preferences
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own preferences" ON public.user_preferences
+  FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own preferences" ON public.user_preferences
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- 6. Profile Immutability Protection
 CREATE OR REPLACE FUNCTION public.protect_identity_fields()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
 BEGIN
   IF NOT public.is_admin() THEN
     NEW.id = OLD.id;
@@ -181,27 +300,31 @@ BEGIN
   END IF;
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
 CREATE TRIGGER enforce_profile_immutability
   BEFORE UPDATE ON public.profiles
   FOR EACH ROW EXECUTE PROCEDURE public.protect_identity_fields();
 
--- Handle new user
+-- 7. Handle New User Signup
 CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
 BEGIN
   INSERT INTO public.profiles (
     id, 
     full_name, 
-    avatar_path, 
+    avatar_storage_path, 
     role,
     created_at,
     updated_at
   ) VALUES (
     NEW.id, 
     NEW.raw_user_meta_data->>'full_name', 
-    NEW.raw_user_meta_data->>'avatar_path', 
+    NEW.raw_user_meta_data->>'avatar_url', 
     'guest'::public.user_role,
     NOW(),
     NOW()
@@ -212,170 +335,186 @@ BEGIN
 
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
 
+-- 8. Updated_at Triggers
 CREATE TRIGGER profiles_updated_at 
   BEFORE UPDATE ON public.profiles 
   FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
 
--- Identity helper functions
-CREATE OR REPLACE FUNCTION public.is_host()
-RETURNS BOOLEAN AS $$
-BEGIN
-  RETURN (
-    SELECT role = 'host'::public.user_role 
-    FROM public.profiles 
-    WHERE id = auth.uid()
-  );
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+CREATE TRIGGER user_preferences_updated_at 
+  BEFORE UPDATE ON public.user_preferences 
+  FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
 
-CREATE OR REPLACE FUNCTION public.is_admin()
-RETURNS BOOLEAN AS $$
-BEGIN
-  RETURN (
-    SELECT role = 'admin'::public.user_role 
-    FROM public.profiles 
-    WHERE id = auth.uid()
-  );
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- Account Deletion RPC
+-- 9. Account Deletion RPC and Triggers
 CREATE OR REPLACE FUNCTION public.delete_user_account()
-RETURNS void
+RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = ''
 AS $$
 DECLARE
-  v_uid uuid;
+    v_user_id uuid;
 BEGIN
-  -- Get the current authenticated user ID
-  v_uid := auth.uid();
-
-  IF v_uid IS NULL THEN
-    RAISE EXCEPTION 'Not authenticated';
-  END IF;
-
-  -- Delete from auth.users, which cascades to all related tables
-  DELETE FROM auth.users WHERE id = v_uid;
+    v_user_id := auth.uid();
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Not authenticated';
+    END IF;
+    
+    DELETE FROM auth.users WHERE id = v_user_id;
+    RETURN jsonb_build_object('success', true);
 END;
 $$;
 
--- Trigger to automatically remove auth.users entry when a profile row is deleted manually
-CREATE OR REPLACE FUNCTION public.handle_deleted_profile()
-RETURNS trigger
+CREATE OR REPLACE FUNCTION public.handle_user_delete_cleanup()
+RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = ''
 AS $$
 BEGIN
-  DELETE FROM auth.users WHERE id = OLD.id;
-  RETURN OLD;
+    UPDATE public.stays
+    SET created_by = NULL
+    WHERE created_by = OLD.id;
+    RETURN OLD;
 END;
 $$;
 
-DROP TRIGGER IF EXISTS on_profile_deleted ON public.profiles;
-CREATE TRIGGER on_profile_deleted
-  AFTER DELETE ON public.profiles
-  FOR EACH ROW
-  EXECUTE FUNCTION public.handle_deleted_profile();
+DROP TRIGGER IF EXISTS tr_on_user_delete_cleanup ON auth.users;
+CREATE TRIGGER tr_on_user_delete_cleanup
+    BEFORE DELETE ON auth.users
+    FOR EACH ROW
+    EXECUTE PROCEDURE public.handle_user_delete_cleanup();
 
 
--- SOURCE: 25_user_preferences.sql
+-- SOURCE: 04_geography.sql
 /*
 ==================================================
-Domain: User Preferences
-Purpose: Stores customizable user settings independently across various categories.
+Domain: Geography & Locations
+Purpose: Master reference data hierarchy for locations and geocoding cache.
+Contains: 
+- countries
+- states
+- cities
+- geocoding_cache
+- geography triggers & RLS policies
 ==================================================
 */
 
-CREATE TABLE public.user_preferences (
-  user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  privacy JSONB NOT NULL DEFAULT '{
-    "allow_host_messages": true,
-    "show_profile_photo": true,
-    "show_reviews": true,
-    "allow_search_indexing": false
-  }'::jsonb,
-  notifications JSONB NOT NULL DEFAULT '{
-    "email": true,
-    "push": false,
-    "sms": false,
-    "marketing": false
-  }'::jsonb,
-  security JSONB NOT NULL DEFAULT '{
-    "two_factor_auth": false,
-    "allow_new_device_login": true,
-    "remember_device": true
-  }'::jsonb,
-  hosting JSONB NOT NULL DEFAULT '{
-    "accept_booking_requests": true,
-    "instant_booking": false,
-    "auto_approve_reservations": false
-  }'::jsonb,
-  communication JSONB NOT NULL DEFAULT '{
-    "promotional_messages": false,
-    "support_contact": true,
-    "share_contact_after_booking": true
-  }'::jsonb,
-  data JSONB NOT NULL DEFAULT '{
-    "share_analytics": false,
-    "personalized_recommendations": true,
-    "cookie_preferences": "essential"
-  }'::jsonb,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+-- 1. Create Countries Table
+CREATE TABLE public.countries (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    external_code TEXT UNIQUE NOT NULL,
+    name TEXT UNIQUE NOT NULL,
+    iso2 TEXT UNIQUE NOT NULL,
+    iso3 TEXT UNIQUE NOT NULL,
+    currency_code TEXT,
+    phone_code TEXT,
+    timezone_default TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
 );
 
--- Enable RLS
-ALTER TABLE public.user_preferences ENABLE ROW LEVEL SECURITY;
-
--- Policies
-CREATE POLICY "Users can read own preferences" 
-ON public.user_preferences
-FOR SELECT 
-USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can update own preferences" 
-ON public.user_preferences
-FOR UPDATE 
-USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can insert own preferences"
-ON public.user_preferences
-FOR INSERT
-WITH CHECK (auth.uid() = user_id);
-
--- Triggers for updated_at
-CREATE TRIGGER user_preferences_updated_at 
-  BEFORE UPDATE ON public.user_preferences 
-  FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
-
--- Backfill existing users
-INSERT INTO public.user_preferences (user_id)
-SELECT id
-FROM auth.users
-WHERE id NOT IN (
-    SELECT user_id
-    FROM public.user_preferences
+-- 2. Create States Table
+CREATE TABLE public.states (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    country_id BIGINT REFERENCES public.countries(id) ON DELETE CASCADE NOT NULL,
+    external_code TEXT UNIQUE NOT NULL,
+    name TEXT NOT NULL,
+    code TEXT NOT NULL,
+    slug TEXT NOT NULL,
+    population BIGINT,
+    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    UNIQUE(country_id, slug)
 );
 
+-- 3. Create Cities Table
+CREATE TABLE public.cities (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    state_id BIGINT REFERENCES public.states(id) ON DELETE CASCADE NOT NULL,
+    external_code TEXT UNIQUE NOT NULL,
+    name TEXT NOT NULL,
+    search_aliases TEXT[] DEFAULT '{}',
+    slug TEXT NOT NULL,
+    latitude DOUBLE PRECISION CHECK (latitude >= -90 AND latitude <= 90),
+    longitude DOUBLE PRECISION CHECK (longitude >= -180 AND longitude <= 180),
+    timezone TEXT,
+    cover_image_storage_path TEXT,
+    description TEXT,
+    population BIGINT,
+    is_capital BOOLEAN DEFAULT false NOT NULL,
+    is_metro BOOLEAN DEFAULT false NOT NULL,
+    is_featured BOOLEAN DEFAULT false NOT NULL,
+    is_active BOOLEAN DEFAULT true NOT NULL,
+    sort_order INTEGER DEFAULT 0 NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    UNIQUE(state_id, slug)
+);
 
--- SOURCE: 04_accommodations.sql
+-- 4. Create Geocoding Cache Table
+CREATE TABLE public.geocoding_cache (
+    cache_key TEXT PRIMARY KEY,
+    latitude DOUBLE PRECISION NOT NULL,
+    longitude DOUBLE PRECISION NOT NULL,
+    formatted_address TEXT NOT NULL,
+    provider TEXT NOT NULL,
+    provider_place_id TEXT,
+    confidence NUMERIC,
+    geocoded_at TIMESTAMPTZ DEFAULT NOW(),
+    expires_at TIMESTAMPTZ DEFAULT NOW() + INTERVAL '5 years'
+);
+
+-- 5. Triggers for updated_at
+CREATE TRIGGER countries_updated_at 
+  BEFORE UPDATE ON public.countries FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
+
+CREATE TRIGGER states_updated_at 
+  BEFORE UPDATE ON public.states FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
+
+CREATE TRIGGER cities_updated_at 
+  BEFORE UPDATE ON public.cities FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
+
+-- 6. Indexes
+CREATE INDEX IF NOT EXISTS cities_state_idx ON public.cities(state_id);
+CREATE INDEX IF NOT EXISTS cities_active_idx ON public.cities(is_active);
+CREATE INDEX IF NOT EXISTS cities_featured_idx ON public.cities(is_featured);
+
+-- 7. RLS Policies
+ALTER TABLE public.countries ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.states ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.cities ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.geocoding_cache ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Public can view active countries" ON public.countries FOR SELECT USING (true);
+CREATE POLICY "Public can view active states" ON public.states FOR SELECT USING (true);
+CREATE POLICY "Public can view active cities" ON public.cities FOR SELECT USING (is_active = true OR public.is_admin());
+
+CREATE POLICY "Only admins can manage countries" ON public.countries FOR ALL USING (public.is_admin());
+CREATE POLICY "Only admins can manage states" ON public.states FOR ALL USING (public.is_admin());
+CREATE POLICY "Only admins can manage cities" ON public.cities FOR ALL USING (public.is_admin());
+
+-- Geocoding Cache Policies
+CREATE POLICY "Enable read access for authenticated users" ON public.geocoding_cache FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Enable insert access for authenticated users" ON public.geocoding_cache FOR INSERT TO authenticated WITH CHECK (true);
+CREATE POLICY "Enable update access for authenticated users" ON public.geocoding_cache FOR UPDATE TO authenticated USING (true) WITH CHECK (true);
+
+
+-- SOURCE: 05_accommodations.sql
 /*
 ==================================================
-Domain: Accommodations
-Purpose: Reference entities describing properties.
+Domain: Accommodations Reference
+Purpose: Master entities describing property types and available amenities.
 Contains: 
 - accommodation_types
 - amenities
+- triggers & RLS policies
 ==================================================
 */
 
@@ -410,21 +549,27 @@ CREATE TRIGGER amenities_updated_at
 CREATE POLICY "Public can view accommodation types" ON public.accommodation_types
   FOR SELECT USING (true);
 
+CREATE POLICY "Admins can manage accommodation types" ON public.accommodation_types
+  FOR ALL USING (public.is_admin());
+
 CREATE POLICY "Public can view amenities" ON public.amenities
   FOR SELECT USING (true);
 
+CREATE POLICY "Admins can manage amenities" ON public.amenities
+  FOR ALL USING (public.is_admin());
 
--- SOURCE: 05_listings.sql
+
+-- SOURCE: 06_listings.sql
 /*
 ==================================================
 Domain: Listings
-Purpose: Core marketplace domain for property listings.
+Purpose: Core marketplace domain for property listings and host workflows.
 Contains: 
 - listings
 - listing_amenities
 - listing_build_progress
-- listings triggers
-- listings RLS
+- is_listing_owner helper function
+- triggers, RLS, & performance indexes
 ==================================================
 */
 
@@ -436,6 +581,7 @@ CREATE TABLE public.listings (
     property_type TEXT DEFAULT 'Apartment' NOT NULL,
     title TEXT NOT NULL,
     description TEXT,
+    max_occupants INTEGER DEFAULT 1 NOT NULL,
     occupancy_type public.occupancy_type DEFAULT 'private'::public.occupancy_type NOT NULL,
     gender_preference public.gender_preference DEFAULT 'any'::public.gender_preference NOT NULL,
     furnishing public.furnishing DEFAULT 'unfurnished'::public.furnishing NOT NULL,
@@ -443,19 +589,42 @@ CREATE TABLE public.listings (
     -- Location Fields
     state TEXT,
     city TEXT,
+    city_id BIGINT REFERENCES public.cities(id) ON DELETE SET NULL,
     locality TEXT,
     postal_code TEXT,
-    latitude NUMERIC,
-    longitude NUMERIC,
+    latitude DOUBLE PRECISION CHECK (latitude >= -90 AND latitude <= 90),
+    longitude DOUBLE PRECISION CHECK (longitude >= -180 AND longitude <= 180),
     formatted_address TEXT,
     
     status public.listing_status DEFAULT 'draft'::public.listing_status NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-    updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+    updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    
+    CONSTRAINT published_listing_requires_coordinates CHECK (
+        status <> 'published'
+        OR (latitude IS NOT NULL AND longitude IS NOT NULL AND formatted_address IS NOT NULL)
+    )
 );
 
-CREATE INDEX idx_listings_public_id ON public.listings(public_id);
-CREATE INDEX idx_listings_host_id ON public.listings(host_id);
+CREATE INDEX IF NOT EXISTS idx_listings_public_id ON public.listings(public_id);
+CREATE INDEX IF NOT EXISTS idx_listings_host_id ON public.listings(host_id);
+CREATE INDEX IF NOT EXISTS idx_listings_lat_lng ON public.listings(latitude, longitude);
+CREATE INDEX IF NOT EXISTS listings_city_idx ON public.listings(city_id);
+
+CREATE OR REPLACE FUNCTION public.is_listing_owner(p_listing_id uuid)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 
+    FROM public.listings 
+    WHERE id = p_listing_id AND host_id = auth.uid()
+  );
+END;
+$$;
 
 CREATE TABLE public.listing_amenities (
     listing_id UUID REFERENCES public.listings(id) ON DELETE CASCADE NOT NULL,
@@ -465,13 +634,15 @@ CREATE TABLE public.listing_amenities (
     PRIMARY KEY (listing_id, amenity_id)
 );
 
+CREATE INDEX IF NOT EXISTS listing_amenities_amenity_idx ON public.listing_amenities(amenity_id);
+
 CREATE TABLE public.listing_build_progress (
     listing_id UUID PRIMARY KEY REFERENCES public.listings(id) ON DELETE CASCADE,
     step_completed TEXT,
     last_step TEXT NOT NULL DEFAULT 'accommodation',
     percent_complete INTEGER NOT NULL DEFAULT 0,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
 );
 
 -- Triggers
@@ -526,7 +697,7 @@ CREATE POLICY "Hosts can manage own listing amenities" ON public.listing_ameniti
     EXISTS (
         SELECT 1 FROM public.listings l 
         WHERE l.id = listing_amenities.listing_id 
-        AND l.host_id = auth.uid()
+        AND (l.host_id = auth.uid() OR public.is_admin())
     )
   );
 
@@ -536,7 +707,7 @@ CREATE POLICY "Hosts can view own listing progress" ON public.listing_build_prog
     EXISTS (
         SELECT 1 FROM public.listings l 
         WHERE l.id = listing_build_progress.listing_id 
-        AND l.host_id = auth.uid()
+        AND (l.host_id = auth.uid() OR public.is_admin())
     )
   );
 
@@ -545,7 +716,7 @@ CREATE POLICY "Hosts can insert own listing progress" ON public.listing_build_pr
     EXISTS (
         SELECT 1 FROM public.listings l 
         WHERE l.id = listing_build_progress.listing_id 
-        AND l.host_id = auth.uid()
+        AND (l.host_id = auth.uid() OR public.is_admin())
     )
   );
 
@@ -554,7 +725,7 @@ CREATE POLICY "Hosts can update own listing progress" ON public.listing_build_pr
     EXISTS (
         SELECT 1 FROM public.listings l 
         WHERE l.id = listing_build_progress.listing_id 
-        AND l.host_id = auth.uid()
+        AND (l.host_id = auth.uid() OR public.is_admin())
     )
   );
 
@@ -563,20 +734,19 @@ CREATE POLICY "Hosts can delete own listing progress" ON public.listing_build_pr
     EXISTS (
         SELECT 1 FROM public.listings l 
         WHERE l.id = listing_build_progress.listing_id 
-        AND l.host_id = auth.uid()
+        AND (l.host_id = auth.uid() OR public.is_admin())
     )
   );
 
 
--- SOURCE: 06_listing_images.sql
+-- SOURCE: 07_listing_images.sql
 /*
 ==================================================
 Domain: Listing Images
-Purpose: Dedicated domain for property images.
+Purpose: Dedicated domain for property images and gallery metadata.
 Contains: 
 - listing_images
-- triggers
-- RLS
+- triggers & RLS policies
 ==================================================
 */
 
@@ -595,11 +765,11 @@ CREATE TABLE public.listing_images (
 );
 
 -- Ensure only one cover image per listing
-CREATE UNIQUE INDEX idx_listing_images_cover 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_listing_images_cover 
   ON public.listing_images (listing_id) 
   WHERE is_cover = true;
 
-CREATE INDEX idx_listing_images_listing_id ON public.listing_images(listing_id);
+CREATE INDEX IF NOT EXISTS idx_listing_images_listing_id ON public.listing_images(listing_id);
 
 CREATE TRIGGER listing_images_updated_at 
   BEFORE UPDATE ON public.listing_images 
@@ -615,32 +785,31 @@ CREATE POLICY "Hosts can manage own listing images" ON public.listing_images
     EXISTS (
         SELECT 1 FROM public.listings l 
         WHERE l.id = listing_images.listing_id 
-        AND l.host_id = auth.uid()
+        AND (l.host_id = auth.uid() OR public.is_admin())
     )
   );
 
 
--- SOURCE: 07_pricing.sql
+-- SOURCE: 08_listing_pricing.sql
 /*
 ==================================================
-Domain: Pricing
-Purpose: Anything financial related to listings.
+Domain: Listing Pricing
+Purpose: Financial terms, pricing models, and duration constraints for listings.
 Contains: 
 - listing_prices
-- triggers
-- RLS
+- triggers & RLS policies
 ==================================================
 */
 
 CREATE TABLE public.listing_prices (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     listing_id UUID REFERENCES public.listings(id) ON DELETE CASCADE NOT NULL UNIQUE,
-    amount NUMERIC(12, 2) NOT NULL,
-    currency TEXT DEFAULT 'INR' NOT NULL,
+    amount NUMERIC(12, 2) NOT NULL CHECK (amount > 0),
+    currency TEXT DEFAULT 'INR' NOT NULL CHECK (currency = 'INR'),
     billing_period public.billing_period NOT NULL,
     security_deposit NUMERIC(12, 2) DEFAULT 0 NOT NULL,
     maintenance_fee NUMERIC(12, 2) DEFAULT 0 NOT NULL,
-    maintenance_fee_period public.billing_period,
+    maintenance_fee_period public.billing_period DEFAULT 'semester'::public.billing_period,
     minimum_duration INTEGER DEFAULT 1 NOT NULL,
     maximum_duration INTEGER,
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
@@ -661,21 +830,68 @@ CREATE POLICY "Hosts can manage own listing prices" ON public.listing_prices
     EXISTS (
         SELECT 1 FROM public.listings l 
         WHERE l.id = listing_prices.listing_id 
-        AND l.host_id = auth.uid()
+        AND (l.host_id = auth.uid() OR public.is_admin())
     )
   );
 
 
--- SOURCE: 09_bookings.sql
+-- SOURCE: 09_listing_availability.sql
+/*
+==================================================
+Domain: Listing Availability
+Purpose: Tracks property availability periods, occupancies, and host blocks.
+Contains: 
+- listing_availability
+- triggers, RLS, & range indexes
+==================================================
+*/
+
+CREATE TABLE public.listing_availability (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    listing_id UUID REFERENCES public.listings(id) ON DELETE CASCADE NOT NULL,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    available_units INTEGER DEFAULT 1 NOT NULL,
+    status public.availability_status DEFAULT 'available'::public.availability_status NOT NULL,
+    source public.availability_source DEFAULT 'manual_block'::public.availability_source NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    CONSTRAINT check_availability_dates CHECK (end_date >= start_date)
+);
+
+-- Composite index for date range availability searches
+CREATE INDEX IF NOT EXISTS idx_listing_availability_range ON public.listing_availability (listing_id, start_date, end_date);
+CREATE INDEX IF NOT EXISTS idx_listing_availability_status ON public.listing_availability (status);
+
+CREATE TRIGGER listing_availability_updated_at 
+  BEFORE UPDATE ON public.listing_availability 
+  FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
+
+ALTER TABLE public.listing_availability ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Public can view availability" ON public.listing_availability
+  FOR SELECT USING (true);
+
+CREATE POLICY "Hosts can manage availability" ON public.listing_availability
+  FOR ALL USING (
+    EXISTS (
+        SELECT 1 FROM public.listings l 
+        WHERE l.id = listing_availability.listing_id 
+        AND (l.host_id = auth.uid() OR public.is_admin())
+    )
+  );
+
+
+-- SOURCE: 10_bookings.sql
 /*
 ==================================================
 Domain: Bookings
-Purpose: Booking lifecycle and requests.
+Purpose: Booking request lifecycle, financial term snapshots, and domain events.
 Contains: 
 - bookings
 - booking_events
-- triggers
-- RLS
+- transition_booking atomic RPC
+- triggers, RLS, & composite indexes
 ==================================================
 */
 
@@ -684,7 +900,7 @@ CREATE TABLE public.bookings (
     listing_id UUID REFERENCES public.listings(id) ON DELETE CASCADE NOT NULL,
     guest_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
     requested_move_in DATE NOT NULL,
-    requested_duration INTEGER NOT NULL,
+    requested_duration INTEGER NOT NULL CHECK (requested_duration > 0),
     message TEXT,
     snapshot_monthly_rent NUMERIC(12, 2) NOT NULL,
     snapshot_security_deposit NUMERIC(12, 2) NOT NULL,
@@ -697,14 +913,23 @@ CREATE TABLE public.bookings (
     updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
 );
 
+CREATE INDEX IF NOT EXISTS idx_bookings_listing_id ON public.bookings(listing_id);
+CREATE INDEX IF NOT EXISTS idx_bookings_guest_id ON public.bookings(guest_id);
+CREATE INDEX IF NOT EXISTS idx_bookings_guest_status ON public.bookings(guest_id, status);
+CREATE INDEX IF NOT EXISTS idx_bookings_listing_status ON public.bookings(listing_id, status);
+
 CREATE TABLE public.booking_events (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    booking_id UUID REFERENCES public.bookings(id) ON DELETE CASCADE NOT NULL,
-    event_type TEXT NOT NULL,
-    actor_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
-    metadata JSONB DEFAULT '{}'::jsonb NOT NULL,
+    booking_id UUID NOT NULL REFERENCES public.bookings(id) ON DELETE CASCADE,
+    actor_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    action TEXT NOT NULL,
+    previous_status public.booking_status,
+    new_status public.booking_status,
+    metadata JSONB DEFAULT '{}'::jsonb,
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
 );
+
+CREATE INDEX IF NOT EXISTS idx_booking_events_booking_id ON public.booking_events(booking_id);
 
 CREATE TRIGGER bookings_updated_at 
   BEFORE UPDATE ON public.bookings 
@@ -713,7 +938,7 @@ CREATE TRIGGER bookings_updated_at
 ALTER TABLE public.bookings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.booking_events ENABLE ROW LEVEL SECURITY;
 
--- Bookings RLS
+-- Bookings RLS Policies
 CREATE POLICY "Guests can view own bookings" ON public.bookings
   FOR SELECT USING (guest_id = auth.uid() OR public.is_admin());
 
@@ -739,40 +964,93 @@ CREATE POLICY "Admins can update all bookings" ON public.bookings
 CREATE POLICY "Admins can delete bookings" ON public.bookings
   FOR DELETE USING (public.is_admin());
 
--- Booking Events RLS
-CREATE POLICY "Guests can view own booking events" ON public.booking_events
+-- Booking Events RLS Policies
+CREATE POLICY "Users can view events for their bookings" ON public.booking_events
   FOR SELECT USING (
     EXISTS (
-      SELECT 1 FROM public.bookings b 
-      WHERE b.id = booking_events.booking_id 
-      AND b.guest_id = auth.uid()
-    ) OR public.is_admin()
+      SELECT 1 FROM public.bookings b
+      WHERE b.id = booking_events.booking_id
+      AND (b.guest_id = auth.uid() OR public.is_listing_owner(b.listing_id) OR public.is_admin())
+    )
   );
 
-CREATE POLICY "Hosts can view booking events for their listings" ON public.booking_events
-  FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM public.bookings b 
-      WHERE b.id = booking_events.booking_id 
-      AND public.is_listing_owner(b.listing_id)
-    ) OR public.is_admin()
-  );
-
-CREATE POLICY "Actors can insert booking events" ON public.booking_events
+CREATE POLICY "Users can insert events for their bookings" ON public.booking_events
   FOR INSERT WITH CHECK (
-    auth.uid() IS NOT NULL AND actor_id = auth.uid()
+    actor_id = auth.uid() AND
+    EXISTS (
+      SELECT 1 FROM public.bookings b
+      WHERE b.id = booking_events.booking_id
+      AND (b.guest_id = auth.uid() OR public.is_listing_owner(b.listing_id) OR public.is_admin())
+    )
   );
 
+-- Atomic booking transition RPC
+CREATE OR REPLACE FUNCTION public.transition_booking(
+  p_booking_id uuid,
+  p_current_status public.booking_status,
+  p_new_status public.booking_status,
+  p_actor_id uuid,
+  p_metadata jsonb DEFAULT '{}'::jsonb
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_booking public.bookings%ROWTYPE;
+BEGIN
+  -- Lock the row to prevent race conditions
+  SELECT * INTO v_booking
+  FROM public.bookings
+  WHERE id = p_booking_id
+  FOR UPDATE;
 
--- SOURCE: 10_stays.sql
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Booking not found';
+  END IF;
+
+  IF v_booking.status != p_current_status THEN
+    RAISE EXCEPTION 'Booking state changed by another process (expected %, got %)', p_current_status, v_booking.status;
+  END IF;
+
+  -- Update booking status
+  UPDATE public.bookings
+  SET status = p_new_status
+  WHERE id = p_booking_id;
+
+  -- Insert audit domain event
+  INSERT INTO public.booking_events (
+    booking_id,
+    action,
+    actor_id,
+    previous_status,
+    new_status,
+    metadata
+  ) VALUES (
+    p_booking_id,
+    p_new_status::text,
+    p_actor_id,
+    p_current_status,
+    p_new_status,
+    p_metadata
+  );
+
+  RETURN jsonb_build_object('success', true);
+END;
+$$;
+
+
+-- SOURCE: 11_stays.sql
 /*
 ==================================================
 Domain: Stays
-Purpose: Track actual tenancy or active bookings.
+Purpose: Tenancy management, active residences, and check-in/check-out lifecycle.
 Contains: 
 - stays
-- triggers
-- RLS
+- stay_events
+- transition_stay atomic RPC
+- triggers, RLS, & composite indexes
 ==================================================
 */
 
@@ -791,14 +1069,33 @@ CREATE TABLE public.stays (
     security_deposit_paid NUMERIC(12, 2) DEFAULT 0 NOT NULL,
     status public.stay_status DEFAULT 'upcoming'::public.stay_status NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-    updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+    updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    CONSTRAINT check_stay_dates CHECK (expected_move_out_date > expected_move_in_date)
 );
+
+CREATE INDEX IF NOT EXISTS idx_stays_created_from_booking_id ON public.stays(created_from_booking_id);
+CREATE INDEX IF NOT EXISTS idx_stays_guest_status ON public.stays(guest_id, status);
+CREATE INDEX IF NOT EXISTS idx_stays_listing_status ON public.stays(listing_id, status);
+
+CREATE TABLE public.stay_events (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    stay_id UUID NOT NULL REFERENCES public.stays(id) ON DELETE CASCADE,
+    actor_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    action TEXT NOT NULL,
+    previous_status public.stay_status,
+    new_status public.stay_status,
+    metadata JSONB DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_stay_events_stay_id ON public.stay_events(stay_id);
 
 CREATE TRIGGER stays_updated_at 
   BEFORE UPDATE ON public.stays 
   FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
 
 ALTER TABLE public.stays ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.stay_events ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Guests can view own stays" ON public.stays
   FOR SELECT USING (guest_id = auth.uid() OR public.is_admin());
@@ -809,31 +1106,112 @@ CREATE POLICY "Hosts can view stays for their listings" ON public.stays
 CREATE POLICY "Hosts can manage stays" ON public.stays
   FOR ALL USING (public.is_listing_owner(listing_id) OR public.is_admin());
 
+-- Stay Events RLS Policies
+CREATE POLICY "Users can view events for their stays" ON public.stay_events
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM public.stays s
+      WHERE s.id = stay_events.stay_id
+      AND (s.guest_id = auth.uid() OR public.is_listing_owner(s.listing_id) OR public.is_admin())
+    )
+  );
 
--- SOURCE: 11_reviews.sql
+CREATE POLICY "Users can insert events for their stays" ON public.stay_events
+  FOR INSERT WITH CHECK (
+    actor_id = auth.uid() AND
+    EXISTS (
+      SELECT 1 FROM public.stays s
+      WHERE s.id = stay_events.stay_id
+      AND (s.guest_id = auth.uid() OR public.is_listing_owner(s.listing_id) OR public.is_admin())
+    )
+  );
+
+-- Atomic stay transition RPC
+CREATE OR REPLACE FUNCTION public.transition_stay(
+  p_stay_id uuid,
+  p_current_status public.stay_status,
+  p_new_status public.stay_status,
+  p_actor_id uuid,
+  p_updates jsonb DEFAULT '{}'::jsonb,
+  p_metadata jsonb DEFAULT '{}'::jsonb
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_stay public.stays%ROWTYPE;
+BEGIN
+  -- Lock row against concurrent transitions
+  SELECT * INTO v_stay
+  FROM public.stays
+  WHERE id = p_stay_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Stay not found';
+  END IF;
+
+  IF v_stay.status != p_current_status THEN
+    RAISE EXCEPTION 'Stay state changed by another process (expected %, got %)', p_current_status, v_stay.status;
+  END IF;
+
+  -- Apply status transition and date updates
+  UPDATE public.stays
+  SET 
+    status = p_new_status,
+    actual_move_in_date = COALESCE((p_updates->>'actual_move_in_date')::date, actual_move_in_date),
+    actual_move_out_date = COALESCE((p_updates->>'actual_move_out_date')::date, actual_move_out_date)
+  WHERE id = p_stay_id;
+
+  -- Insert domain event log
+  INSERT INTO public.stay_events (
+    stay_id,
+    action,
+    actor_id,
+    previous_status,
+    new_status,
+    metadata
+  ) VALUES (
+    p_stay_id,
+    p_new_status::text,
+    p_actor_id,
+    p_current_status,
+    p_new_status,
+    p_metadata
+  );
+
+  RETURN jsonb_build_object('success', true);
+END;
+$$;
+
+
+-- SOURCE: 12_reviews.sql
 /*
 ==================================================
 Domain: Reviews
-Purpose: Guest and host feedback.
+Purpose: Guest ratings, property evaluations, and review verifications.
 Contains: 
 - reviews
-- triggers
-- RLS
+- triggers, RLS, & listing index
 ==================================================
 */
 
 CREATE TABLE public.reviews (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    stay_id UUID REFERENCES public.stays(id) ON DELETE RESTRICT NOT NULL UNIQUE,
     listing_id UUID REFERENCES public.listings(id) ON DELETE CASCADE NOT NULL,
-    stay_id UUID REFERENCES public.stays(id) ON DELETE CASCADE NOT NULL UNIQUE,
     guest_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
     rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
-    title TEXT NOT NULL,
-    body TEXT NOT NULL,
-    host_response TEXT,
+    comment TEXT CHECK (comment IS NULL OR char_length(comment) >= 10),
+    host_reply TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
 );
+
+CREATE INDEX IF NOT EXISTS idx_reviews_listing_id ON public.reviews(listing_id);
+CREATE INDEX IF NOT EXISTS idx_reviews_guest_id ON public.reviews(guest_id);
 
 CREATE TRIGGER reviews_updated_at 
   BEFORE UPDATE ON public.reviews 
@@ -844,84 +1222,78 @@ ALTER TABLE public.reviews ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Public can view reviews" ON public.reviews
   FOR SELECT USING (true);
 
-CREATE POLICY "Guests can create reviews for their stays" ON public.reviews
+CREATE POLICY "Guests can create reviews for their completed stays" ON public.reviews
   FOR INSERT WITH CHECK (
     auth.uid() IS NOT NULL AND 
     guest_id = auth.uid() AND
     EXISTS (
-        SELECT 1 FROM public.stays s 
+        SELECT 1 FROM public.stays s
         WHERE s.id = reviews.stay_id 
         AND s.guest_id = auth.uid()
-        AND s.status IN ('completed'::public.stay_status, 'checked_out'::public.stay_status)
+        AND s.status IN ('checked_out'::public.stay_status, 'completed'::public.stay_status)
     )
   );
 
-CREATE POLICY "Guests can update own reviews" ON public.reviews
-  FOR UPDATE USING (guest_id = auth.uid() OR public.is_admin());
+CREATE POLICY "Hosts can reply to reviews on their listings" ON public.reviews
+  FOR UPDATE USING (public.is_listing_owner(listing_id) OR public.is_admin())
+  WITH CHECK (public.is_listing_owner(listing_id) OR public.is_admin());
 
-CREATE POLICY "Guests can delete own reviews" ON public.reviews
-  FOR DELETE USING (guest_id = auth.uid() OR public.is_admin());
+CREATE POLICY "Guests can update their own reviews" ON public.reviews
+  FOR UPDATE USING (guest_id = auth.uid() OR public.is_admin())
+  WITH CHECK (guest_id = auth.uid() OR public.is_admin());
 
-CREATE POLICY "Hosts can respond to reviews" ON public.reviews
-  FOR UPDATE USING (
-    EXISTS (
-        SELECT 1 FROM public.listings l 
-        WHERE l.id = reviews.listing_id 
-        AND l.host_id = auth.uid()
-    )
-  );
-
-CREATE POLICY "Admins can manage all reviews" ON public.reviews
+CREATE POLICY "Admins can manage reviews" ON public.reviews
   FOR ALL USING (public.is_admin());
 
 
--- SOURCE: 12_notifications.sql
+-- SOURCE: 13_notifications.sql
 /*
 ==================================================
 Domain: Notifications
-Purpose: Generic in-app notification system.
+Purpose: System alerts, booking notification triggers, and communication tracking.
 Contains: 
 - notifications
-- triggers
-- RLS
+- RLS policies & performance indexes
 ==================================================
 */
 
 CREATE TABLE public.notifications (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-    type TEXT NOT NULL,
     title TEXT NOT NULL,
     message TEXT NOT NULL,
-    link TEXT,
+    type TEXT NOT NULL,
+    data JSONB DEFAULT '{}'::jsonb,
     read_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
 );
 
--- Note: No updated_at trigger because notifications are generally immutable (except for read_at)
+-- Partial index for fast queries of unread notifications
+CREATE INDEX IF NOT EXISTS idx_notifications_unread ON public.notifications (user_id) WHERE read_at IS NULL;
+-- Composite index for fetching all notifications sorted by timestamp
+CREATE INDEX IF NOT EXISTS idx_notifications_user_created ON public.notifications (user_id, created_at DESC);
 
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Users can view own notifications" ON public.notifications
   FOR SELECT USING (user_id = auth.uid() OR public.is_admin());
 
-CREATE POLICY "Users can update own notifications" ON public.notifications
-  FOR UPDATE USING (user_id = auth.uid() OR public.is_admin())
-  WITH CHECK (user_id = auth.uid() OR public.is_admin());
+CREATE POLICY "Users can mark own notifications as read" ON public.notifications
+  FOR UPDATE USING (user_id = auth.uid() OR public.is_admin());
 
 CREATE POLICY "System can insert notifications" ON public.notifications
-  FOR INSERT WITH CHECK (true); -- Usually inserted via Server Actions, but allows triggers if necessary
+  FOR INSERT WITH CHECK (true);
 
 
--- SOURCE: 13_messaging.sql
+-- SOURCE: 14_messaging.sql
 /*
 ==================================================
 Domain: Messaging
-Purpose: V1 host-guest communication.
+Purpose: Real-time user communications linked to bookings and stays.
 Contains: 
 - conversations
 - messages
-- RLS
+- triggers, RLS, & foreign key indexes
 ==================================================
 */
 
@@ -929,16 +1301,20 @@ CREATE TABLE public.conversations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     booking_id UUID REFERENCES public.bookings(id) ON DELETE CASCADE,
     stay_id UUID REFERENCES public.stays(id) ON DELETE CASCADE,
-    guest_last_read_at TIMESTAMPTZ,
-    host_last_read_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-    closed_at TIMESTAMPTZ,
-    
-    CONSTRAINT one_reference_only CHECK (
+    updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    CONSTRAINT chk_conversation_link CHECK (
         (booking_id IS NOT NULL AND stay_id IS NULL) OR 
         (booking_id IS NULL AND stay_id IS NOT NULL)
     )
 );
+
+CREATE INDEX IF NOT EXISTS idx_conversations_booking_id ON public.conversations (booking_id);
+CREATE INDEX IF NOT EXISTS idx_conversations_stay_id ON public.conversations (stay_id);
+
+CREATE TRIGGER conversations_updated_at 
+  BEFORE UPDATE ON public.conversations 
+  FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
 
 CREATE TABLE public.messages (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -948,107 +1324,164 @@ CREATE TABLE public.messages (
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
 );
 
+CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON public.messages (conversation_id);
+CREATE INDEX IF NOT EXISTS idx_messages_sender_id ON public.messages (sender_id);
+
 ALTER TABLE public.conversations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
 
--- Conversations RLS
--- A user can view a conversation if they are the guest or host associated with the booking or stay
-CREATE POLICY "Users can view their conversations" ON public.conversations
-  FOR SELECT USING (
-    (booking_id IS NOT NULL AND EXISTS (
-        SELECT 1 FROM public.bookings b
-        JOIN public.listings l ON l.id = b.listing_id
-        WHERE b.id = conversations.booking_id
-        AND (b.guest_id = auth.uid() OR l.host_id = auth.uid())
-    ))
-    OR
-    (stay_id IS NOT NULL AND EXISTS (
-        SELECT 1 FROM public.stays s
-        JOIN public.listings l ON l.id = s.listing_id
-        WHERE s.id = conversations.stay_id
-        AND (s.guest_id = auth.uid() OR l.host_id = auth.uid())
-    ))
-    OR public.is_admin()
-  );
-
-CREATE POLICY "System can create conversations" ON public.conversations
-  FOR INSERT WITH CHECK (true); -- Typically created via Server Action
-
-CREATE POLICY "Users can update their own read state" ON public.conversations
-  FOR UPDATE USING (
-    (booking_id IS NOT NULL AND EXISTS (
-        SELECT 1 FROM public.bookings b
-        JOIN public.listings l ON l.id = b.listing_id
-        WHERE b.id = conversations.booking_id
-        AND (b.guest_id = auth.uid() OR l.host_id = auth.uid())
-    ))
-    OR
-    (stay_id IS NOT NULL AND EXISTS (
-        SELECT 1 FROM public.stays s
-        JOIN public.listings l ON l.id = s.listing_id
-        WHERE s.id = conversations.stay_id
-        AND (s.guest_id = auth.uid() OR l.host_id = auth.uid())
-    ))
-  );
-
--- Messages RLS
-CREATE POLICY "Users can view messages in their conversations" ON public.messages
+-- Conversations Policies
+CREATE POLICY "Users can access their booking conversations" ON public.conversations
   FOR SELECT USING (
     EXISTS (
-        SELECT 1 FROM public.conversations c
-        WHERE c.id = messages.conversation_id
-        AND (
-            (c.booking_id IS NOT NULL AND EXISTS (
-                SELECT 1 FROM public.bookings b
-                JOIN public.listings l ON l.id = b.listing_id
-                WHERE b.id = c.booking_id
-                AND (b.guest_id = auth.uid() OR l.host_id = auth.uid())
-            ))
-            OR
-            (c.stay_id IS NOT NULL AND EXISTS (
-                SELECT 1 FROM public.stays s
-                JOIN public.listings l ON l.id = s.listing_id
-                WHERE s.id = c.stay_id
-                AND (s.guest_id = auth.uid() OR l.host_id = auth.uid())
-            ))
-        )
+      SELECT 1 FROM public.bookings b
+      WHERE b.id = conversations.booking_id
+      AND (b.guest_id = auth.uid() OR public.is_listing_owner(b.listing_id) OR public.is_admin())
     )
-    OR public.is_admin()
   );
 
-CREATE POLICY "Users can send messages to their conversations" ON public.messages
+CREATE POLICY "Users can access their stay conversations" ON public.conversations
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM public.stays s
+      WHERE s.id = conversations.stay_id
+      AND (s.guest_id = auth.uid() OR public.is_listing_owner(s.listing_id) OR public.is_admin())
+    )
+  );
+
+CREATE POLICY "Users can insert conversations" ON public.conversations
   FOR INSERT WITH CHECK (
-    auth.uid() IS NOT NULL AND sender_id = auth.uid() AND
     EXISTS (
-        SELECT 1 FROM public.conversations c
-        WHERE c.id = messages.conversation_id
-        AND (
-            (c.booking_id IS NOT NULL AND EXISTS (
-                SELECT 1 FROM public.bookings b
-                JOIN public.listings l ON l.id = b.listing_id
-                WHERE b.id = c.booking_id
-                AND (b.guest_id = auth.uid() OR l.host_id = auth.uid())
-            ))
-            OR
-            (c.stay_id IS NOT NULL AND EXISTS (
-                SELECT 1 FROM public.stays s
-                JOIN public.listings l ON l.id = s.listing_id
-                WHERE s.id = c.stay_id
-                AND (s.guest_id = auth.uid() OR l.host_id = auth.uid())
-            ))
-        )
+      SELECT 1 FROM public.bookings b
+      WHERE b.id = conversations.booking_id
+      AND (b.guest_id = auth.uid() OR public.is_listing_owner(b.listing_id) OR public.is_admin())
+    ) OR EXISTS (
+      SELECT 1 FROM public.stays s
+      WHERE s.id = conversations.stay_id
+      AND (s.guest_id = auth.uid() OR public.is_listing_owner(s.listing_id) OR public.is_admin())
+    )
+  );
+
+-- Messages Policies
+CREATE POLICY "Users can read messages in their conversations" ON public.messages
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM public.conversations c
+      LEFT JOIN public.bookings b ON b.id = c.booking_id
+      LEFT JOIN public.stays s ON s.id = c.stay_id
+      WHERE c.id = messages.conversation_id
+      AND (
+        b.guest_id = auth.uid() OR public.is_listing_owner(b.listing_id) OR
+        s.guest_id = auth.uid() OR public.is_listing_owner(s.listing_id) OR
+        public.is_admin()
+      )
+    )
+  );
+
+CREATE POLICY "Users can post messages to their conversations" ON public.messages
+  FOR INSERT WITH CHECK (
+    sender_id = auth.uid() AND
+    EXISTS (
+      SELECT 1 FROM public.conversations c
+      LEFT JOIN public.bookings b ON b.id = c.booking_id
+      LEFT JOIN public.stays s ON s.id = c.stay_id
+      WHERE c.id = messages.conversation_id
+      AND (
+        b.guest_id = auth.uid() OR public.is_listing_owner(b.listing_id) OR
+        s.guest_id = auth.uid() OR public.is_listing_owner(s.listing_id) OR
+        public.is_admin()
+      )
     )
   );
 
 
--- SOURCE: 14_storage.sql
+-- SOURCE: 15_calendar_sync.sql
 /*
 ==================================================
-Domain: Storage
-Purpose: Configures Supabase storage buckets and RLS.
+Domain: Calendar Sync & Automations
+Purpose: Manage iCal feeds, external synchronization blocks, and pg_cron scheduled tasks.
 Contains: 
-- Storage bucket definitions
-- Storage policies
+- ical_feeds
+- external_calendar_events
+- triggers & RLS policies
+- pg_cron sync scheduling
+==================================================
+*/
+
+CREATE TABLE public.ical_feeds (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    listing_id UUID REFERENCES public.listings(id) ON DELETE CASCADE NOT NULL,
+    feed_url TEXT NOT NULL,
+    provider TEXT NOT NULL,
+    enabled BOOLEAN DEFAULT true NOT NULL,
+    sync_direction public.sync_direction DEFAULT 'import'::public.sync_direction NOT NULL,
+    last_synced_at TIMESTAMPTZ,
+    last_success_at TIMESTAMPTZ,
+    last_error TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS ical_feeds_listing_idx ON public.ical_feeds(listing_id);
+
+CREATE TRIGGER ical_feeds_updated_at 
+  BEFORE UPDATE ON public.ical_feeds 
+  FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
+
+ALTER TABLE public.ical_feeds ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Hosts can manage their ical feeds" ON public.ical_feeds
+  FOR ALL USING (public.is_listing_owner(listing_id) OR public.is_admin());
+
+CREATE TABLE public.external_calendar_events (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    feed_id UUID REFERENCES public.ical_feeds(id) ON DELETE CASCADE NOT NULL,
+    external_uid TEXT NOT NULL,
+    listing_id UUID REFERENCES public.listings(id) ON DELETE CASCADE NOT NULL,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    summary TEXT,
+    last_seen_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    UNIQUE(feed_id, external_uid)
+);
+
+CREATE INDEX IF NOT EXISTS external_events_listing_date_idx ON public.external_calendar_events(listing_id, start_date, end_date);
+
+CREATE TRIGGER external_calendar_events_updated_at 
+  BEFORE UPDATE ON public.external_calendar_events 
+  FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
+
+ALTER TABLE public.external_calendar_events ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Hosts can view their external events" ON public.external_calendar_events
+  FOR SELECT USING (public.is_listing_owner(listing_id) OR public.is_admin());
+
+CREATE POLICY "Hosts can manage their external events" ON public.external_calendar_events
+  FOR ALL USING (public.is_listing_owner(listing_id) OR public.is_admin());
+
+-- Schedule pg_cron sync job (Replace URLs and keys with actual environment values in deployment)
+SELECT cron.schedule(
+    'sync-ical-hourly',
+    '0 * * * *',
+    $$
+    SELECT net.http_post(
+        url:='YOUR_SUPABASE_PROJECT_URL/functions/v1/sync-ical',
+        headers:='{"Content-Type": "application/json", "Authorization": "Bearer YOUR_ANON_KEY"}'::jsonb
+    );
+    $$
+);
+
+
+-- SOURCE: 16_storage_buckets.sql
+/*
+==================================================
+Domain: Storage Buckets
+Purpose: Configures Supabase object storage buckets and storage access RLS policies.
+Contains: 
+- Storage bucket definitions (listings, avatars)
+- Storage policies for object management
 ==================================================
 */
 
@@ -1057,13 +1490,15 @@ VALUES
   ('listings', 'listings', true, 2097152),
   ('avatars', 'avatars', true, 3145728)
 ON CONFLICT (id) DO UPDATE SET 
-  file_size_limit = EXCLUDED.file_size_limit;
+  file_size_limit = EXCLUDED.file_size_limit,
+  public = EXCLUDED.public;
 
--- Drop existing policies if any to ensure clean state
 DROP POLICY IF EXISTS "Public Access Listings" ON storage.objects;
 DROP POLICY IF EXISTS "Public Access Avatars" ON storage.objects;
 DROP POLICY IF EXISTS "Auth Upload Listings" ON storage.objects;
 DROP POLICY IF EXISTS "Auth Upload Avatars" ON storage.objects;
+DROP POLICY IF EXISTS "Users update own avatars" ON storage.objects;
+DROP POLICY IF EXISTS "Hosts update own listing photos" ON storage.objects;
 
 -- Allow public to read objects
 CREATE POLICY "Public Access Listings" ON storage.objects FOR SELECT 
@@ -1079,55 +1514,19 @@ WITH CHECK (bucket_id = 'listings' AND auth.role() = 'authenticated');
 CREATE POLICY "Auth Upload Avatars" ON storage.objects FOR INSERT 
 WITH CHECK (bucket_id = 'avatars' AND auth.role() = 'authenticated');
 
+-- Allow authenticated users to update/delete their uploaded objects
+CREATE POLICY "Users modify own avatars" ON storage.objects FOR ALL
+USING (bucket_id = 'avatars' AND auth.uid() = owner);
 
--- SOURCE: 08_availability.sql
-/*
-==================================================
-Domain: Availability
-Purpose: Tracks listing availability dates and host blocks.
-Contains: 
-- listing_availability
-- RLS
-==================================================
-*/
-
-CREATE TABLE public.listing_availability (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    listing_id UUID REFERENCES public.listings(id) ON DELETE CASCADE NOT NULL,
-    start_date DATE NOT NULL,
-    end_date DATE NOT NULL,
-    available_units INTEGER DEFAULT 1 NOT NULL,
-    status public.availability_status DEFAULT 'available'::public.availability_status NOT NULL,
-    source public.availability_source DEFAULT 'manual_block'::public.availability_source NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-    updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
-);
-
-CREATE TRIGGER listing_availability_updated_at 
-  BEFORE UPDATE ON public.listing_availability 
-  FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
-
-ALTER TABLE public.listing_availability ENABLE ROW LEVEL SECURITY;
-
--- Availability RLS
-CREATE POLICY "Public can view availability" ON public.listing_availability
-  FOR SELECT USING (true);
-
-CREATE POLICY "Hosts can manage availability" ON public.listing_availability
-  FOR ALL USING (
-    EXISTS (
-        SELECT 1 FROM public.listings l 
-        WHERE l.id = listing_availability.listing_id 
-        AND l.host_id = auth.uid()
-    )
-  );
+CREATE POLICY "Users modify own listing photos" ON storage.objects FOR ALL
+USING (bucket_id = 'listings' AND auth.uid() = owner);
 
 
--- SOURCE: 08_search.sql
+-- SOURCE: 17_search_functions.sql
 /*
 ==================================================
 Domain: Search & Discovery
-Purpose: Discovery, indexing, and view models.
+Purpose: Discovery RPCs, indexing queries, and detailed listing view models.
 Contains: 
 - get_listing_detail RPC
 - search_listings RPC
@@ -1135,7 +1534,11 @@ Contains:
 */
 
 CREATE OR REPLACE FUNCTION public.get_listing_detail(p_public_id TEXT)
-RETURNS JSON AS $$
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
 DECLARE
     result JSON;
 BEGIN
@@ -1172,7 +1575,7 @@ BEGIN
                     SELECT 
                         p.id,
                         p.full_name,
-                        p.avatar_path as avatar_url,
+                        p.avatar_storage_path as avatar_url,
                         p.created_at
                     FROM public.profiles p
                     WHERE p.id = l.host_id
@@ -1241,7 +1644,7 @@ BEGIN
 
     RETURN result;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
 
 CREATE OR REPLACE FUNCTION public.search_listings(
@@ -1258,7 +1661,13 @@ CREATE OR REPLACE FUNCTION public.search_listings(
   p_available_from DATE DEFAULT NULL,
   p_sort TEXT DEFAULT 'recommended',
   p_page INTEGER DEFAULT 1,
-  p_page_size INTEGER DEFAULT 12
+  p_page_size INTEGER DEFAULT 12,
+  p_min_lat DOUBLE PRECISION DEFAULT NULL,
+  p_max_lat DOUBLE PRECISION DEFAULT NULL,
+  p_min_lng DOUBLE PRECISION DEFAULT NULL,
+  p_max_lng DOUBLE PRECISION DEFAULT NULL,
+  p_center_lat DOUBLE PRECISION DEFAULT NULL,
+  p_center_lng DOUBLE PRECISION DEFAULT NULL
 )
 RETURNS TABLE (
   total_count BIGINT,
@@ -1272,14 +1681,17 @@ RETURNS TABLE (
   locality TEXT,
   city TEXT,
   formatted_address TEXT,
-  latitude NUMERIC,
-  longitude NUMERIC,
+  latitude DOUBLE PRECISION,
+  longitude DOUBLE PRECISION,
   price_amount NUMERIC,
   price_currency TEXT,
   price_billing_period public.billing_period,
   price_minimum_duration INTEGER,
   image_url TEXT
 )
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
 AS $$
 DECLARE
   v_offset INTEGER;
@@ -1324,11 +1736,17 @@ BEGIN
     -- Only published listings
     l.status = 'published'
 
-    -- Location filters (ILIKE for V1; will move to ID-based in V2)
+    -- Location text filters
     AND (p_city IS NULL OR l.city ILIKE p_city)
     AND (p_locality IS NULL OR l.locality ILIKE p_locality)
 
-    -- Accommodation type filter (UUID-based)
+    -- Map bounding box filters
+    AND (p_min_lat IS NULL OR l.latitude >= p_min_lat)
+    AND (p_max_lat IS NULL OR l.latitude <= p_max_lat)
+    AND (p_min_lng IS NULL OR l.longitude >= p_min_lng)
+    AND (p_max_lng IS NULL OR l.longitude <= p_max_lng)
+
+    -- Accommodation type filter
     AND (p_accommodation_type_id IS NULL OR l.accommodation_type_id = p_accommodation_type_id)
 
     -- Property attribute filters
@@ -1354,7 +1772,7 @@ BEGIN
       )
     )
 
-    -- Amenities filter: listing must have ALL requested amenities
+    -- Amenities filter
     AND (
       p_amenities IS NULL
       OR array_length(p_amenities, 1) IS NULL
@@ -1369,52 +1787,35 @@ BEGIN
     )
 
   ORDER BY
+    -- Distance sorting using Haversine formula
+    CASE WHEN p_sort = 'distance' AND p_center_lat IS NOT NULL AND p_center_lng IS NOT NULL THEN
+      6371 * acos(
+        cos(radians(p_center_lat)) * cos(radians(l.latitude)) *
+        cos(radians(l.longitude) - radians(p_center_lng)) +
+        sin(radians(p_center_lat)) * sin(radians(l.latitude))
+      )
+    END ASC NULLS LAST,
     CASE WHEN p_sort = 'price_asc' THEN lp.amount END ASC NULLS LAST,
     CASE WHEN p_sort = 'price_desc' THEN lp.amount END DESC NULLS LAST,
     CASE WHEN p_sort = 'newest' THEN l.created_at END DESC,
-    CASE WHEN p_sort = 'recommended' OR p_sort IS NULL THEN l.created_at END DESC
+    CASE WHEN p_sort = 'recommended' OR (p_sort NOT IN ('price_asc', 'price_desc', 'newest', 'distance')) THEN l.created_at END DESC
 
   LIMIT p_page_size
   OFFSET v_offset;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
 
--- SOURCE: 18_indexes.sql
+-- SOURCE: 18_seed_reference_data.sql
 /*
 ==================================================
-Domain: Indexes
-Purpose: Database performance optimizations using composite and partial indexes.
+Domain: Seed Reference Data
+Purpose: Initialize master reference data (accommodation types, amenities, geography).
+NOTE: No demo or fake user/listing data is seeded here.
 ==================================================
 */
 
--- Bookings
-CREATE INDEX IF NOT EXISTS idx_bookings_guest_status ON public.bookings (guest_id, status);
-CREATE INDEX IF NOT EXISTS idx_bookings_listing_status ON public.bookings (listing_id, status);
-
--- Stays
-CREATE INDEX IF NOT EXISTS idx_stays_guest_status ON public.stays (guest_id, status);
-CREATE INDEX IF NOT EXISTS idx_stays_listing_status ON public.stays (listing_id, status);
-
--- Messaging
-CREATE INDEX IF NOT EXISTS idx_conversations_booking_id ON public.conversations (booking_id);
-CREATE INDEX IF NOT EXISTS idx_conversations_stay_id ON public.conversations (stay_id);
-CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON public.messages (conversation_id);
-
--- Reviews
-CREATE INDEX IF NOT EXISTS idx_reviews_listing_id ON public.reviews (listing_id);
-
--- Notifications (Partial Index for active/unread notifications)
-CREATE INDEX IF NOT EXISTS idx_notifications_unread ON public.notifications (user_id) WHERE read_at IS NULL;
--- General index for fetching all notifications sorted by time
-CREATE INDEX IF NOT EXISTS idx_notifications_user_created ON public.notifications (user_id, created_at DESC);
-
--- Availability (Composite for range queries)
-CREATE INDEX IF NOT EXISTS idx_listing_availability_range ON public.listing_availability (listing_id, available_from);
-
-
--- SOURCE: 16_seed_reference_data.sql
--- Insert Accommodation Types
+-- 1. Insert Accommodation Types
 INSERT INTO public.accommodation_types (id, name, description) VALUES
   ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'PG', 'Paying Guest accommodation'),
   ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12', 'Hostel', 'Shared hostel accommodation'),
@@ -1424,325 +1825,115 @@ INSERT INTO public.accommodation_types (id, name, description) VALUES
   ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a16', 'Private Room', 'Private room within a shared property'),
   ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a17', 'Shared Room', 'Shared room with other occupants'),
   ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a18', 'Service Apartment', 'Furnished apartment with hotel-like services'),
-  ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a19', 'Co-living', 'Modern managed shared living spaces');
+  ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a19', 'Co-living', 'Modern managed shared living spaces')
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description;
 
--- Insert Amenities (Categorized conceptually, stored flat)
+-- 2. Insert Amenities
 -- Essentials
 INSERT INTO public.amenities (id, name, icon) VALUES
   ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b11', 'Wi-Fi', 'wifi'),
   ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b12', 'Electricity', 'zap'),
-  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b13', 'Water', 'droplets');
+  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b13', 'Water', 'droplets')
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, icon = EXCLUDED.icon;
+
 -- Comfort
 INSERT INTO public.amenities (id, name, icon) VALUES
   ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b14', 'AC', 'snowflake'),
   ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b15', 'Geyser', 'thermometer'),
-  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b16', 'Refrigerator', 'refrigerator');
+  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b16', 'Refrigerator', 'refrigerator')
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, icon = EXCLUDED.icon;
+
 -- Services
 INSERT INTO public.amenities (id, name, icon) VALUES
   ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b17', 'Laundry', 'shirt'),
   ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b18', 'Housekeeping', 'broom'),
-  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b19', 'Meals', 'utensils');
+  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b19', 'Meals', 'utensils')
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, icon = EXCLUDED.icon;
+
 -- Security
 INSERT INTO public.amenities (id, name, icon) VALUES
   ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b20', 'CCTV', 'camera'),
   ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b21', 'Security Guard', 'shield'),
-  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b22', 'Biometric Entry', 'fingerprint');
+  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b22', 'Biometric Entry', 'fingerprint')
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, icon = EXCLUDED.icon;
+
 -- Parking
 INSERT INTO public.amenities (id, name, icon) VALUES
   ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b23', 'Bike Parking', 'bike'),
-  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b24', 'Car Parking', 'car');
+  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b24', 'Car Parking', 'car')
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, icon = EXCLUDED.icon;
 
--- Seed Listings
-WITH test_host AS (
-  SELECT id FROM public.profiles LIMIT 1
-)
-INSERT INTO public.listings (
-  id, host_id, accommodation_type_id, title, description,
-  country_code, country, state, city, locality, postal_code, latitude, longitude, formatted_address,
-  status, public_id, furnishing, gender_preference, occupancy_type
-) VALUES
-(
-  'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380c11', (SELECT id FROM test_host), 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', -- PG
-  'Premium Boys PG in HSR Layout', 'Spacious shared rooms with all amenities included.',
-  'IN', 'India', 'Karnataka', 'Bangalore', 'HSR Layout', '560102', 12.9081, 77.6476, 'HSR Layout Sector 2, Bangalore, Karnataka',
-  'published', 'lst_pg_hsr', 'fully_furnished', 'male', 'shared'
-),
-(
-  'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380c12', (SELECT id FROM test_host), 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12', -- Hostel
-  'Girls Hostel - Gachibowli', 'Safe and secure girls hostel near major tech parks.',
-  'IN', 'India', 'Telangana', 'Hyderabad', 'Gachibowli', '500032', 17.4401, 78.3489, 'Gachibowli, Hyderabad, Telangana',
-  'published', 'lst_hst_gcb', 'fully_furnished', 'female', 'shared'
-),
-(
-  'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380c13', (SELECT id FROM test_host), 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a19', -- Co-living
-  'Modern Co-living Space Koramangala', 'Experience community living in the heart of the city.',
-  'IN', 'India', 'Karnataka', 'Bangalore', 'Koramangala', '560034', 12.9279, 77.6271, 'Koramangala 5th Block, Bangalore, Karnataka',
-  'published', 'lst_col_krm', 'fully_furnished', 'any', 'mixed'
-),
-(
-  'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380c14', (SELECT id FROM test_host), 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a13', -- Apartment
-  '2BHK Apartment in Kondapur', 'Semi-furnished 2BHK perfect for small families.',
-  'IN', 'India', 'Telangana', 'Hyderabad', 'Kondapur', '500084', 17.4622, 78.3568, 'Kondapur Main Road, Hyderabad, Telangana',
-  'published', 'lst_apt_knd', 'semi_furnished', 'any', 'private'
-);
+-- 3. Seed Country: India
+INSERT INTO public.countries (external_code, name, iso2, iso3, currency_code, phone_code, timezone_default)
+VALUES ('IN', 'India', 'IN', 'IND', 'INR', '+91', 'Asia/Kolkata')
+ON CONFLICT (external_code) DO NOTHING;
 
--- Seed Pricing
-INSERT INTO public.listing_prices (listing_id, amount, currency, billing_period, minimum_duration, security_deposit, maintenance_fee) VALUES
-('c0eebc99-9c0b-4ef8-bb6d-6bb9bd380c11', 12000, 'INR', 'month', 3, 24000, 0), -- PG
-('c0eebc99-9c0b-4ef8-bb6d-6bb9bd380c12', 9500, 'INR', 'month', 6, 19000, 0), -- Girls Hostel
-('c0eebc99-9c0b-4ef8-bb6d-6bb9bd380c13', 25000, 'INR', 'month', 1, 50000, 1500), -- Co-living
-('c0eebc99-9c0b-4ef8-bb6d-6bb9bd380c14', 45000, 'INR', 'month', 11, 135000, 3000); -- Apartment
-
--- Seed Availability
-INSERT INTO public.listing_availability (listing_id, available_from, available_units, status) VALUES
-('c0eebc99-9c0b-4ef8-bb6d-6bb9bd380c11', CURRENT_DATE, 5, 'available'),
-('c0eebc99-9c0b-4ef8-bb6d-6bb9bd380c12', CURRENT_DATE + INTERVAL '5 days', 12, 'available'),
-('c0eebc99-9c0b-4ef8-bb6d-6bb9bd380c13', CURRENT_DATE, 2, 'available'),
-('c0eebc99-9c0b-4ef8-bb6d-6bb9bd380c14', CURRENT_DATE + INTERVAL '15 days', 1, 'available');
-
--- Add Images (Sample Placehold Links)
-INSERT INTO public.listing_images (listing_id, storage_path, display_order) VALUES
-('c0eebc99-9c0b-4ef8-bb6d-6bb9bd380c11', 'https://placehold.co/800x600/e2e8f0/1e293b?text=EliteStay', 1),
-('c0eebc99-9c0b-4ef8-bb6d-6bb9bd380c12', 'https://placehold.co/800x600/e2e8f0/1e293b?text=EliteStay', 1),
-('c0eebc99-9c0b-4ef8-bb6d-6bb9bd380c13', 'https://placehold.co/800x600/e2e8f0/1e293b?text=EliteStay', 1),
-('c0eebc99-9c0b-4ef8-bb6d-6bb9bd380c14', 'https://placehold.co/800x600/e2e8f0/1e293b?text=EliteStay', 1);
-
--- Link Amenities to Listings
--- PG gets Wi-Fi, Water, Electricity, Meals, Bike Parking
-INSERT INTO public.listing_amenities (listing_id, amenity_id) VALUES
-('c0eebc99-9c0b-4ef8-bb6d-6bb9bd380c11', 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b11'), -- Wifi
-('c0eebc99-9c0b-4ef8-bb6d-6bb9bd380c11', 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b12'), -- Electricity
-('c0eebc99-9c0b-4ef8-bb6d-6bb9bd380c11', 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b13'), -- Water
-('c0eebc99-9c0b-4ef8-bb6d-6bb9bd380c11', 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b19'), -- Meals
-('c0eebc99-9c0b-4ef8-bb6d-6bb9bd380c11', 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b23'); -- Bike Parking
--- 20260731050000_rpc_india_first.sql
-
-CREATE OR REPLACE FUNCTION public.get_listing_detail(p_public_id TEXT)
-RETURNS JSON AS $$
+DO $$
 DECLARE
-    result JSON;
+    in_id BIGINT;
+    ka_id BIGINT;
+    mh_id BIGINT;
+    dl_id BIGINT;
+    tg_id BIGINT;
 BEGIN
-    SELECT row_to_json(l_data) INTO result
-    FROM (
-        SELECT 
-            l.id,
-            l.public_id,
-            l.title,
-            l.description,
-            l.status,
-            l.furnishing,
-            l.gender_preference,
-            l.occupancy_type,
-            l.created_at,
-            l.country_code,
-            l.country,
-            l.state,
-            l.city,
-            l.locality,
-            l.postal_code,
-            l.latitude,
-            l.longitude,
-            l.formatted_address,
-            (
-                SELECT row_to_json(t)
-                FROM (
-                    SELECT name, description
-                    FROM public.accommodation_types
-                    WHERE id = l.accommodation_type_id
-                ) t
-            ) as accommodation_type,
-            (
-                SELECT row_to_json(h)
-                FROM (
-                    SELECT 
-                        p.id,
-                        p.full_name,
-                        p.avatar_url,
-                        p.created_at
-                    FROM public.profiles p
-                    WHERE p.id = l.host_id
-                ) h
-            ) as host,
-            (
-                SELECT row_to_json(pr)
-                FROM (
-                    SELECT 
-                        amount,
-                        currency,
-                        billing_period,
-                        security_deposit,
-                        maintenance_fee,
-                        maintenance_fee_period,
-                        minimum_duration,
-                        maximum_duration
-                    FROM public.listing_prices
-                    WHERE listing_id = l.id
-                ) pr
-            ) as pricing,
-            (
-                SELECT row_to_json(av)
-                FROM (
-                    SELECT 
-                        available_from,
-                        available_units,
-                        status
-                    FROM public.listing_availability
-                    WHERE listing_id = l.id
-                ) av
-            ) as availability,
-            (
-                SELECT COALESCE(json_agg(row_to_json(img)), '[]'::json)
-                FROM (
-                    SELECT 
-                        storage_path as image_url,
-                        display_order
-                    FROM public.listing_images
-                    WHERE listing_id = l.id
-                    ORDER BY display_order ASC
-                ) img
-            ) as images,
-            (
-                SELECT COALESCE(json_agg(row_to_json(am)), '[]'::json)
-                FROM (
-                    SELECT 
-                        a.name,
-                        a.icon
-                    FROM public.listing_amenities la
-                    JOIN public.amenities a ON a.id = la.amenity_id
-                    WHERE la.listing_id = l.id
-                ) am
-            ) as amenities
-        FROM public.listings l
-        JOIN public.accommodation_types act ON act.id = l.accommodation_type_id
-        JOIN public.listing_prices lpr ON lpr.listing_id = l.id
-        WHERE l.public_id = p_public_id
-        AND (
-            l.status = 'published' 
-            OR public.is_listing_owner(l.id) 
-            OR public.is_admin()
-        )
-    ) l_data;
+    SELECT id INTO in_id FROM public.countries WHERE external_code = 'IN';
+    IF in_id IS NULL THEN
+        RETURN;
+    END IF;
 
-    RETURN result;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
--- 20260731060000_maintenance_fee_and_buckets.sql
+    -- 4. Seed States
+    INSERT INTO public.states (country_id, external_code, name, code, slug) VALUES
+        (in_id, 'IN-AN', 'Andaman and Nicobar Islands', 'AN', 'andaman-and-nicobar-islands'),
+        (in_id, 'IN-AP', 'Andhra Pradesh', 'AP', 'andhra-pradesh'),
+        (in_id, 'IN-AR', 'Arunachal Pradesh', 'AR', 'arunachal-pradesh'),
+        (in_id, 'IN-AS', 'Assam', 'AS', 'assam'),
+        (in_id, 'IN-BR', 'Bihar', 'BR', 'bihar'),
+        (in_id, 'IN-CH', 'Chandigarh', 'CH', 'chandigarh'),
+        (in_id, 'IN-CT', 'Chhattisgarh', 'CT', 'chhattisgarh'),
+        (in_id, 'IN-DN', 'Dadra and Nagar Haveli and Daman and Diu', 'DN', 'dadra-and-nagar-haveli-and-daman-and-diu'),
+        (in_id, 'IN-DL', 'Delhi', 'DL', 'delhi'),
+        (in_id, 'IN-GA', 'Goa', 'GA', 'goa'),
+        (in_id, 'IN-GJ', 'Gujarat', 'GJ', 'gujarat'),
+        (in_id, 'IN-HR', 'Haryana', 'HR', 'haryana'),
+        (in_id, 'IN-HP', 'Himachal Pradesh', 'HP', 'himachal-pradesh'),
+        (in_id, 'IN-JK', 'Jammu and Kashmir', 'JK', 'jammu-and-kashmir'),
+        (in_id, 'IN-JH', 'Jharkhand', 'JH', 'jharkhand'),
+        (in_id, 'IN-KA', 'Karnataka', 'KA', 'karnataka'),
+        (in_id, 'IN-KL', 'Kerala', 'KL', 'kerala'),
+        (in_id, 'IN-LA', 'Ladakh', 'LA', 'ladakh'),
+        (in_id, 'IN-LD', 'Lakshadweep', 'LD', 'lakshadweep'),
+        (in_id, 'IN-MP', 'Madhya Pradesh', 'MP', 'madhya-pradesh'),
+        (in_id, 'IN-MH', 'Maharashtra', 'MH', 'maharashtra'),
+        (in_id, 'IN-MN', 'Manipur', 'MN', 'manipur'),
+        (in_id, 'IN-ML', 'Meghalaya', 'ML', 'meghalaya'),
+        (in_id, 'IN-MZ', 'Mizoram', 'MZ', 'mizoram'),
+        (in_id, 'IN-NL', 'Nagaland', 'NL', 'nagaland'),
+        (in_id, 'IN-OR', 'Odisha', 'OR', 'odisha'),
+        (in_id, 'IN-PY', 'Puducherry', 'PY', 'puducherry'),
+        (in_id, 'IN-PB', 'Punjab', 'PB', 'punjab'),
+        (in_id, 'IN-RJ', 'Rajasthan', 'RJ', 'rajasthan'),
+        (in_id, 'IN-SK', 'Sikkim', 'SK', 'sikkim'),
+        (in_id, 'IN-TN', 'Tamil Nadu', 'TN', 'tamil-nadu'),
+        (in_id, 'IN-TG', 'Telangana', 'TG', 'telangana'),
+        (in_id, 'IN-TR', 'Tripura', 'TR', 'tripura'),
+        (in_id, 'IN-UP', 'Uttar Pradesh', 'UP', 'uttar-pradesh'),
+        (in_id, 'IN-UT', 'Uttarakhand', 'UT', 'uttarakhand'),
+        (in_id, 'IN-WB', 'West Bengal', 'WB', 'west-bengal')
+    ON CONFLICT (external_code) DO NOTHING;
 
--- 1. Add maintenance_fee_period to listing_prices
--- First we add the column using the existing billing_period enum.
--- We also add a default value to not break existing rows, then we can drop the default if we want, but it's fine to keep it.
-ALTER TABLE public.listing_prices 
-ADD COLUMN IF NOT EXISTS maintenance_fee_period billing_period DEFAULT 'semester'::billing_period;
+    SELECT id INTO ka_id FROM public.states WHERE external_code = 'IN-KA';
+    SELECT id INTO mh_id FROM public.states WHERE external_code = 'IN-MH';
+    SELECT id INTO dl_id FROM public.states WHERE external_code = 'IN-DL';
+    SELECT id INTO tg_id FROM public.states WHERE external_code = 'IN-TG';
 
--- 2. Create Storage Buckets with strict size limits
--- listings: max 2MB
-
-
--- SOURCE: 21_calendar_sync.sql
-/*
-==================================================
-Domain: Calendar Sync (V1.2)
-Purpose: Manage iCal feeds and synchronize external blocks.
-Contains: 
-- ical_feeds
-- external_calendar_events
-- triggers
-- RLS
-==================================================
-*/
-
-CREATE TYPE public.sync_direction AS ENUM ('import', 'export', 'both');
-
-CREATE TABLE public.ical_feeds (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    listing_id UUID REFERENCES public.listings(id) ON DELETE CASCADE NOT NULL,
-    feed_url TEXT NOT NULL,
-    provider TEXT NOT NULL,
-    enabled BOOLEAN DEFAULT true NOT NULL,
-    sync_direction public.sync_direction DEFAULT 'import'::public.sync_direction NOT NULL,
-    last_synced_at TIMESTAMPTZ,
-    last_success_at TIMESTAMPTZ,
-    last_error TEXT,
-    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-    updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
-);
-
-CREATE TRIGGER ical_feeds_updated_at 
-  BEFORE UPDATE ON public.ical_feeds 
-  FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
-
-ALTER TABLE public.ical_feeds ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Hosts can manage their ical feeds" ON public.ical_feeds
-  FOR ALL USING (
-    EXISTS (
-        SELECT 1 FROM public.listings l 
-        WHERE l.id = ical_feeds.listing_id 
-        AND l.host_id = auth.uid()
-    )
-  );
-
-CREATE TABLE public.external_calendar_events (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    feed_id UUID REFERENCES public.ical_feeds(id) ON DELETE CASCADE NOT NULL,
-    external_uid TEXT NOT NULL,
-    listing_id UUID REFERENCES public.listings(id) ON DELETE CASCADE NOT NULL,
-    start_date DATE NOT NULL,
-    end_date DATE NOT NULL,
-    summary TEXT,
-    last_seen_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-    updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-    UNIQUE(feed_id, external_uid)
-);
-
-CREATE TRIGGER external_calendar_events_updated_at 
-  BEFORE UPDATE ON public.external_calendar_events 
-  FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
-
-ALTER TABLE public.external_calendar_events ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Hosts can view their external events" ON public.external_calendar_events
-  FOR SELECT USING (
-    EXISTS (
-        SELECT 1 FROM public.listings l 
-        WHERE l.id = external_calendar_events.listing_id 
-        AND l.host_id = auth.uid()
-    )
-  );
-
-
--- SOURCE: 22_cron_jobs.sql
-/*
-==================================================
-Domain: Calendar Sync (V1.2)
-Purpose: Schedule pg_cron to trigger the sync-ical edge function.
-Contains: 
-- pg_cron schedule
-==================================================
-*/
-
--- Ensure pg_cron and pg_net extensions are available.
--- (Note: In Supabase, these are enabled via the dashboard or 00_extensions.sql, 
--- but we include them here for completeness).
-CREATE EXTENSION IF NOT EXISTS pg_cron;
-CREATE EXTENSION IF NOT EXISTS pg_net;
-
--- Schedule the sync job to run every hour.
--- IMPORTANT: You must replace 'YOUR_SUPABASE_PROJECT_URL' and 'YOUR_ANON_KEY' 
--- with your actual project URL and anon/service_role key.
--- In a production Supabase project, you would store the URL and KEY securely 
--- or use Vault to retrieve them.
-
-SELECT cron.schedule(
-    'sync-ical-hourly',
-    '0 * * * *', -- Run at minute 0 past every hour
-    $$
-    SELECT net.http_post(
-        url:='YOUR_SUPABASE_PROJECT_URL/functions/v1/sync-ical',
-        headers:='{"Content-Type": "application/json", "Authorization": "Bearer YOUR_ANON_KEY"}'::jsonb
-    );
-    $$
-);
+    -- 5. Seed Featured Cities
+    INSERT INTO public.cities (state_id, external_code, name, search_aliases, slug, latitude, longitude, timezone, is_capital, is_metro, is_featured, sort_order) VALUES
+        (ka_id, 'IN-BLR', 'Bangalore', '{"Bengaluru"}', 'bangalore', 12.9716, 77.5946, 'Asia/Kolkata', true, true, true, 1),
+        (mh_id, 'IN-BOM', 'Mumbai', '{"Bombay"}', 'mumbai', 19.0760, 72.8777, 'Asia/Kolkata', true, true, true, 2),
+        (dl_id, 'IN-DEL', 'New Delhi', '{"Delhi"}', 'new-delhi', 28.6139, 77.2090, 'Asia/Kolkata', true, true, true, 3),
+        (tg_id, 'IN-HYD', 'Hyderabad', '{}', 'hyderabad', 17.3850, 78.4867, 'Asia/Kolkata', true, true, true, 4),
+        (mh_id, 'IN-PUN', 'Pune', '{"Poona"}', 'pune', 18.5204, 73.8567, 'Asia/Kolkata', false, true, true, 5)
+    ON CONFLICT (external_code) DO NOTHING;
+END $$;
 
 
