@@ -148,24 +148,24 @@ export function HeaderLayout({ user, profile }: HeaderLayoutProps) {
           )}
         />
 
-        <Container className="h-full relative z-10 flex flex-col justify-between py-0">
-          <div className="flex h-[76px] items-center justify-between gap-4 relative">
+        <div className="relative z-10 h-full flex flex-col justify-between">
+          <Container className="flex h-[76px] items-center justify-between gap-4 relative py-0">
             <TopBar
               variant={variant}
               user={user}
               profile={profile}
               isExpanded={isExpanded}
             />
-          </div>
+          </Container>
 
           {/* React Portal Destination for search filters toolbar */}
           {isSearchRoute && (
             <div
               id="search-header-portal"
-              className="h-16 flex items-center border-t border-gray-100 w-full"
+              className="h-16 flex items-center border-t border-gray-100/80 w-full"
             />
           )}
-        </Container>
+        </div>
       </header>
 
       <SearchOverlay isExpanded={isSearchExpanded} />

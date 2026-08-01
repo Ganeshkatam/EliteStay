@@ -3,6 +3,7 @@
 import { createPortal } from 'react-dom';
 import { useState, useEffect } from 'react';
 import { ToolbarRenderer } from './ToolbarRenderer';
+import { Container } from '@/components/layout/Container';
 
 export function SearchToolbar() {
   const [mounted, setMounted] = useState(false);
@@ -18,9 +19,11 @@ export function SearchToolbar() {
   if (!target) return null;
 
   return createPortal(
-    <div className="w-full overflow-x-auto no-scrollbar">
-      <ToolbarRenderer />
-    </div>,
+    <Container className="h-full flex items-center py-0">
+      <div className="w-full overflow-x-auto no-scrollbar">
+        <ToolbarRenderer />
+      </div>
+    </Container>,
     target
   );
 }
