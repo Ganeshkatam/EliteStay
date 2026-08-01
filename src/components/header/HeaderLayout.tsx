@@ -21,7 +21,14 @@ export function HeaderLayout({ user, profile }: HeaderLayoutProps) {
     useSearchContext();
   const headerRef = useRef<HTMLElement>(null);
 
-  // Collapse manual search expansion when scrolling down past 80px (ignores scroll-to-top animation)
+  // Ensure manual expansion turns off whenever the home page header collapses on scroll
+  useEffect(() => {
+    if (variant === 'public-home' && !isHeaderExpanded && isSearchExpanded) {
+      setIsSearchExpanded(false);
+    }
+  }, [variant, isHeaderExpanded, isSearchExpanded, setIsSearchExpanded]);
+
+  // Collapse manual search expansion when scrolling down (ignores scroll-to-top animation)
   useEffect(() => {
     if (!isSearchExpanded) return;
 
@@ -32,7 +39,8 @@ export function HeaderLayout({ user, profile }: HeaderLayoutProps) {
       if (!ticking) {
         window.requestAnimationFrame(() => {
           const currentScrollY = window.scrollY;
-          if (currentScrollY > 80 && currentScrollY > lastScrollY + 10) {
+          // Any intentional downward scroll (currentScrollY > lastScrollY) past 40px collapses search
+          if (currentScrollY > 40 && currentScrollY > lastScrollY) {
             setIsSearchExpanded(false);
           }
           lastScrollY = currentScrollY;
