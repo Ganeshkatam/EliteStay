@@ -2,15 +2,14 @@ import Link from 'next/link';
 import { HOME_CATEGORIES } from '../constants';
 import * as Icons from 'lucide-react';
 import { Container } from '@/components/layout/Container';
-import { getCategoryCounts } from '../api/queries';
-import { resolveAccommodationTypeId } from '@/features/search/lib/accommodation-types';
 import { HomepageRail } from './HomepageRail';
+import { createClient } from '@/lib/supabase/server';
 
 export async function Categories() {
-  const typeIds = HOME_CATEGORIES.map((c) =>
-    resolveAccommodationTypeId(c.slug)
-  ).filter(Boolean) as string[];
-  const counts = await getCategoryCounts(typeIds);
+  const supabase = await createClient();
+  const { data: types } = await supabase
+    .from('accommodation_types')
+    .select('name, description');
 
   return (
     <Container className="py-2">
@@ -27,6 +26,14 @@ export async function Categories() {
             (Icons as unknown as Record<string, React.ElementType>)[iconKey] ||
             Icons.Home;
 
+          // Find description from database if available
+          const dbType = types?.find(
+            (t) =>
+              t.name.toLowerCase().replace('-', '') ===
+              category.slug.toLowerCase().replace('-', '')
+          );
+          const description = dbType?.description || category.description;
+
           return (
             <div
               key={category.slug}
@@ -40,20 +47,12 @@ export async function Categories() {
                   <IconComponent className="h-6 w-6 text-gray-700 group-hover:text-blue-600 transition-colors" />
                 </div>
                 <div className="w-full mt-2">
-                  <span className="block text-base font-bold text-gray-900">
+                  <span className="block text-base font-bold text-gray-900 leading-tight">
                     {category.label}
                   </span>
-                  <div className="flex items-center justify-between mt-1">
-                    <span className="text-sm font-medium text-gray-500">
-                      {counts[
-                        resolveAccommodationTypeId(category.slug) || ''
-                      ] || 0}{' '}
-                      stays
-                    </span>
-                    <span className="text-blue-600 font-bold opacity-0 group-hover:opacity-100 transform translate-x-[-10px] group-hover:translate-x-0 transition-all">
-                      &rarr;
-                    </span>
-                  </div>
+                  <span className="block text-[11px] text-gray-400 mt-0.5 line-clamp-1 leading-snug">
+                    {description}
+                  </span>
                 </div>
               </Link>
             </div>

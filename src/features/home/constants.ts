@@ -1,10 +1,40 @@
 export const HOME_CATEGORIES = [
-  { label: 'Apartment', slug: 'apartment', icon: 'building-2' },
-  { label: 'PG', slug: 'pg', icon: 'users' },
-  { label: 'Hostel', slug: 'hostel', icon: 'bed' },
-  { label: 'Hotel', slug: 'hotel', icon: 'hotel' },
-  { label: 'Villa', slug: 'villa', icon: 'home' },
-  { label: 'Co-Living', slug: 'co-living', icon: 'coffee' },
+  {
+    label: 'Apartment',
+    slug: 'apartment',
+    icon: 'building-2',
+    description: 'Fully independent flat',
+  },
+  {
+    label: 'PG',
+    slug: 'pg',
+    icon: 'users',
+    description: 'Managed stays with food',
+  },
+  {
+    label: 'Hostel',
+    slug: 'hostel',
+    icon: 'bed',
+    description: 'Vibrant student rooms',
+  },
+  {
+    label: 'Hotel',
+    slug: 'hotel',
+    icon: 'hotel',
+    description: 'Premium short-term stays',
+  },
+  {
+    label: 'Villa',
+    slug: 'villa',
+    icon: 'home',
+    description: 'Luxe private houses',
+  },
+  {
+    label: 'Co-Living',
+    slug: 'co-living',
+    icon: 'coffee',
+    description: 'Social professional hubs',
+  },
 ];
 
 export const POPULAR_LOCATIONS = [
