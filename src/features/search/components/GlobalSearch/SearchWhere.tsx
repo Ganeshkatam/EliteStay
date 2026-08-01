@@ -64,10 +64,19 @@ export function SearchWhere({ variant }: SearchWhereProps) {
   const popularCities = [
     { name: 'Bangalore', gradient: 'from-blue-500 to-indigo-600' },
     { name: 'Mumbai', gradient: 'from-orange-400 to-rose-500' },
-    { name: 'Delhi', gradient: 'from-emerald-400 to-teal-600' },
+    { name: 'New Delhi', gradient: 'from-emerald-400 to-teal-600' },
     { name: 'Pune', gradient: 'from-purple-500 to-pink-600' },
     { name: 'Hyderabad', gradient: 'from-amber-400 to-orange-500' },
     { name: 'Chennai', gradient: 'from-cyan-400 to-blue-600' },
+    { name: 'Kolkata', gradient: 'from-rose-400 to-red-600' },
+    { name: 'Ahmedabad', gradient: 'from-amber-500 to-yellow-600' },
+    { name: 'Noida', gradient: 'from-teal-400 to-emerald-600' },
+    { name: 'Gurgaon', gradient: 'from-indigo-400 to-violet-600' },
+    { name: 'Jaipur', gradient: 'from-pink-400 to-rose-600' },
+    { name: 'Lucknow', gradient: 'from-amber-400 to-yellow-600' },
+    { name: 'Chandigarh', gradient: 'from-sky-400 to-blue-600' },
+    { name: 'Kochi', gradient: 'from-emerald-400 to-green-600' },
+    { name: 'Indore', gradient: 'from-violet-400 to-purple-600' },
   ];
 
   return (

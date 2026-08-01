@@ -24,6 +24,10 @@ DECLARE
     gj_id BIGINT;
     up_id BIGINT;
     hr_id BIGINT;
+    rj_id BIGINT;
+    ch_id BIGINT;
+    kl_id BIGINT;
+    mp_id BIGINT;
 BEGIN
     SELECT id INTO in_id FROM public.countries WHERE external_code = 'IN';
 
@@ -67,7 +71,6 @@ BEGIN
         (in_id, 'IN-WB', 'West Bengal', 'WB', 'west-bengal')
     ON CONFLICT (external_code) DO NOTHING;
 
-    -- Get IDs for featured states
     SELECT id INTO ka_id FROM public.states WHERE external_code = 'IN-KA';
     SELECT id INTO mh_id FROM public.states WHERE external_code = 'IN-MH';
     SELECT id INTO dl_id FROM public.states WHERE external_code = 'IN-DL';
@@ -77,6 +80,10 @@ BEGIN
     SELECT id INTO gj_id FROM public.states WHERE external_code = 'IN-GJ';
     SELECT id INTO up_id FROM public.states WHERE external_code = 'IN-UP';
     SELECT id INTO hr_id FROM public.states WHERE external_code = 'IN-HR';
+    SELECT id INTO rj_id FROM public.states WHERE external_code = 'IN-RJ';
+    SELECT id INTO ch_id FROM public.states WHERE external_code = 'IN-CH';
+    SELECT id INTO kl_id FROM public.states WHERE external_code = 'IN-KL';
+    SELECT id INTO mp_id FROM public.states WHERE external_code = 'IN-MP';
 
     -- 3. Seed Featured Cities
     INSERT INTO public.cities (state_id, external_code, name, search_aliases, slug, latitude, longitude, timezone, is_capital, is_metro, is_featured, sort_order) VALUES
@@ -89,7 +96,12 @@ BEGIN
         (wb_id, 'IN-CCU', 'Kolkata', '{"Calcutta"}', 'kolkata', 22.5726, 88.3639, 'Asia/Kolkata', true, true, true, 7),
         (gj_id, 'IN-AMD', 'Ahmedabad', '{"Amdavad"}', 'ahmedabad', 23.0225, 72.5714, 'Asia/Kolkata', false, true, true, 8),
         (up_id, 'IN-NOI', 'Noida', '{"New Okhla Industrial Development Authority"}', 'noida', 28.5355, 77.3910, 'Asia/Kolkata', false, true, true, 9),
-        (hr_id, 'IN-HRG', 'Gurgaon', '{"Gurugram"}', 'gurgaon', 28.4595, 77.0266, 'Asia/Kolkata', false, true, true, 10)
+        (hr_id, 'IN-HRG', 'Gurgaon', '{"Gurugram"}', 'gurgaon', 28.4595, 77.0266, 'Asia/Kolkata', false, true, true, 10),
+        (rj_id, 'IN-JAI', 'Jaipur', '{"Pink City"}', 'jaipur', 26.9124, 75.7873, 'Asia/Kolkata', true, true, true, 11),
+        (up_id, 'IN-LKO', 'Lucknow', '{"Awadh"}', 'lucknow', 26.8467, 80.9462, 'Asia/Kolkata', true, true, true, 12),
+        (ch_id, 'IN-IXC', 'Chandigarh', '{}', 'chandigarh', 30.7333, 76.7794, 'Asia/Kolkata', true, true, true, 13),
+        (kl_id, 'IN-COK', 'Kochi', '{"Cochin"}', 'kochi', 9.9312, 76.2673, 'Asia/Kolkata', false, true, true, 14),
+        (mp_id, 'IN-IDR', 'Indore', '{}', 'indore', 22.7196, 75.8577, 'Asia/Kolkata', false, true, true, 15)
     ON CONFLICT (external_code) DO NOTHING;
 
 END $$;
