@@ -3,6 +3,7 @@ import Image from 'next/image';
 import { Container } from '@/components/layout/Container';
 import { LocationService } from '@/features/location/services/location-service';
 import { createClient } from '@/lib/supabase/server';
+import { DiscoveryRail } from './DiscoveryRail';
 
 export async function PopularLocations() {
   const cities = await LocationService.getFeaturedCities();
@@ -14,10 +15,19 @@ export async function PopularLocations() {
 
   return (
     <Container className="py-2">
-      <h2 className="text-2xl font-bold tracking-tight text-slate-900 mb-6">
-        Popular Locations
-      </h2>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div className="flex items-end justify-between mb-4">
+        <h2 className="text-xl font-bold tracking-tight text-slate-900">
+          Popular Locations
+        </h2>
+        <Link
+          href="/s"
+          className="text-xs font-semibold text-blue-600 hover:text-blue-500 whitespace-nowrap"
+        >
+          View all <span aria-hidden="true">&rarr;</span>
+        </Link>
+      </div>
+
+      <DiscoveryRail>
         {cities.map((city) => {
           // Get public URL for cover image if it exists
           let imageUrl = '/images/placeholder-city.png'; // default placeholder
@@ -29,32 +39,36 @@ export async function PopularLocations() {
           }
 
           return (
-            <Link
+            <div
               key={city.id}
-              href={`/s?city=${city.slug}`}
-              className="group relative h-[240px] w-full overflow-hidden rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.08)] transition-all hover:-translate-y-1 hover:shadow-xl"
+              className="flex-shrink-0 w-[240px] sm:w-[280px] snap-start"
             >
-              <Image
-                src={imageUrl}
-                alt={city.name}
-                fill
-                sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 20vw"
-                className="object-cover transition-transform duration-500 group-hover:scale-110"
-                priority
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-              <div className="absolute bottom-5 left-5">
-                <span className="block text-xl font-bold text-white">
-                  {city.name}
-                </span>
-                <span className="block text-sm font-medium text-white/80 mt-1">
-                  {city.listing_count || 0} stays
-                </span>
-              </div>
-            </Link>
+              <Link
+                href={`/s?city=${city.slug}`}
+                className="group relative block aspect-[4/3] w-full overflow-hidden rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.08)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg"
+              >
+                <Image
+                  src={imageUrl}
+                  alt={city.name}
+                  fill
+                  sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 20vw"
+                  className="object-cover transition-transform duration-500 group-hover:scale-105"
+                  priority
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                <div className="absolute bottom-4 left-4">
+                  <span className="block text-lg font-bold text-white leading-tight">
+                    {city.name}
+                  </span>
+                  <span className="block text-xs font-medium text-white/80 mt-0.5">
+                    {city.listing_count || 0} stays
+                  </span>
+                </div>
+              </Link>
+            </div>
           );
         })}
-      </div>
+      </DiscoveryRail>
     </Container>
   );
 }

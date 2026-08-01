@@ -4,6 +4,7 @@ import { HomeSectionConfig } from '../config/sections';
 import { getSectionListings } from '../api/queries';
 import { ListingCard } from '@/features/listings/components/ListingCard';
 import { Container } from '@/components/layout/Container';
+import { DiscoveryRail } from './DiscoveryRail';
 
 interface HomeSectionProps {
   config: HomeSectionConfig;
@@ -21,18 +22,18 @@ export async function HomeSection({ config }: HomeSectionProps) {
 
   return (
     <Container className="py-2">
-      <div className="flex items-end justify-between mb-6">
+      <div className="flex items-end justify-between mb-4">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-slate-900">
+          <h2 className="text-xl font-bold tracking-tight text-slate-900">
             {config.title}
           </h2>
           {config.subtitle && (
-            <p className="mt-1 text-sm text-gray-500">{config.subtitle}</p>
+            <p className="mt-0.5 text-xs text-gray-500">{config.subtitle}</p>
           )}
         </div>
         <Link
           href={viewAllHref}
-          className="text-sm font-semibold text-blue-600 hover:text-blue-500 whitespace-nowrap"
+          className="text-xs font-semibold text-blue-600 hover:text-blue-500 whitespace-nowrap"
         >
           View all <span aria-hidden="true">&rarr;</span>
         </Link>
@@ -48,16 +49,16 @@ export async function HomeSection({ config }: HomeSectionProps) {
           </p>
         </div>
       ) : (
-        <div className="flex overflow-x-auto pb-6 sm:grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 sm:gap-x-6 gap-y-10 xl:gap-x-6 snap-x scrollbar-hide">
+        <DiscoveryRail>
           {listings.map((listing) => (
             <div
               key={listing.publicId}
-              className="min-w-[85vw] sm:min-w-0 snap-center pr-4 sm:pr-0"
+              className="flex-shrink-0 w-[280px] sm:w-[310px] snap-start"
             >
-              <ListingCard listing={listing} />
+              <ListingCard listing={listing} aspectRatio="rail" />
             </div>
           ))}
-        </div>
+        </DiscoveryRail>
       )}
     </Container>
   );

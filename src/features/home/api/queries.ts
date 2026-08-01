@@ -16,11 +16,36 @@ export async function getSectionListings(
   const supabase = await createClient();
   const sort = config.filter?.sort || 'recommended';
 
-  const { data, error } = await supabase.rpc('search_listings', {
+  const rpcParams: Record<string, unknown> = {
     p_sort: sort,
     p_page: 1,
     p_page_size: config.limit,
-  });
+  };
+
+  if (config.filter?.locality) {
+    rpcParams.p_locality = config.filter.locality;
+  }
+
+  if (config.filter?.occupancy_type) {
+    rpcParams.p_occupancy_type = config.filter.occupancy_type;
+  }
+
+  if (config.filter?.max_price) {
+    rpcParams.p_max_price = parseFloat(config.filter.max_price);
+  }
+
+  if (config.filter?.accommodation_type_name) {
+    const { data: typeData } = await supabase
+      .from('accommodation_types')
+      .select('id')
+      .ilike('name', config.filter.accommodation_type_name)
+      .single();
+    if (typeData) {
+      rpcParams.p_accommodation_type_id = typeData.id;
+    }
+  }
+
+  const { data, error } = await supabase.rpc('search_listings', rpcParams);
 
   if (error) {
     console.error('Error fetching homepage section listings:', error);
