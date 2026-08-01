@@ -53,10 +53,3 @@
 \echo 'Creating Performance Indexes...'
 \i 18_indexes.sql
 
-\echo 'Done! Schema bootstrap complete.'
-
-\echo 'Seeding Reference Data...'
-\i 16_seed_reference_data.sql
-
-\echo 'Seeding Demo Data...'
-\i 17_seed_demo_data.sql
