@@ -18,15 +18,13 @@ export async function Categories() {
       </h2>
       <div className="flex space-x-4 overflow-x-auto pb-4 scrollbar-hide snap-x">
         {HOME_CATEGORIES.map((category) => {
-          // Dynamically resolve icon from Lucide
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const iconKey = category.icon
+            .split('-')
+            .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
+            .join('');
           const IconComponent =
-            (Icons as any)[
-              category.icon
-                .split('-')
-                .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
-                .join('')
-            ] || Icons.Home;
+            (Icons as unknown as Record<string, React.ElementType>)[iconKey] ||
+            Icons.Home;
 
           return (
             <Link

@@ -1,7 +1,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import {
+  useForm,
+  type DefaultValues,
+  type UseFormRegister,
+  type FieldErrors,
+  type UseFormWatch,
+  type UseFormSetValue,
+  type FieldValues,
+  type Resolver,
+} from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { updateProfile } from '@/features/auth/actions/profile-actions';
@@ -20,29 +29,25 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 // Helper component for small inline forms
-function InlineForm({
+function InlineForm<TSchema extends z.ZodType<FieldValues>>({
   defaultValues,
   schema,
   onSubmitData,
   close,
   children,
 }: {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  defaultValues: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  schema: z.ZodType<any, any>;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  defaultValues: DefaultValues<z.infer<TSchema>>;
+  schema: TSchema;
   onSubmitData: (
-    data: any
-  ) => Promise<{ error?: { message: string } } | { data: any }>;
+    data: z.infer<TSchema>
+  ) => Promise<{ error?: { message: string } } | { data: unknown }>;
   close?: () => void;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   children: (props: {
-    register: any;
-    errors: any;
+    register: UseFormRegister<z.infer<TSchema>>;
+    errors: FieldErrors<z.infer<TSchema>>;
     isPending: boolean;
-    watch: any;
-    setValue: any;
+    watch: UseFormWatch<z.infer<TSchema>>;
+    setValue: UseFormSetValue<z.infer<TSchema>>;
   }) => React.ReactNode;
 }) {
   const {
@@ -52,8 +57,10 @@ function InlineForm({
     getValues,
     trigger,
     formState: { errors, isDirty },
-  } = useForm({
-    resolver: zodResolver(schema),
+  } = useForm<z.infer<TSchema>, unknown, z.infer<TSchema>>({
+    resolver: zodResolver(
+      schema as unknown as Parameters<typeof zodResolver>[0]
+    ) as unknown as Resolver<z.infer<TSchema>>,
     defaultValues,
     mode: 'onChange',
   });
@@ -65,6 +72,8 @@ function InlineForm({
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
+    // React Hook Form's watch() function currently cannot be memoized safely by React Compiler without warnings.
+    // Safe here as subscription cleanup is managed inside useEffect.
     // eslint-disable-next-line react-hooks/incompatible-library
     const subscription = watch(() => {
       clearTimeout(timer);

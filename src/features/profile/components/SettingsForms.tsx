@@ -1,7 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import {
+  useForm,
+  type DefaultValues,
+  type UseFormReturn,
+  type Resolver,
+} from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -19,6 +24,7 @@ import {
   UserPreferences,
   PreferenceCategory,
   PreferenceSchemas,
+  type PreferenceFormMap,
 } from '../types/preferences';
 import { updateUserPreferences } from '../actions/preferences-actions';
 
@@ -62,29 +68,29 @@ function FormSection<T extends PreferenceCategory>({
   title: string;
   description: string;
   category: T;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  defaultValues: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  children: (form: ReturnType<typeof useForm<any>>) => React.ReactNode;
+  defaultValues: DefaultValues<PreferenceFormMap[T]>;
+  children: (
+    form: UseFormReturn<PreferenceFormMap[T], unknown, PreferenceFormMap[T]>
+  ) => React.ReactNode;
 }) {
   const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
 
-  const form = useForm({
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    resolver: zodResolver(PreferenceSchemas[category] as any),
+  const form = useForm<PreferenceFormMap[T], unknown, PreferenceFormMap[T]>({
+    resolver: zodResolver(PreferenceSchemas[category]) as unknown as Resolver<
+      PreferenceFormMap[T]
+    >,
     defaultValues,
   });
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const onSubmit = async (data: any) => {
+  const onSubmit = async (data: PreferenceFormMap[T]) => {
     setIsSaving(true);
     const { success, error } = await updateUserPreferences(category, data);
     setIsSaving(false);
 
     if (success) {
       // Reset form with new values so it's considered pristine
-      form.reset(data);
+      form.reset(data as DefaultValues<PreferenceFormMap[T]>);
       toast({
         title: 'Settings saved',
         description: `Your ${title.toLowerCase()} preferences have been updated.`,
@@ -407,9 +413,13 @@ export function DataSettings({ data }: { data: UserPreferences['data'] }) {
               <Select
                 value={form.watch('cookie_preferences')}
                 onValueChange={(val) =>
-                  form.setValue('cookie_preferences', val, {
-                    shouldDirty: true,
-                  })
+                  form.setValue(
+                    'cookie_preferences',
+                    val as 'essential' | 'all',
+                    {
+                      shouldDirty: true,
+                    }
+                  )
                 }
               >
                 <SelectTrigger>

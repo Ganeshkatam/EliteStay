@@ -87,80 +87,113 @@ export async function getConversations(): Promise<ConversationListRow[]> {
     throw new Error('Failed to fetch conversations');
   }
 
+  interface RawMessage {
+    id: string;
+    content: string;
+    created_at: string;
+    sender_id: string;
+    read_at?: string | null;
+  }
+  interface RawProfile {
+    id: string;
+    full_name: string | null;
+    avatar_storage_path: string | null;
+  }
+  interface RawReference {
+    id: string;
+    status?: string;
+    start_date?: string;
+    end_date?: string;
+    requested_move_in?: string;
+    listing: {
+      id: string;
+      title: string;
+      host_id: string;
+      host: RawProfile;
+    };
+    guest: RawProfile;
+  }
+  interface RawConversationRow {
+    id: string;
+    created_at: string;
+    booking?: RawReference | null;
+    stay?: RawReference | null;
+    host_last_read_at?: string | null;
+    guest_last_read_at?: string | null;
+    messages?: RawMessage[];
+  }
+
   // Format the data
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const formatted: ConversationListRow[] = (conversations || []).map(
-    (conv: any) => {
-      // A conversation is tied to either a booking or a stay
-      const reference = conv.booking || conv.stay;
-      const isHost = reference.listing.host_id === user.id;
+  const formatted: ConversationListRow[] = (
+    (conversations || []) as unknown as RawConversationRow[]
+  ).map((conv: RawConversationRow) => {
+    // A conversation is tied to either a booking or a stay
+    const reference = (conv.booking || conv.stay)!;
+    const isHost = reference.listing.host_id === user.id;
 
-      const otherProfile = isHost ? reference.guest : reference.listing.host;
-      const otherParticipant: ConversationParticipant = {
-        id: otherProfile.id,
-        name: otherProfile.full_name || 'Unknown User',
-        avatar_url: otherProfile.avatar_storage_path,
-        role: isHost ? 'guest' : 'host',
-      };
+    const otherProfile = isHost ? reference.guest : reference.listing.host;
+    const otherParticipant: ConversationParticipant = {
+      id: otherProfile.id,
+      name: otherProfile.full_name || 'Unknown User',
+      avatar_url: otherProfile.avatar_storage_path,
+      role: isHost ? 'guest' : 'host',
+    };
 
-      // Sort messages by created_at desc to find latest
-      const sortedMessages = (conv.messages || []).sort(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (a: any, b: any) =>
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    // Sort messages by created_at desc to find latest
+    const sortedMessages = (conv.messages || []).sort(
+      (a: RawMessage, b: RawMessage) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+    const latestMessage = sortedMessages[0] || null;
+
+    // Calculate unread count
+    const lastReadAt = isHost
+      ? conv.host_last_read_at
+      : conv.guest_last_read_at;
+    const unreadCount = sortedMessages.filter((msg: RawMessage) => {
+      // Don't count my own messages as unread
+      if (msg.sender_id === user.id) return false;
+      // If we never read anything, it's unread
+      if (!lastReadAt) return true;
+      // Otherwise, compare timestamps
+      return (
+        new Date(msg.created_at).getTime() > new Date(lastReadAt).getTime()
       );
-      const latestMessage = sortedMessages[0] || null;
+    }).length;
 
-      // Calculate unread count
-      const lastReadAt = isHost
-        ? conv.host_last_read_at
-        : conv.guest_last_read_at;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const unreadCount = sortedMessages.filter((msg: any) => {
-        // Don't count my own messages as unread
-        if (msg.sender_id === user.id) return false;
-        // If we never read anything, it's unread
-        if (!lastReadAt) return true;
-        // Otherwise, compare timestamps
-        return (
-          new Date(msg.created_at).getTime() > new Date(lastReadAt).getTime()
-        );
-      }).length;
+    let contextType: 'booking' | 'stay' | 'inquiry' = 'inquiry';
+    let status: string | undefined;
+    let startDate: string | undefined;
+    let endDate: string | undefined;
 
-      let contextType: 'booking' | 'stay' | 'inquiry' = 'inquiry';
-      let status: string | undefined;
-      let startDate: string | undefined;
-      let endDate: string | undefined;
-
-      if (conv.stay) {
-        contextType = 'stay';
-        startDate = conv.stay.start_date;
-        endDate = conv.stay.end_date;
-      } else if (conv.booking) {
-        contextType = 'booking';
-        status = conv.booking.status;
-        startDate = conv.booking.requested_move_in;
-      }
-
-      return {
-        id: conv.id,
-        listing: {
-          id: reference.listing.id,
-          title: reference.listing.title,
-        },
-        context: {
-          type: contextType,
-          status,
-          startDate,
-          endDate,
-        },
-        otherParticipant,
-        latestMessage,
-        unreadCount,
-        updated_at: latestMessage ? latestMessage.created_at : conv.created_at,
-      };
+    if (conv.stay) {
+      contextType = 'stay';
+      startDate = conv.stay.start_date;
+      endDate = conv.stay.end_date;
+    } else if (conv.booking) {
+      contextType = 'booking';
+      status = conv.booking.status;
+      startDate = conv.booking.requested_move_in;
     }
-  );
+
+    return {
+      id: conv.id,
+      listing: {
+        id: reference.listing.id,
+        title: reference.listing.title,
+      },
+      context: {
+        type: contextType,
+        status,
+        startDate,
+        endDate,
+      },
+      otherParticipant,
+      latestMessage,
+      unreadCount,
+      updated_at: latestMessage ? latestMessage.created_at : conv.created_at,
+    };
+  });
 
   // Sort by latest message first
   return formatted.sort(
@@ -192,19 +225,24 @@ export async function markConversationRead(conversationId: string) {
     throw new Error('Conversation not found');
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const reference = (conv as any).booking || (conv as any).stay;
+  const typedConv = conv as unknown as {
+    booking?: { listing: { host_id: string } } | null;
+    stay?: { listing: { host_id: string } } | null;
+  };
+  const reference = typedConv.booking || typedConv.stay;
   // If the user is the host of the listing, they are the host. Otherwise, guest.
-  const isHost = reference.listing.host_id === user.id;
+  const isHost = reference?.listing?.host_id === user.id;
 
-  const updatePayload = isHost
+  const updatePayload: {
+    host_last_read_at?: string;
+    guest_last_read_at?: string;
+  } = isHost
     ? { host_last_read_at: new Date().toISOString() }
     : { guest_last_read_at: new Date().toISOString() };
 
   const { error: updateErr } = await supabase
     .from('conversations')
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .update(updatePayload as any)
+    .update(updatePayload as unknown as Record<string, unknown>)
     .eq('id', conversationId);
 
   if (updateErr) {

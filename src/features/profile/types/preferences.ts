@@ -71,11 +71,22 @@ export interface UserPreferences {
   updated_at: string;
 }
 
-export const PreferenceSchemas: Record<PreferenceCategory, z.ZodSchema> = {
+export type PreferenceFormMap = {
+  privacy: PrivacyPreferences;
+  notifications: NotificationsPreferences;
+  security: SecurityPreferences;
+  hosting: HostingPreferences;
+  communication: CommunicationPreferences;
+  data: DataPreferences;
+};
+
+export const PreferenceSchemas = {
   privacy: PrivacySchema,
   notifications: NotificationsSchema,
   security: SecuritySchema,
   hosting: HostingSchema,
   communication: CommunicationSchema,
   data: DataSchema,
-};
+} as const;
+
+export type PreferenceSchemaMap = typeof PreferenceSchemas;
