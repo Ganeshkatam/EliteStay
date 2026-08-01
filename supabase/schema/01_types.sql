@@ -31,5 +31,4 @@ CREATE TYPE public.occupancy_type AS ENUM ('private', 'shared', 'mixed');
 CREATE TYPE public.gender AS ENUM ('male', 'female');
 CREATE TYPE public.gender_preference AS ENUM ('any', 'male', 'female');
 CREATE TYPE public.furnishing AS ENUM ('unfurnished', 'semi_furnished', 'fully_furnished');
-
 CREATE TYPE public.sync_direction AS ENUM ('import', 'export', 'both');
