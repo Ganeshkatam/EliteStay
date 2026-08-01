@@ -7,12 +7,12 @@ import { MapPreview } from '@/features/home/components/MapPreview';
 export default async function HomePage() {
   return (
     <main className="flex min-h-screen flex-col pb-16 pt-0 gap-6">
-      <PopularLocations />
       <Categories />
       {/* Dynamic Discovery Engine */}
       {homepageConfig.map((config) => (
         <HomeSection key={config.id} config={config} />
       ))}
+      <PopularLocations />
       <MapPreview />
     </main>
   );

@@ -180,7 +180,7 @@ export function DiscoveryRail({ children, className }: DiscoveryRailProps) {
           className
         )}
       >
-        {children}
+        {React.Children.toArray(children)}
       </div>
     </div>
   );

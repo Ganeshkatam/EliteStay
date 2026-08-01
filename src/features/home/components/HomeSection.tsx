@@ -52,7 +52,7 @@ export async function HomeSection({ config }: HomeSectionProps) {
         <DiscoveryRail>
           {listings.map((listing) => (
             <div
-              key={listing.publicId}
+              key={`${config.id}-${listing.publicId}`}
               className="flex-shrink-0 w-[280px] sm:w-[310px] snap-start"
             >
               <ListingCard listing={listing} aspectRatio="rail" />
