@@ -5,6 +5,8 @@ import { SearchChip } from '../../ui/SearchChip';
 import { SlidersHorizontal } from 'lucide-react';
 import { useSearchData, useSearchUI } from '../../context/SearchProvider';
 import { TypeDropdown } from './TypeDropdown';
+import { FurnishingDropdown } from './FurnishingDropdown';
+import { GenderDropdown } from './GenderDropdown';
 
 export function ToolbarRenderer() {
   const { filters } = useSearchData();
@@ -33,6 +35,14 @@ export function ToolbarRenderer() {
 
         if (def.id === 'type') {
           return <TypeDropdown key={def.id} />;
+        }
+
+        if (def.id === 'furnishing') {
+          return <FurnishingDropdown key={def.id} />;
+        }
+
+        if (def.id === 'gender') {
+          return <GenderDropdown key={def.id} />;
         }
 
         return (
