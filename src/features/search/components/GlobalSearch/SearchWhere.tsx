@@ -5,9 +5,11 @@ import { useSearchContext } from './SearchContext';
 import { SearchSection } from './SearchSection';
 import { type SearchVariant } from './types';
 import { cn } from '@/lib/utils';
-import { Navigation } from 'lucide-react';
+import { Navigation, MapPin } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { buildSearchUrl } from '@/features/search/lib/search-params';
+import { searchCitiesAction } from '@/features/location/actions/search-city';
+import { type LocationCity } from '@/features/location/types';
 
 interface SearchWhereProps {
   variant: SearchVariant;
@@ -17,7 +19,9 @@ export function SearchWhere({ variant }: SearchWhereProps) {
   const { state, updateState, setIsExpanded } = useSearchContext();
   const isCompact = variant === 'compact';
   const [showDropdown, setShowDropdown] = useState(false);
+  const [suggestions, setSuggestions] = useState<LocationCity[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -36,6 +40,22 @@ export function SearchWhere({ variant }: SearchWhereProps) {
   const handleCitySelect = (city: string) => {
     updateState({ city });
     setShowDropdown(false);
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    updateState({ city: val });
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    if (val.trim().length >= 2) {
+      debounceRef.current = setTimeout(async () => {
+        const results = await searchCitiesAction(val.trim());
+        setSuggestions(results || []);
+      }, 300);
+    } else {
+      setSuggestions([]);
+    }
   };
 
   const handleNearbyMe = () => {
@@ -79,6 +99,9 @@ export function SearchWhere({ variant }: SearchWhereProps) {
     { name: 'Indore', gradient: 'from-violet-400 to-purple-600' },
   ];
 
+  const hasSuggestions =
+    state.city.trim().length >= 2 && suggestions.length > 0;
+
   return (
     <div ref={containerRef} className="relative flex-1 flex">
       <SearchSection variant={variant} label="Where">
@@ -91,7 +114,7 @@ export function SearchWhere({ variant }: SearchWhereProps) {
             isCompact ? 'text-gray-900' : 'text-gray-900'
           )}
           value={state.city}
-          onChange={(e) => updateState({ city: e.target.value })}
+          onChange={handleInputChange}
           onFocus={() => !isCompact && setShowDropdown(true)}
           readOnly={isCompact}
           style={{ pointerEvents: isCompact ? 'none' : 'auto' }}
@@ -117,27 +140,50 @@ export function SearchWhere({ variant }: SearchWhereProps) {
             </div>
           </button>
 
-          <div className="mt-4 pt-4 border-t">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-3 px-2">
-              Popular Cities
-            </h3>
-            <div className="grid grid-cols-3 gap-3 px-1">
-              {popularCities.map((city) => (
-                <button
-                  key={city.name}
-                  type="button"
-                  onClick={() => handleCitySelect(city.name)}
-                  className="group relative h-24 overflow-hidden rounded-xl flex items-end p-3 border hover:border-gray-900 transition-colors"
-                >
-                  <div
-                    className={`absolute inset-0 z-0 bg-gradient-to-br ${city.gradient} opacity-90 group-hover:opacity-100 transition-opacity duration-300`}
-                  />
-                  <div className="relative z-10 text-white font-medium text-sm tracking-wide text-shadow-sm">
-                    {city.name}
-                  </div>
-                </button>
-              ))}
-            </div>
+          <div className="mt-4 pt-4 border-t max-h-[320px] overflow-y-auto no-scrollbar">
+            {hasSuggestions ? (
+              <div className="space-y-1">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-2 px-2">
+                  Matching Destinations
+                </h3>
+                {suggestions.map((city) => (
+                  <button
+                    key={city.id}
+                    type="button"
+                    onClick={() => handleCitySelect(city.name)}
+                    className="w-full flex items-center gap-3 px-3 py-2 hover:bg-gray-50 rounded-xl transition-colors text-left"
+                  >
+                    <MapPin className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                    <span className="font-medium text-gray-700 text-sm">
+                      {city.name}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-3 px-2">
+                  Popular Cities
+                </h3>
+                <div className="grid grid-cols-3 gap-3 px-1">
+                  {popularCities.map((city) => (
+                    <button
+                      key={city.name}
+                      type="button"
+                      onClick={() => handleCitySelect(city.name)}
+                      className="group relative h-24 overflow-hidden rounded-xl flex items-end p-3 border hover:border-gray-900 transition-colors"
+                    >
+                      <div
+                        className={`absolute inset-0 z-0 bg-gradient-to-br ${city.gradient} opacity-90 group-hover:opacity-100 transition-opacity duration-300`}
+                      />
+                      <div className="relative z-10 text-white font-medium text-sm tracking-wide text-shadow-sm">
+                        {city.name}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

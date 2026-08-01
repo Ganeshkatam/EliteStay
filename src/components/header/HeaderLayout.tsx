@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { usePathname } from 'next/navigation';
 import { useHeaderState, HEADER_SCROLL } from './useHeaderState';
 import { cn } from '@/lib/utils';
 import { Container } from '@/components/layout/Container';
@@ -16,6 +17,8 @@ interface HeaderLayoutProps {
 }
 
 export function HeaderLayout({ user, profile }: HeaderLayoutProps) {
+  const pathname = usePathname();
+  const isSearchRoute = pathname === '/s';
   const { variant, isExpanded: isHeaderExpanded } = useHeaderState();
   const { isExpanded: isSearchExpanded, setIsExpanded: setIsSearchExpanded } =
     useSearchContext();
@@ -102,26 +105,42 @@ export function HeaderLayout({ user, profile }: HeaderLayoutProps) {
     );
   }
 
+  const headerHeightClass = isSearchRoute
+    ? isExpanded
+      ? 'h-[240px]'
+      : 'h-[140px]'
+    : isExpanded
+      ? 'h-[176px]'
+      : 'h-[76px]';
+
   return (
     <>
       {/* Static placeholder prevents document flow jumps when the fixed header height animates */}
       <div
-        className={
-          variant === 'public-home' || variant === 'public'
-            ? 'h-[176px]'
-            : 'h-[76px]'
-        }
+        className={cn(
+          'transition-all duration-300 ease-premium',
+          isSearchRoute
+            ? isExpanded
+              ? 'h-[240px]'
+              : 'h-[140px]'
+            : variant === 'public-home'
+              ? 'h-[176px]'
+              : 'h-[76px]'
+        )}
       />
 
       <header
         ref={headerRef}
-        className="fixed top-0 left-0 z-40 w-full h-[76px] overflow-visible border-none bg-transparent"
+        className={cn(
+          'fixed top-0 left-0 z-40 w-full overflow-visible border-none bg-transparent transition-all duration-300 ease-premium',
+          headerHeightClass
+        )}
       >
         {/* Glass Layer: GPU-accelerated height scaling */}
         <div
           className={cn(
-            'absolute inset-x-0 top-0 h-[176px] bg-white/85 backdrop-blur-md origin-top motion-transform ease-premium border-b border-border/45',
-            isExpanded ? 'scale-y-100' : 'scale-y-[0.4318]'
+            'absolute inset-x-0 top-0 bg-white/85 backdrop-blur-md border-b border-border/45 transition-all duration-300 ease-premium',
+            headerHeightClass
           )}
         />
 
@@ -133,7 +152,7 @@ export function HeaderLayout({ user, profile }: HeaderLayoutProps) {
           )}
         />
 
-        <Container className="h-full relative z-10">
+        <Container className="h-full relative z-10 flex flex-col justify-between py-0">
           <div className="flex h-[76px] items-center justify-between gap-4 relative">
             <TopBar
               variant={variant}
@@ -142,6 +161,14 @@ export function HeaderLayout({ user, profile }: HeaderLayoutProps) {
               isExpanded={isExpanded}
             />
           </div>
+
+          {/* React Portal Destination for search filters toolbar */}
+          {isSearchRoute && (
+            <div
+              id="search-header-portal"
+              className="h-16 flex items-center border-t border-gray-100 w-full"
+            />
+          )}
         </Container>
       </header>
 

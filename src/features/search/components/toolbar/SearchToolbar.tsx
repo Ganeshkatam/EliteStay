@@ -1,20 +1,26 @@
 'use client';
 
-import { LAYOUT } from '@/config/layout';
+import { createPortal } from 'react-dom';
+import { useState, useEffect } from 'react';
 import { ToolbarRenderer } from './ToolbarRenderer';
 
 export function SearchToolbar() {
-  return (
-    <div 
-      className="sticky z-40 bg-white border-b border-gray-100 flex items-center shadow-sm"
-      style={{ 
-        top: LAYOUT.HEADER_HEIGHT,
-        height: 64, // From spacing.ts toolbarHeight conceptually
-      }}
-    >
-      <div className="w-full px-4 sm:px-6 lg:px-8 overflow-x-auto no-scrollbar">
-        <ToolbarRenderer />
-      </div>
-    </div>
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMounted(true);
+  }, []);
+
+  if (!mounted) return null;
+
+  const target = document.getElementById('search-header-portal');
+  if (!target) return null;
+
+  return createPortal(
+    <div className="w-full overflow-x-auto no-scrollbar">
+      <ToolbarRenderer />
+    </div>,
+    target
   );
 }
