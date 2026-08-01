@@ -2,7 +2,7 @@
 
 import { useCallback, useState, useEffect, useRef } from 'react';
 import { useSearchData } from '../context/SearchProvider';
-import { useSearchUrl } from './useSearchUrl';
+import { useRouter } from 'next/navigation';
 
 export interface MapViewport {
   center: {
@@ -34,7 +34,7 @@ export function isSameViewport(
 
 export function useMapSearch() {
   const { filters } = useSearchData();
-  const { updateFilters } = useSearchUrl(filters);
+  const router = useRouter();
 
   // Initialize preference state from localStorage if available, otherwise fallback to true
   const [searchAsMapMoves, setSearchAsMapMoves] = useState<boolean>(() => {
@@ -83,20 +83,20 @@ export function useMapSearch() {
       setLastSearchedViewport(vp);
       setViewportChanged(false);
 
-      updateFilters(
-        {
-          minLat: vp.bounds.south,
-          maxLat: vp.bounds.north,
-          minLng: vp.bounds.west,
-          maxLng: vp.bounds.east,
-          centerLat: vp.center.lat,
-          centerLng: vp.center.lng,
-          page: 1, // Reset page
-        },
-        true // Use router.replace to avoid browser history bloat
-      );
+      if (typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search);
+        params.set('minLat', String(vp.bounds.south));
+        params.set('maxLat', String(vp.bounds.north));
+        params.set('minLng', String(vp.bounds.west));
+        params.set('maxLng', String(vp.bounds.east));
+        params.set('centerLat', String(vp.center.lat));
+        params.set('centerLng', String(vp.center.lng));
+        params.set('page', '1'); // Reset page
+
+        router.replace(`?${params.toString()}`, { scroll: false });
+      }
     },
-    [updateFilters]
+    [router]
   );
 
   // Debounced search trigger when pendingViewport changes and searchAsMapMoves is active
