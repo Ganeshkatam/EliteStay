@@ -1,12 +1,6 @@
 'use client';
 
-import React, {
-  createContext,
-  useContext,
-  useState,
-  ReactNode,
-  useMemo,
-} from 'react';
+import { createContext, useContext, useState, ReactNode, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 
 interface SearchState {

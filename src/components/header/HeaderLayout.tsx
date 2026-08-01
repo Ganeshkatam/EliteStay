@@ -1,10 +1,12 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import { useHeaderState } from './useHeaderState';
 import { cn } from '@/lib/utils';
 import { Container } from '@/components/layout/Container';
 import { TopBar } from './TopBar';
 import { useSearchContext } from '@/features/search/components/GlobalSearch/SearchContext';
+import { SearchOverlay } from '@/features/search/components/GlobalSearch/SearchOverlay';
 import { type ExtendedProfile } from '@/types/profile';
 import { type User } from '@supabase/supabase-js';
 
@@ -15,7 +17,62 @@ interface HeaderLayoutProps {
 
 export function HeaderLayout({ user, profile }: HeaderLayoutProps) {
   const { variant, isExpanded: isHeaderExpanded } = useHeaderState();
-  const { isExpanded: isSearchExpanded } = useSearchContext();
+  const { isExpanded: isSearchExpanded, setIsExpanded: setIsSearchExpanded } =
+    useSearchContext();
+  const headerRef = useRef<HTMLElement>(null);
+
+  // Collapse manual search expansion when scrolling down past 80px (ignores scroll-to-top animation)
+  useEffect(() => {
+    if (!isSearchExpanded) return;
+
+    let ticking = false;
+    let lastScrollY = window.scrollY;
+
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const currentScrollY = window.scrollY;
+          if (currentScrollY > 80 && currentScrollY > lastScrollY + 10) {
+            setIsSearchExpanded(false);
+          }
+          lastScrollY = currentScrollY;
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [isSearchExpanded, setIsSearchExpanded]);
+
+  // Collapse manual search expansion on outside click or Escape key
+  useEffect(() => {
+    if (!isSearchExpanded) return;
+
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (
+        headerRef.current &&
+        !headerRef.current.contains(event.target as Node)
+      ) {
+        setIsSearchExpanded(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsSearchExpanded(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isSearchExpanded, setIsSearchExpanded]);
 
   const isExpanded = isHeaderExpanded || isSearchExpanded;
 
@@ -38,6 +95,7 @@ export function HeaderLayout({ user, profile }: HeaderLayoutProps) {
       <div className={variant === 'public-home' ? 'h-[176px]' : 'h-[76px]'} />
 
       <header
+        ref={headerRef}
         className={cn(
           'fixed top-0 left-0 z-40 w-full transition-all duration-220 ease-in-out bg-white border-b border-border/40',
           // If expanded, the header height is 176px. If collapsed, 76px
@@ -55,6 +113,8 @@ export function HeaderLayout({ user, profile }: HeaderLayoutProps) {
           </div>
         </Container>
       </header>
+
+      <SearchOverlay isExpanded={isSearchExpanded} />
     </>
   );
 }
