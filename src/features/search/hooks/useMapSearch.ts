@@ -3,7 +3,6 @@
 import { useCallback, useState, useEffect, useRef } from 'react';
 import { useSearchData } from '../context/SearchProvider';
 import { useSearchUrl } from './useSearchUrl';
-import { getMapConfig } from '@/lib/maps';
 
 export interface MapViewport {
   center: {
@@ -54,10 +53,9 @@ export function useMapSearch() {
     useState<MapViewport | null>(() => {
       // Populate initial state from search URL filters if present
       if (filters.centerLat != null && filters.centerLng != null) {
-        const mapConfig = getMapConfig();
         return {
           center: { lat: filters.centerLat, lng: filters.centerLng },
-          zoom: mapConfig.defaultViewport.zoom,
+          zoom: 12,
           bounds: {
             north: filters.maxLat ?? 0,
             south: filters.minLat ?? 0,

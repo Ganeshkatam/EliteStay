@@ -19,7 +19,12 @@ DELETE FROM auth.identities WHERE provider_id LIKE '%@elitestay.com';
 -- 2. Auth Users & Profiles
 `;
 
-const generateUser = (id: string, role: string, emailPrefix: string, name: string) => {
+const generateUser = (
+  id: string,
+  role: string,
+  emailPrefix: string,
+  name: string
+) => {
   const email = `${emailPrefix}@elitestay.com`;
   return `
 INSERT INTO auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, recovery_sent_at, last_sign_in_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at, confirmation_token, email_change, email_change_token_new, recovery_token)
@@ -32,17 +37,17 @@ VALUES (gen_random_uuid(), '${id}', format('{"sub":"%s","email":"%s"}', '${id}',
 
 sql += generateUser(adminId, 'admin', 'admin', 'Admin User');
 hostIds.forEach((id, i) => {
-  sql += generateUser(id, 'host', `host${i+1}`, faker.person.fullName());
+  sql += generateUser(id, 'host', `host${i + 1}`, faker.person.fullName());
 });
 guestIds.forEach((id, i) => {
-  sql += generateUser(id, 'guest', `guest${i+1}`, faker.person.fullName());
+  sql += generateUser(id, 'guest', `guest${i + 1}`, faker.person.fullName());
 });
 
 sql += `
 -- 3. Override roles in profiles (since trigger defaults to guest)
 UPDATE public.profiles SET role = 'admin' WHERE id = '${adminId}';
 `;
-hostIds.forEach(id => {
+hostIds.forEach((id) => {
   sql += `UPDATE public.profiles SET role = 'host' WHERE id = '${id}';\n`;
 });
 
@@ -70,7 +75,15 @@ sql += `
 
 const listingIds: string[] = [];
 
-for (let i = 0; i < 20; i++) {
+const indianCities = [
+  { name: 'Bangalore', state: 'Karnataka', lat: 12.9716, lng: 77.5946 },
+  { name: 'Mumbai', state: 'Maharashtra', lat: 19.076, lng: 72.8777 },
+  { name: 'New Delhi', state: 'Delhi', lat: 28.6139, lng: 77.209 },
+  { name: 'Pune', state: 'Maharashtra', lat: 18.5204, lng: 73.8567 },
+  { name: 'Hyderabad', state: 'Telangana', lat: 17.385, lng: 78.4867 },
+];
+
+for (let i = 0; i < 30; i++) {
   const listingId = getUuid();
   listingIds.push(listingId);
   const hostId = faker.helpers.arrayElement(hostIds);
@@ -79,11 +92,18 @@ for (let i = 0; i < 20; i++) {
   const publicId = faker.string.alphanumeric(8).toUpperCase();
   const price = faker.number.int({ min: 5000, max: 30000 });
   const deposit = faker.number.int({ min: 1000, max: 10000 });
-  
-  sql += `
-INSERT INTO public.listings (id, public_id, host_id, title, description, accommodation_type_id, formatted_address, locality, city, state, country, postal_code, status)
-VALUES ('${listingId}', '${publicId}', '${hostId}', '${title}', '${desc}', (SELECT id FROM public.accommodation_types ORDER BY random() LIMIT 1), '${faker.location.streetAddress().replace(/'/g, "''")}', '${faker.location.street().replace(/'/g, "''")}', '${faker.location.city().replace(/'/g, "''")}', '${faker.location.state().replace(/'/g, "''")}', 'India', '${faker.location.zipCode()}', 'published');
 
+  // Pick random city and add minor offset so listings spread out on map
+  const targetCity = faker.helpers.arrayElement(indianCities);
+  const latOffset = (Math.random() - 0.5) * 0.08;
+  const lngOffset = (Math.random() - 0.5) * 0.08;
+  const finalLat = targetCity.lat + latOffset;
+  const finalLng = targetCity.lng + lngOffset;
+
+  sql += `
+INSERT INTO public.listings (id, public_id, host_id, title, description, accommodation_type_id, formatted_address, locality, city, state, country, postal_code, status, latitude, longitude)
+VALUES ('${listingId}', '${publicId}', '${hostId}', '${title}', '${desc}', (SELECT id FROM public.accommodation_types ORDER BY random() LIMIT 1), '${faker.location.streetAddress().replace(/'/g, "''")}', '${faker.location.street().replace(/'/g, "''")}', '${targetCity.name}', '${targetCity.state}', 'India', '${faker.location.zipCode()}', 'published', ${finalLat}, ${finalLng});
+ 
 INSERT INTO public.listing_prices (listing_id, amount, currency, billing_period, security_deposit)
 VALUES ('${listingId}', ${price}, 'INR', 'month', ${deposit});
 `;
@@ -156,4 +176,6 @@ INSERT INTO public.notifications (user_id, type, title, message) VALUES
 `;
 
 fs.writeFileSync('supabase/migrations/99999999999999_seed.sql', sql);
-console.log('Seed SQL generated at supabase/migrations/99999999999999_seed.sql');
+console.log(
+  'Seed SQL generated at supabase/migrations/99999999999999_seed.sql'
+);

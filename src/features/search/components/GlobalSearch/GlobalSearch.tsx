@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useSearchContext } from './SearchContext';
 import { SearchShell } from './SearchShell';
 import { SearchModal } from './SearchModal';
@@ -8,8 +8,9 @@ import { SearchWhere } from './SearchWhere';
 import { SearchDates } from './SearchDates';
 import { SearchType } from './SearchType';
 import { SearchButton } from './SearchButton';
+import { SearchDropdown } from './SearchDropdown';
 import { type SearchVariant } from './types';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { format, parseISO, isValid } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -20,7 +21,11 @@ interface GlobalSearchProps {
 export function GlobalSearch({ variant }: GlobalSearchProps) {
   const { state, setIsExpanded } = useSearchContext();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const isCompact = variant === 'compact';
+  const [duration, setDuration] = useState<'weekend' | 'week' | 'month'>(
+    'weekend'
+  );
 
   const handleSearch = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -40,8 +45,14 @@ export function GlobalSearch({ variant }: GlobalSearchProps) {
     }
   };
 
+  const hasViewport = searchParams && searchParams.get('minLat') != null;
+
   // Settle summary representations
-  const citySummary = state.city ? state.city : 'Anywhere';
+  const citySummary = hasViewport
+    ? 'This map area'
+    : state.city
+      ? state.city
+      : 'Anywhere';
 
   const parsedDate = state.moveIn ? parseISO(state.moveIn) : undefined;
   const dateSummary =
@@ -50,6 +61,7 @@ export function GlobalSearch({ variant }: GlobalSearchProps) {
       : 'Any week';
 
   const accommodationTypes = [
+    { label: 'Any type', value: '' },
     { label: 'Apartment', value: 'apartment' },
     { label: 'PG', value: 'pg' },
     { label: 'Hostel', value: 'hostel' },
@@ -106,9 +118,11 @@ export function GlobalSearch({ variant }: GlobalSearchProps) {
             )}
           >
             <SearchWhere variant={variant} />
-            <SearchDates variant={variant} />
+            <SearchDates variant={variant} duration={duration} />
             <SearchType variant={variant} />
           </div>
+
+          <SearchDropdown duration={duration} setDuration={setDuration} />
         </div>
         <SearchButton variant={variant} onClick={handleSearch} />
       </SearchShell>

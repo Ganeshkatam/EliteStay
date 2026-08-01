@@ -19,9 +19,9 @@ export function MapCanvas({ children, onViewportChange }: MapCanvasProps) {
   const mapConfig = getMapConfig();
 
   // Fallback to configured defaults if center not available
-  const initialLat = map.centerLat ?? mapConfig.defaultViewport.latitude;
-  const initialLng = map.centerLng ?? mapConfig.defaultViewport.longitude;
-  const initialZoom = map.zoom ?? mapConfig.defaultViewport.zoom;
+  const initialLat = map.centerLat ?? 12.9716;
+  const initialLng = map.centerLng ?? 77.5946;
+  const initialZoom = map.zoom ?? 12;
 
   const handleMapMove = useCallback(
     (evt: ViewStateChangeEvent) => {
@@ -53,7 +53,8 @@ export function MapCanvas({ children, onViewportChange }: MapCanvasProps) {
         latitude: initialLat,
         zoom: initialZoom,
       }}
-      mapStyle={mapConfig.styleUrl}
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      mapStyle={mapConfig.styleUrl as any}
       minZoom={mapConfig.minZoom}
       maxZoom={mapConfig.maxZoom}
       onMoveEnd={handleMapMove}

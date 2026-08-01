@@ -133,6 +133,13 @@ function parsePositiveNumber(raw: string | undefined): number | null {
   return n;
 }
 
+function parseCoordinate(raw: string | undefined): number | null {
+  if (!raw) return null;
+  const n = parseFloat(raw);
+  if (Number.isNaN(n)) return null;
+  return n;
+}
+
 function validateEnum<T extends string>(
   raw: string | undefined,
   allowed: Set<string>
@@ -157,12 +164,12 @@ export function parseSearchParams(raw: RawSearchParams): SearchFilters {
   const cityRaw = firstString(raw.city)?.trim() || null;
   const localityRaw = firstString(raw.locality)?.trim() || null;
 
-  const minLatRaw = parsePositiveNumber(firstString(raw.minLat));
-  const maxLatRaw = parsePositiveNumber(firstString(raw.maxLat));
-  const minLngRaw = parsePositiveNumber(firstString(raw.minLng));
-  const maxLngRaw = parsePositiveNumber(firstString(raw.maxLng));
-  const centerLatRaw = parsePositiveNumber(firstString(raw.centerLat));
-  const centerLngRaw = parsePositiveNumber(firstString(raw.centerLng));
+  const minLatRaw = parseCoordinate(firstString(raw.minLat));
+  const maxLatRaw = parseCoordinate(firstString(raw.maxLat));
+  const minLngRaw = parseCoordinate(firstString(raw.minLng));
+  const maxLngRaw = parseCoordinate(firstString(raw.maxLng));
+  const centerLatRaw = parseCoordinate(firstString(raw.centerLat));
+  const centerLngRaw = parseCoordinate(firstString(raw.centerLng));
 
   const accommodationTypeRaw =
     firstString(raw.accommodationType)?.trim().toLowerCase() || null;

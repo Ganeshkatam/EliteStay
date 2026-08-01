@@ -13,9 +13,8 @@ export interface ProviderMetadata {
 
 export interface MapConfig {
   provider: string;
-  styleUrl: string;
+  styleUrl: string | object;
   attribution: string;
-  defaultViewport: Viewport;
   minZoom: number;
   maxZoom: number;
   worldCopies: boolean;

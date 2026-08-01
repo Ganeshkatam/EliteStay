@@ -99,9 +99,10 @@ export function SearchMap({ listings }: { listings: ListingCardData[] }) {
         initialViewState={{
           longitude: initialLng,
           latitude: initialLat,
-          zoom: mapConfig.defaultViewport.zoom,
+          zoom: 12,
         }}
-        mapStyle={mapConfig.styleUrl}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        mapStyle={mapConfig.styleUrl as any}
         minZoom={mapConfig.minZoom}
         maxZoom={mapConfig.maxZoom}
         onMoveEnd={handleMapMove}

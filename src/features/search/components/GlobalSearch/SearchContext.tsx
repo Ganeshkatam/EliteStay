@@ -17,6 +17,9 @@ interface SearchContextValue {
   // Mobile overlay state
   isMobileModalOpen: boolean;
   setIsMobileModalOpen: (val: boolean) => void;
+  // Active Section state
+  activeSection: 'where' | 'dates' | 'type' | null;
+  setActiveSection: (sec: 'where' | 'dates' | 'type' | null) => void;
 }
 
 const SearchContext = createContext<SearchContextValue | undefined>(undefined);
@@ -37,6 +40,9 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   const [overrides, setOverrides] = useState<Partial<SearchState>>({});
   const [isExpanded, setIsExpanded] = useState(false);
   const [isMobileModalOpen, setIsMobileModalOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState<
+    'where' | 'dates' | 'type' | null
+  >(null);
 
   const state: SearchState = { ...urlState, ...overrides };
 
@@ -53,6 +59,8 @@ export function SearchProvider({ children }: { children: ReactNode }) {
         setIsExpanded,
         isMobileModalOpen,
         setIsMobileModalOpen,
+        activeSection,
+        setActiveSection,
       }}
     >
       {children}
