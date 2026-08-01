@@ -30,11 +30,10 @@ export function useHeaderState() {
 
   // Manage expanded state using hysteresis and throttling
   const [expandedState, setExpandedState] = useState(true);
-  const isExpanded =
-    (variant === 'public-home' || variant === 'public') && expandedState;
+  const isExpanded = variant === 'public-home' && expandedState;
 
   useEffect(() => {
-    if (variant !== 'public-home' && variant !== 'public') {
+    if (variant !== 'public-home') {
       return;
     }
 

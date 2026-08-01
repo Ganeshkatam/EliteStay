@@ -26,11 +26,7 @@ export function HeaderLayout({ user, profile }: HeaderLayoutProps) {
 
   // Ensure manual expansion turns off whenever the public header collapses on scroll
   useEffect(() => {
-    if (
-      (variant === 'public-home' || variant === 'public') &&
-      !isHeaderExpanded &&
-      isSearchExpanded
-    ) {
+    if (variant === 'public-home' && !isHeaderExpanded && isSearchExpanded) {
       setIsSearchExpanded(false);
     }
   }, [variant, isHeaderExpanded, isSearchExpanded, setIsSearchExpanded]);
