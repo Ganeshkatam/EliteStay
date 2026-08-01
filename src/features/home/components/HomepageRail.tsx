@@ -125,11 +125,11 @@ export function HomepageRail({ children, className }: HomepageRailProps) {
   };
 
   return (
-    <div className="group relative w-full select-none">
+    <div className="group relative select-none -mx-6 lg:-mx-10 xl:-mx-20 overflow-hidden">
       {/* Left Fade Gradient */}
       <div
         className={cn(
-          'absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-white via-white/80 to-transparent pointer-events-none z-10 transition-opacity duration-300 ease-out',
+          'absolute left-6 lg:left-10 xl:left-20 top-0 bottom-0 w-16 bg-gradient-to-r from-white via-white/80 to-transparent pointer-events-none z-10 transition-opacity duration-300 ease-out',
           showLeftArrow ? 'opacity-100' : 'opacity-0'
         )}
       />
@@ -137,7 +137,7 @@ export function HomepageRail({ children, className }: HomepageRailProps) {
       {/* Right Fade Gradient */}
       <div
         className={cn(
-          'absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-white via-white/80 to-transparent pointer-events-none z-10 transition-opacity duration-300 ease-out',
+          'absolute right-6 lg:right-10 xl:right-20 top-0 bottom-0 w-16 bg-gradient-to-l from-white via-white/80 to-transparent pointer-events-none z-10 transition-opacity duration-300 ease-out',
           showRightArrow ? 'opacity-100' : 'opacity-0'
         )}
       />
@@ -146,7 +146,7 @@ export function HomepageRail({ children, className }: HomepageRailProps) {
       {showLeftArrow && (
         <button
           onClick={() => handleScroll('left')}
-          className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white shadow-[0_4px_12px_rgba(0,0,0,0.15)] flex items-center justify-center border hover:scale-105 active:scale-95 transition-all duration-200 z-20 opacity-0 group-hover:opacity-100 pointer-events-auto"
+          className="absolute left-8 lg:left-12 xl:left-24 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white shadow-[0_4px_12px_rgba(0,0,0,0.15)] flex items-center justify-center border hover:scale-105 active:scale-95 transition-all duration-200 z-20 opacity-0 group-hover:opacity-100 pointer-events-auto"
           aria-label="Scroll left"
         >
           <ChevronLeft className="w-5 h-5 text-gray-700" />
@@ -157,7 +157,7 @@ export function HomepageRail({ children, className }: HomepageRailProps) {
       {showRightArrow && (
         <button
           onClick={() => handleScroll('right')}
-          className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white shadow-[0_4px_12px_rgba(0,0,0,0.15)] flex items-center justify-center border hover:scale-105 active:scale-95 transition-all duration-200 z-20 opacity-0 group-hover:opacity-100 pointer-events-auto"
+          className="absolute right-8 lg:right-12 xl:right-24 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white shadow-[0_4px_12px_rgba(0,0,0,0.15)] flex items-center justify-center border hover:scale-105 active:scale-95 transition-all duration-200 z-20 opacity-0 group-hover:opacity-100 pointer-events-auto"
           aria-label="Scroll right"
         >
           <ChevronRight className="w-5 h-5 text-gray-700" />
@@ -180,7 +180,13 @@ export function HomepageRail({ children, className }: HomepageRailProps) {
           className
         )}
       >
-        {React.Children.toArray(children)}
+        {/* Flex scroll start spacer (aligns first element with container margins) */}
+        <div className="w-6 min-w-[24px] lg:w-10 lg:min-w-[40px] xl:w-20 xl:min-w-[80px] flex-shrink-0 -mr-6 h-px" />
+
+        {children}
+
+        {/* Flex scroll end spacer (preserves padding at the end of the scroll rail) */}
+        <div className="w-6 min-w-[24px] lg:w-10 lg:min-w-[40px] xl:w-20 xl:min-w-[80px] flex-shrink-0 -ml-6 h-px" />
       </div>
     </div>
   );

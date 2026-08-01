@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useMemo } from 'react';
 import { SearchWorkspaceViewModel, SearchViewMode } from '../types';
 
 // 1. Immutable Data Context
@@ -46,24 +46,37 @@ interface SearchProviderProps {
 
 export function SearchProvider({ viewModel, children }: SearchProviderProps) {
   // Default to SPLIT for desktop, but a responsive hook should eventually control this
-  const [viewMode, setViewMode] = useState<SearchViewMode>(SearchViewMode.SPLIT);
+  const [viewMode, setViewMode] = useState<SearchViewMode>(
+    SearchViewMode.SPLIT
+  );
   const [hoveredListingId, setHoveredListingId] = useState<string | null>(null);
-  const [selectedListingId, setSelectedListingId] = useState<string | null>(null);
+  const [selectedListingId, setSelectedListingId] = useState<string | null>(
+    null
+  );
   const [selectedMarkerId, setSelectedMarkerId] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const uiState: SearchUIState = {
-    viewMode,
-    setViewMode,
-    hoveredListingId,
-    setHoveredListingId,
-    selectedListingId,
-    setSelectedListingId,
-    selectedMarkerId,
-    setSelectedMarkerId,
-    drawerOpen,
-    setDrawerOpen,
-  };
+  const uiState = useMemo<SearchUIState>(
+    () => ({
+      viewMode,
+      setViewMode,
+      hoveredListingId,
+      setHoveredListingId,
+      selectedListingId,
+      setSelectedListingId,
+      selectedMarkerId,
+      setSelectedMarkerId,
+      drawerOpen,
+      setDrawerOpen,
+    }),
+    [
+      viewMode,
+      hoveredListingId,
+      selectedListingId,
+      selectedMarkerId,
+      drawerOpen,
+    ]
+  );
 
   return (
     <SearchDataContext.Provider value={viewModel}>

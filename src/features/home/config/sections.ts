@@ -5,8 +5,6 @@ export type SectionType =
   | 'topRated'
   | 'budget'
   | 'luxury'
-  | 'near_universities'
-  | 'student_favorites'
   | 'premium_coliving';
 
 export interface HomeSectionConfig {
@@ -25,22 +23,6 @@ export const homepageConfig: HomeSectionConfig[] = [
     subtitle: 'Popular stays high in demand',
     type: 'trending',
     filter: { sort: 'recommended' },
-    limit: 8,
-  },
-  {
-    id: 'near_universities',
-    title: 'Near Universities',
-    subtitle: 'Top hubs close to campuses and startup offices',
-    type: 'near_universities',
-    filter: { locality: 'Koramangala' },
-    limit: 8,
-  },
-  {
-    id: 'student_favorites',
-    title: 'Student Favorites',
-    subtitle: 'High-rated shared rooms and social spaces',
-    type: 'student_favorites',
-    filter: { occupancy_type: 'shared' },
     limit: 8,
   },
   {
