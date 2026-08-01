@@ -59,10 +59,8 @@ export function HeaderLayout({ user, profile }: HeaderLayoutProps) {
     if (!isSearchExpanded) return;
 
     const handleOutsideClick = (event: MouseEvent) => {
-      if (
-        headerRef.current &&
-        !headerRef.current.contains(event.target as Node)
-      ) {
+      const searchContainer = document.querySelector('.search-container');
+      if (searchContainer && !searchContainer.contains(event.target as Node)) {
         setIsSearchExpanded(false);
       }
     };

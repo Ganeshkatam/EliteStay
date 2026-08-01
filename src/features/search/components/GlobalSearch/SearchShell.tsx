@@ -25,7 +25,7 @@ export function SearchShell({ variant, children, onClick }: SearchShellProps) {
     <div
       onClick={handleMobileClick}
       className={cn(
-        'relative mx-auto bg-white rounded-full shadow-[0_1px_2px_rgba(0,0,0,0.08),0_4px_12px_rgba(0,0,0,0.05)] border border-gray-200 z-50 flex items-center w-full cursor-pointer md:cursor-default transition-all duration-250 ease-in-out',
+        'search-container relative mx-auto bg-white rounded-full shadow-[0_1px_2px_rgba(0,0,0,0.08),0_4px_12px_rgba(0,0,0,0.05)] border border-gray-200 z-50 flex items-center w-full cursor-pointer md:cursor-default transition-all duration-250 ease-in-out',
         variant === 'hero'
           ? 'max-w-[900px] h-[80px]'
           : 'max-w-[440px] h-[48px]',
