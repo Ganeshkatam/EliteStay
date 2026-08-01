@@ -11,8 +11,8 @@ Contains:
 
 CREATE TABLE public.conversations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    booking_id UUID REFERENCES public.bookings(id) ON DELETE SET NULL,
-    stay_id UUID REFERENCES public.stays(id) ON DELETE SET NULL,
+    booking_id UUID REFERENCES public.bookings(id) ON DELETE CASCADE,
+    stay_id UUID REFERENCES public.stays(id) ON DELETE CASCADE,
     guest_last_read_at TIMESTAMPTZ,
     host_last_read_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
@@ -27,7 +27,7 @@ CREATE TABLE public.conversations (
 CREATE TABLE public.messages (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     conversation_id UUID REFERENCES public.conversations(id) ON DELETE CASCADE NOT NULL,
-    sender_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+    sender_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
     content TEXT NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
 );

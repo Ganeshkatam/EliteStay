@@ -14,7 +14,7 @@ Contains:
 CREATE TABLE public.listings (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     public_id TEXT UNIQUE NOT NULL,
-    host_id UUID REFERENCES public.profiles(id) ON DELETE RESTRICT NOT NULL,
+    host_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
     accommodation_type_id UUID REFERENCES public.accommodation_types(id) ON DELETE RESTRICT NOT NULL,
     property_type TEXT DEFAULT 'Apartment' NOT NULL,
     title TEXT NOT NULL,

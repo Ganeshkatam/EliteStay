@@ -246,6 +246,127 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- Account Deletion RPC
+CREATE OR REPLACE FUNCTION public.delete_user_account()
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_uid uuid;
+BEGIN
+  -- Get the current authenticated user ID
+  v_uid := auth.uid();
+
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'Not authenticated';
+  END IF;
+
+  -- Delete from auth.users, which cascades to all related tables
+  DELETE FROM auth.users WHERE id = v_uid;
+END;
+$$;
+
+-- Trigger to automatically remove auth.users entry when a profile row is deleted manually
+CREATE OR REPLACE FUNCTION public.handle_deleted_profile()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  DELETE FROM auth.users WHERE id = OLD.id;
+  RETURN OLD;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS on_profile_deleted ON public.profiles;
+CREATE TRIGGER on_profile_deleted
+  AFTER DELETE ON public.profiles
+  FOR EACH ROW
+  EXECUTE FUNCTION public.handle_deleted_profile();
+
+
+-- SOURCE: 25_user_preferences.sql
+/*
+==================================================
+Domain: User Preferences
+Purpose: Stores customizable user settings independently across various categories.
+==================================================
+*/
+
+CREATE TABLE public.user_preferences (
+  user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  privacy JSONB NOT NULL DEFAULT '{
+    "allow_host_messages": true,
+    "show_profile_photo": true,
+    "show_reviews": true,
+    "allow_search_indexing": false
+  }'::jsonb,
+  notifications JSONB NOT NULL DEFAULT '{
+    "email": true,
+    "push": false,
+    "sms": false,
+    "marketing": false
+  }'::jsonb,
+  security JSONB NOT NULL DEFAULT '{
+    "two_factor_auth": false,
+    "allow_new_device_login": true,
+    "remember_device": true
+  }'::jsonb,
+  hosting JSONB NOT NULL DEFAULT '{
+    "accept_booking_requests": true,
+    "instant_booking": false,
+    "auto_approve_reservations": false
+  }'::jsonb,
+  communication JSONB NOT NULL DEFAULT '{
+    "promotional_messages": false,
+    "support_contact": true,
+    "share_contact_after_booking": true
+  }'::jsonb,
+  data JSONB NOT NULL DEFAULT '{
+    "share_analytics": false,
+    "personalized_recommendations": true,
+    "cookie_preferences": "essential"
+  }'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Enable RLS
+ALTER TABLE public.user_preferences ENABLE ROW LEVEL SECURITY;
+
+-- Policies
+CREATE POLICY "Users can read own preferences" 
+ON public.user_preferences
+FOR SELECT 
+USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own preferences" 
+ON public.user_preferences
+FOR UPDATE 
+USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own preferences"
+ON public.user_preferences
+FOR INSERT
+WITH CHECK (auth.uid() = user_id);
+
+-- Triggers for updated_at
+CREATE TRIGGER user_preferences_updated_at 
+  BEFORE UPDATE ON public.user_preferences 
+  FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
+
+-- Backfill existing users
+INSERT INTO public.user_preferences (user_id)
+SELECT id
+FROM auth.users
+WHERE id NOT IN (
+    SELECT user_id
+    FROM public.user_preferences
+);
+
 
 -- SOURCE: 04_accommodations.sql
 /*
@@ -310,7 +431,7 @@ Contains:
 CREATE TABLE public.listings (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     public_id TEXT UNIQUE NOT NULL,
-    host_id UUID REFERENCES public.profiles(id) ON DELETE RESTRICT NOT NULL,
+    host_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
     accommodation_type_id UUID REFERENCES public.accommodation_types(id) ON DELETE RESTRICT NOT NULL,
     property_type TEXT DEFAULT 'Apartment' NOT NULL,
     title TEXT NOT NULL,
@@ -560,8 +681,8 @@ Contains:
 
 CREATE TABLE public.bookings (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    listing_id UUID REFERENCES public.listings(id) ON DELETE RESTRICT NOT NULL,
-    guest_id UUID REFERENCES public.profiles(id) ON DELETE RESTRICT NOT NULL,
+    listing_id UUID REFERENCES public.listings(id) ON DELETE CASCADE NOT NULL,
+    guest_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
     requested_move_in DATE NOT NULL,
     requested_duration INTEGER NOT NULL,
     message TEXT,
@@ -657,8 +778,8 @@ Contains:
 
 CREATE TABLE public.stays (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    listing_id UUID REFERENCES public.listings(id) ON DELETE RESTRICT NOT NULL,
-    guest_id UUID REFERENCES public.profiles(id) ON DELETE RESTRICT NOT NULL,
+    listing_id UUID REFERENCES public.listings(id) ON DELETE CASCADE NOT NULL,
+    guest_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
     created_from_booking_id UUID REFERENCES public.bookings(id) ON DELETE SET NULL,
     created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
     expected_move_in_date DATE NOT NULL,
@@ -703,9 +824,9 @@ Contains:
 
 CREATE TABLE public.reviews (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    listing_id UUID REFERENCES public.listings(id) ON DELETE RESTRICT NOT NULL,
-    stay_id UUID REFERENCES public.stays(id) ON DELETE RESTRICT NOT NULL UNIQUE,
-    guest_id UUID REFERENCES public.profiles(id) ON DELETE RESTRICT NOT NULL,
+    listing_id UUID REFERENCES public.listings(id) ON DELETE CASCADE NOT NULL,
+    stay_id UUID REFERENCES public.stays(id) ON DELETE CASCADE NOT NULL UNIQUE,
+    guest_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
     rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
     title TEXT NOT NULL,
     body TEXT NOT NULL,
@@ -731,12 +852,15 @@ CREATE POLICY "Guests can create reviews for their stays" ON public.reviews
         SELECT 1 FROM public.stays s 
         WHERE s.id = reviews.stay_id 
         AND s.guest_id = auth.uid()
-        AND s.status = 'completed'::public.stay_status
+        AND s.status IN ('completed'::public.stay_status, 'checked_out'::public.stay_status)
     )
   );
 
 CREATE POLICY "Guests can update own reviews" ON public.reviews
   FOR UPDATE USING (guest_id = auth.uid() OR public.is_admin());
+
+CREATE POLICY "Guests can delete own reviews" ON public.reviews
+  FOR DELETE USING (guest_id = auth.uid() OR public.is_admin());
 
 CREATE POLICY "Hosts can respond to reviews" ON public.reviews
   FOR UPDATE USING (
@@ -803,8 +927,8 @@ Contains:
 
 CREATE TABLE public.conversations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    booking_id UUID REFERENCES public.bookings(id) ON DELETE SET NULL,
-    stay_id UUID REFERENCES public.stays(id) ON DELETE SET NULL,
+    booking_id UUID REFERENCES public.bookings(id) ON DELETE CASCADE,
+    stay_id UUID REFERENCES public.stays(id) ON DELETE CASCADE,
     guest_last_read_at TIMESTAMPTZ,
     host_last_read_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
@@ -819,7 +943,7 @@ CREATE TABLE public.conversations (
 CREATE TABLE public.messages (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     conversation_id UUID REFERENCES public.conversations(id) ON DELETE CASCADE NOT NULL,
-    sender_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+    sender_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
     content TEXT NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
 );
@@ -1027,8 +1151,6 @@ BEGIN
             l.gender_preference,
             l.occupancy_type,
             l.created_at,
-            l.country_code,
-            l.country,
             l.state,
             l.city,
             l.locality,
@@ -1149,7 +1271,6 @@ RETURNS TABLE (
   occupancy_type public.occupancy_type,
   locality TEXT,
   city TEXT,
-  country TEXT,
   formatted_address TEXT,
   latitude NUMERIC,
   longitude NUMERIC,
@@ -1182,7 +1303,6 @@ BEGIN
     l.occupancy_type,
     l.locality,
     l.city,
-    l.country,
     l.formatted_address,
     l.latitude,
     l.longitude,

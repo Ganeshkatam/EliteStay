@@ -11,8 +11,8 @@ Contains:
 
 CREATE TABLE public.stays (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    listing_id UUID REFERENCES public.listings(id) ON DELETE RESTRICT NOT NULL,
-    guest_id UUID REFERENCES public.profiles(id) ON DELETE RESTRICT NOT NULL,
+    listing_id UUID REFERENCES public.listings(id) ON DELETE CASCADE NOT NULL,
+    guest_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
     created_from_booking_id UUID REFERENCES public.bookings(id) ON DELETE SET NULL,
     created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
     expected_move_in_date DATE NOT NULL,

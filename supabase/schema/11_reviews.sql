@@ -11,9 +11,9 @@ Contains:
 
 CREATE TABLE public.reviews (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    listing_id UUID REFERENCES public.listings(id) ON DELETE RESTRICT NOT NULL,
-    stay_id UUID REFERENCES public.stays(id) ON DELETE RESTRICT NOT NULL UNIQUE,
-    guest_id UUID REFERENCES public.profiles(id) ON DELETE RESTRICT NOT NULL,
+    listing_id UUID REFERENCES public.listings(id) ON DELETE CASCADE NOT NULL,
+    stay_id UUID REFERENCES public.stays(id) ON DELETE CASCADE NOT NULL UNIQUE,
+    guest_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
     rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
     title TEXT NOT NULL,
     body TEXT NOT NULL,
@@ -39,12 +39,15 @@ CREATE POLICY "Guests can create reviews for their stays" ON public.reviews
         SELECT 1 FROM public.stays s 
         WHERE s.id = reviews.stay_id 
         AND s.guest_id = auth.uid()
-        AND s.status = 'completed'::public.stay_status
+        AND s.status IN ('completed'::public.stay_status, 'checked_out'::public.stay_status)
     )
   );
 
 CREATE POLICY "Guests can update own reviews" ON public.reviews
   FOR UPDATE USING (guest_id = auth.uid() OR public.is_admin());
+
+CREATE POLICY "Guests can delete own reviews" ON public.reviews
+  FOR DELETE USING (guest_id = auth.uid() OR public.is_admin());
 
 CREATE POLICY "Hosts can respond to reviews" ON public.reviews
   FOR UPDATE USING (

@@ -108,3 +108,44 @@ BEGIN
   );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Account Deletion RPC
+CREATE OR REPLACE FUNCTION public.delete_user_account()
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_uid uuid;
+BEGIN
+  -- Get the current authenticated user ID
+  v_uid := auth.uid();
+
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'Not authenticated';
+  END IF;
+
+  -- Delete from auth.users, which cascades to all related tables
+  DELETE FROM auth.users WHERE id = v_uid;
+END;
+$$;
+
+-- Trigger to automatically remove auth.users entry when a profile row is deleted manually
+CREATE OR REPLACE FUNCTION public.handle_deleted_profile()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  DELETE FROM auth.users WHERE id = OLD.id;
+  RETURN OLD;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS on_profile_deleted ON public.profiles;
+CREATE TRIGGER on_profile_deleted
+  AFTER DELETE ON public.profiles
+  FOR EACH ROW
+  EXECUTE FUNCTION public.handle_deleted_profile();

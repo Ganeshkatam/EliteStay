@@ -12,8 +12,8 @@ Contains:
 
 CREATE TABLE public.bookings (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    listing_id UUID REFERENCES public.listings(id) ON DELETE RESTRICT NOT NULL,
-    guest_id UUID REFERENCES public.profiles(id) ON DELETE RESTRICT NOT NULL,
+    listing_id UUID REFERENCES public.listings(id) ON DELETE CASCADE NOT NULL,
+    guest_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
     requested_move_in DATE NOT NULL,
     requested_duration INTEGER NOT NULL,
     message TEXT,
