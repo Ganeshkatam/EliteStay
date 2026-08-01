@@ -99,11 +99,17 @@ export function SearchWhere({ variant }: SearchWhereProps) {
 
   const hasSuggestions =
     state.city.trim().length >= 2 && suggestions.length > 0;
+  const inputRef = useRef<HTMLInputElement>(null);
 
   return (
     <div ref={containerRef} className="relative flex-1 flex">
-      <SearchSection variant={variant} label="Where">
+      <SearchSection
+        variant={variant}
+        label="Where"
+        onClick={() => !isCompact && inputRef.current?.focus()}
+      >
         <input
+          ref={inputRef}
           id="where"
           type="text"
           placeholder="Search destinations"

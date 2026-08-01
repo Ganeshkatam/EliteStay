@@ -55,9 +55,13 @@ export function SearchType({ variant }: SearchTypeProps) {
 
   return (
     <div ref={containerRef} className="relative flex-1 flex">
-      <SearchSection variant={variant} label="Type" showDivider={false}>
+      <SearchSection
+        variant={variant}
+        label="Type"
+        showDivider={false}
+        onClick={() => !isCompact && setShowDropdown((prev) => !prev)}
+      >
         <div
-          onClick={() => !isCompact && setShowDropdown((prev) => !prev)}
           className={cn(
             'w-full flex items-center justify-between transition-all duration-250 cursor-pointer select-none',
             isCompact ? 'pointer-events-none' : 'pointer-events-auto'

@@ -20,7 +20,10 @@ export function SearchDates({ variant }: SearchDatesProps) {
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
         setShowDropdown(false);
       }
     }
@@ -29,7 +32,8 @@ export function SearchDates({ variant }: SearchDatesProps) {
   }, []);
 
   const parsedDate = state.moveIn ? parseISO(state.moveIn) : undefined;
-  const selectedDate = parsedDate && isValid(parsedDate) ? parsedDate : undefined;
+  const selectedDate =
+    parsedDate && isValid(parsedDate) ? parsedDate : undefined;
 
   const displayValue = selectedDate ? format(selectedDate, 'MM dd yyyy') : '';
 
@@ -42,16 +46,23 @@ export function SearchDates({ variant }: SearchDatesProps) {
     }
   };
 
+  const inputRef = useRef<HTMLInputElement>(null);
+
   return (
     <div ref={containerRef} className="relative flex-1 flex">
-      <SearchSection variant={variant} label="Move In">
+      <SearchSection
+        variant={variant}
+        label="Move In"
+        onClick={() => !isCompact && inputRef.current?.focus()}
+      >
         <input
+          ref={inputRef}
           id="moveIn"
           type="text"
           placeholder="Add dates"
           className={cn(
-            "w-full bg-transparent p-0 placeholder-gray-500 focus:outline-none focus:ring-0 border-none outline-none transition-all duration-250 cursor-pointer",
-            isCompact ? "text-gray-900" : "text-gray-900"
+            'w-full bg-transparent p-0 placeholder-gray-500 focus:outline-none focus:ring-0 border-none outline-none transition-all duration-250 cursor-pointer',
+            isCompact ? 'text-gray-900' : 'text-gray-900'
           )}
           value={displayValue}
           readOnly
