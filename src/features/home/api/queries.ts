@@ -14,55 +14,23 @@ export async function getSectionListings(
   config: HomeSectionConfig
 ): Promise<ListingCardData[]> {
   const supabase = await createClient();
+  const sort = config.filter?.sort || 'recommended';
 
-  let query = supabase
-    .from('listings')
-    .select(
-      `
-      id,
-      public_id,
-      title,
-      locality,
-      city,
-      formatted_address,
-      latitude,
-      longitude,
-      created_at,
-      accommodation_types!inner ( name ),
-      listing_prices!inner ( amount, currency, billing_period, minimum_duration ),
-      listing_images ( storage_path, display_order )
-    `
-    )
-    .eq('status', 'published');
+  const { data, error } = await supabase.rpc('search_listings', {
+    p_sort: sort,
+    p_page: 1,
+    p_page_size: config.limit,
+  });
 
-  // Apply basic sorting based on config
-  if (config.filter?.sort === 'newest') {
-    query = query.order('created_at', { ascending: false });
-  } else if (config.filter?.sort === 'price_asc') {
-    // Note: sorting by related table columns via postgrest is complex,
-    // so we'll fallback to recommended/newest if we can't sort directly.
-    // For V1, we'll just sort by created_at for all as a fallback,
-    // or rely on RPC if needed.
-    query = query.order('created_at', { ascending: false });
-  } else {
-    // Default 'recommended'
-    query = query.order('created_at', { ascending: false });
-  }
-
-  const { data: featuredData, error: featuredError } = await query.limit(
-    config.limit
-  );
-
-  if (featuredError) {
-    console.error('Error fetching homepage listings:', featuredError);
+  if (error) {
+    console.error('Error fetching homepage section listings:', error);
     return [];
   }
 
-  // Map to Domain model
-  interface RawSectionRow {
+  interface RpcListingRow {
     public_id: string;
     title: string;
-    accommodation_types: { name: string };
+    accommodation_type_name: string;
     furnishing: ListingCardData['furnishing'];
     gender_preference: ListingCardData['genderPreference'];
     occupancy_type: ListingCardData['occupancyType'];
@@ -71,23 +39,19 @@ export async function getSectionListings(
     formatted_address: string | null;
     latitude: number | null;
     longitude: number | null;
-    listing_prices: Array<{
-      amount: number;
-      currency: string;
-      billing_period: ListingCardData['pricing']['billingPeriod'];
-      minimum_duration: number;
-    }>;
-    listing_images: Array<{
-      display_order: number;
-      storage_path: string;
-    }> | null;
+    price_amount: number;
+    price_currency: string;
+    price_billing_period: ListingCardData['pricing']['billingPeriod'];
+    price_minimum_duration: number;
+    image_url: string | null;
   }
 
-  const rawRows = (featuredData || []) as unknown as RawSectionRow[];
-  const listings: ListingCardData[] = rawRows.map((row) => ({
+  const rows = (data || []) as unknown as RpcListingRow[];
+
+  return rows.map((row) => ({
     publicId: row.public_id,
     title: row.title,
-    accommodationType: row.accommodation_types.name,
+    accommodationType: row.accommodation_type_name,
     furnishing: row.furnishing,
     genderPreference: row.gender_preference,
     occupancyType: row.occupancy_type,
@@ -99,26 +63,13 @@ export async function getSectionListings(
       longitude: row.longitude || null,
     },
     pricing: {
-      amount: row.listing_prices[0].amount,
-      currency: row.listing_prices[0].currency,
-      billingPeriod: row.listing_prices[0].billing_period,
-      minimumDuration: row.listing_prices[0].minimum_duration,
+      amount: row.price_amount,
+      currency: row.price_currency,
+      billingPeriod: row.price_billing_period,
+      minimumDuration: row.price_minimum_duration,
     },
-    imageUrl: resolveImageUrl(
-      (
-        row.listing_images as Array<{
-          display_order: number;
-          storage_path: string;
-        }>
-      )?.sort((a, b) => a.display_order - b.display_order)?.[0]?.storage_path
-    ),
+    imageUrl: resolveImageUrl(row.image_url),
   }));
-
-  // If we had a specific "featured" flag, we would fetch those, then if count < limit,
-  // fetch recent listings NOT IN the featured list to backfill.
-  // Since we don't have an explicit 'is_featured' column in V1, we just return the 6 most recent.
-
-  return listings;
 }
 
 export async function getCategoryCounts(
