@@ -4,7 +4,7 @@ import * as Icons from 'lucide-react';
 import { Container } from '@/components/layout/Container';
 import { getCategoryCounts } from '../api/queries';
 import { resolveAccommodationTypeId } from '@/features/search/lib/accommodation-types';
-import { DiscoveryRail } from './DiscoveryRail';
+import { HomepageRail } from './HomepageRail';
 
 export async function Categories() {
   const typeIds = HOME_CATEGORIES.map((c) =>
@@ -17,7 +17,7 @@ export async function Categories() {
       <h2 className="text-xl font-bold tracking-tight text-slate-900 mb-4">
         Browse by category
       </h2>
-      <DiscoveryRail>
+      <HomepageRail>
         {HOME_CATEGORIES.map((category) => {
           const iconKey = category.icon
             .split('-')
@@ -59,7 +59,7 @@ export async function Categories() {
             </div>
           );
         })}
-      </DiscoveryRail>
+      </HomepageRail>
     </Container>
   );
 }

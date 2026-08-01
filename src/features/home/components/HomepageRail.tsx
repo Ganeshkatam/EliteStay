@@ -4,12 +4,12 @@ import React, { useRef, useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-interface DiscoveryRailProps {
+interface HomepageRailProps {
   children: React.ReactNode;
   className?: string;
 }
 
-export function DiscoveryRail({ children, className }: DiscoveryRailProps) {
+export function HomepageRail({ children, className }: HomepageRailProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [showLeftArrow, setShowLeftArrow] = useState(false);
   const [showRightArrow, setShowRightArrow] = useState(false);

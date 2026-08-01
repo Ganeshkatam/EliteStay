@@ -4,7 +4,7 @@ import { HomeSectionConfig } from '../config/sections';
 import { getSectionListings } from '../api/queries';
 import { ListingCard } from '@/features/listings/components/ListingCard';
 import { Container } from '@/components/layout/Container';
-import { DiscoveryRail } from './DiscoveryRail';
+import { HomepageRail } from './HomepageRail';
 
 interface HomeSectionProps {
   config: HomeSectionConfig;
@@ -49,7 +49,7 @@ export async function HomeSection({ config }: HomeSectionProps) {
           </p>
         </div>
       ) : (
-        <DiscoveryRail>
+        <HomepageRail>
           {listings.map((listing) => (
             <div
               key={`${config.id}-${listing.publicId}`}
@@ -58,7 +58,7 @@ export async function HomeSection({ config }: HomeSectionProps) {
               <ListingCard listing={listing} aspectRatio="rail" />
             </div>
           ))}
-        </DiscoveryRail>
+        </HomepageRail>
       )}
     </Container>
   );

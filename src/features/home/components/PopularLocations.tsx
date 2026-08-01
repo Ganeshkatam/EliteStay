@@ -3,7 +3,7 @@ import Image from 'next/image';
 import { Container } from '@/components/layout/Container';
 import { LocationService } from '@/features/location/services/location-service';
 import { createClient } from '@/lib/supabase/server';
-import { DiscoveryRail } from './DiscoveryRail';
+import { HomepageRail } from './HomepageRail';
 
 export async function PopularLocations() {
   const cities = await LocationService.getFeaturedCities();
@@ -27,7 +27,7 @@ export async function PopularLocations() {
         </Link>
       </div>
 
-      <DiscoveryRail>
+      <HomepageRail>
         {cities.map((city) => {
           // Get public URL for cover image if it exists
           let imageUrl = '/images/placeholder-city.png'; // default placeholder
@@ -68,7 +68,7 @@ export async function PopularLocations() {
             </div>
           );
         })}
-      </DiscoveryRail>
+      </HomepageRail>
     </Container>
   );
 }
