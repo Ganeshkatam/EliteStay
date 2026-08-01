@@ -41,7 +41,7 @@ export async function PopularLocations() {
           return (
             <div
               key={city.id}
-              className="flex-shrink-0 w-[240px] sm:w-[280px] snap-start"
+              className="flex-shrink-0 w-[170px] sm:w-[210px] snap-start"
             >
               <Link
                 href={`/s?city=${city.slug}`}
@@ -56,11 +56,11 @@ export async function PopularLocations() {
                   priority
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                <div className="absolute bottom-4 left-4">
-                  <span className="block text-lg font-bold text-white leading-tight">
+                <div className="absolute bottom-3 left-3 pr-2">
+                  <span className="block text-sm sm:text-base font-bold text-white leading-tight">
                     {city.name}
                   </span>
-                  <span className="block text-xs font-medium text-white/80 mt-0.5">
+                  <span className="block text-[10px] sm:text-xs font-medium text-white/80 mt-0.5">
                     {city.listing_count || 0} stays
                   </span>
                 </div>
