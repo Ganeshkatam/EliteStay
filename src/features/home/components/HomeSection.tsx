@@ -10,11 +10,7 @@ interface HomeSectionProps {
 }
 
 export async function HomeSection({ config }: HomeSectionProps) {
-  const listings = await getSectionListings(config);
-
-  if (!listings || listings.length === 0) {
-    return null; // Don't render empty sections
-  }
+  const listings = (await getSectionListings(config)) || [];
 
   // Generate the "View all" URL with filters
   const params = new URLSearchParams();
@@ -42,13 +38,27 @@ export async function HomeSection({ config }: HomeSectionProps) {
         </Link>
       </div>
 
-      <div className="flex overflow-x-auto pb-6 sm:grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 sm:gap-x-6 gap-y-10 xl:gap-x-6 snap-x scrollbar-hide">
-        {listings.map((listing) => (
-          <div key={listing.publicId} className="min-w-[85vw] sm:min-w-0 snap-center pr-4 sm:pr-0">
-            <ListingCard listing={listing} />
-          </div>
-        ))}
-      </div>
+      {listings.length === 0 ? (
+        <div className="w-full py-12 flex flex-col items-center justify-center border border-dashed border-gray-200 rounded-3xl bg-gray-50/55">
+          <p className="text-sm font-semibold text-gray-900">
+            No properties available yet
+          </p>
+          <p className="text-xs text-gray-500 mt-1">
+            Check back soon or explore other categories
+          </p>
+        </div>
+      ) : (
+        <div className="flex overflow-x-auto pb-6 sm:grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 sm:gap-x-6 gap-y-10 xl:gap-x-6 snap-x scrollbar-hide">
+          {listings.map((listing) => (
+            <div
+              key={listing.publicId}
+              className="min-w-[85vw] sm:min-w-0 snap-center pr-4 sm:pr-0"
+            >
+              <ListingCard listing={listing} />
+            </div>
+          ))}
+        </div>
+      )}
     </Container>
   );
 }

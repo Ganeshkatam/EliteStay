@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/server';
 export async function PopularLocations() {
   const cities = await LocationService.getFeaturedCities();
   const supabase = await createClient();
-  
+
   if (!cities || cities.length === 0) {
     return null; // or empty state
   }
@@ -40,10 +40,13 @@ export async function PopularLocations() {
                 fill
                 sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 20vw"
                 className="object-cover transition-transform duration-500 group-hover:scale-110"
+                priority
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
               <div className="absolute bottom-5 left-5">
-                <span className="block text-xl font-bold text-white">{city.name}</span>
+                <span className="block text-xl font-bold text-white">
+                  {city.name}
+                </span>
                 <span className="block text-sm font-medium text-white/80 mt-1">
                   {city.listing_count || 0} stays
                 </span>
