@@ -58,3 +58,7 @@ The following structural elements are frozen and may not be changed:
 4. Fix all errors introduced by the current changes before committing.
 5. Use clear Conventional Commit messages (`feat:`, `fix:`, `refactor:`, `chore:`, `docs:`, `test:`).
 6. Do not commit known broken code unless explicitly instructed by the user.
+
+# Database & SQL Synchronization Rule
+
+Whenever modifying database schemas, migrations, functions, or reference data, you MUST always update the local SQL files (`supabase/schema/*.sql` and migrations) and execute the corresponding changes against the remote live Supabase database at the same time. Never permit local SQL definitions to drift from the active remote database schema.

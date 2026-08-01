@@ -9,7 +9,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 The service_role key must never exist outside trusted server infrastructure.
 
-## EliteStay V2 Security Policy
+## EliteStay V1 Security Policy
 
 - RLS enabled on every table
 - Default deny
@@ -24,3 +24,7 @@ The service_role key must never exist outside trusted server infrastructure.
 # Supabase Tooling Rule
 
 Always use the Supabase MCP tools (`mcp_supabase_*` or via `call_mcp_tool`) for interacting with Supabase. Do NOT use the `supabase` CLI directly.
+
+# Database & SQL Synchronization Rule
+
+Whenever modifying database schemas, migrations, functions, or reference data, you MUST always update the local SQL files (`supabase/schema/*.sql` and migrations) and execute the corresponding changes against the remote live Supabase database at the same time. Never permit local SQL definitions to drift from the active remote database schema.
