@@ -5,6 +5,8 @@ import { SearchChip } from '../../ui/SearchChip';
 import { SlidersHorizontal } from 'lucide-react';
 import { useSearchData, useSearchUI } from '../../context/SearchProvider';
 import { TypeDropdown } from './TypeDropdown';
+import { WhereDropdown } from './WhereDropdown';
+import { CalendarDropdown } from './CalendarDropdown';
 
 export function ToolbarRenderer() {
   const { filters } = useSearchData();
@@ -29,6 +31,14 @@ export function ToolbarRenderer() {
               active={false}
             />
           );
+        }
+
+        if (def.id === 'where') {
+          return <WhereDropdown key={def.id} />;
+        }
+
+        if (def.id === 'date') {
+          return <CalendarDropdown key={def.id} />;
         }
 
         if (def.id === 'type') {
