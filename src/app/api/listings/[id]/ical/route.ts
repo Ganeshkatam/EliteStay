@@ -37,7 +37,7 @@ export async function GET(
         .select('id, title, public_id')
         .eq('id', listingId)
         .maybeSingle();
-        
+
       if (listingById) {
         currentListing = listingById;
       }
@@ -61,20 +61,21 @@ export async function GET(
 
     // 3. Generate ICS content
     const now = formatIcsDateTime(new Date());
-    
-    let icsContent = [
+
+    const icsContent = [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
       'PRODID:-//EliteStay//Host Calendar//EN',
       'CALSCALE:GREGORIAN',
       'METHOD:PUBLISH',
       `X-WR-CALNAME:EliteStay - ${currentListing.title.substring(0, 50)}`,
-      `X-WR-TIMEZONE:UTC`
+      `X-WR-TIMEZONE:UTC`,
     ];
 
     for (const block of blocks || []) {
-      const summary = block.source === 'booking' ? 'EliteStay Booking' : 'EliteStay Blocked';
-      
+      const summary =
+        block.source === 'booking' ? 'EliteStay Booking' : 'EliteStay Blocked';
+
       icsContent.push(
         'BEGIN:VEVENT',
         `UID:${block.id}@elitestay.app`,

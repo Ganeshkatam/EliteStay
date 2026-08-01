@@ -6,7 +6,10 @@ import { addDays, addWeeks, addMonths, addYears } from 'date-fns';
 import * as NotificationService from '@/features/notifications/actions/notification-actions';
 import { safeAction } from '@/lib/safeAction';
 
-import { transitionBooking, logBookingEvent } from '../services/booking-state-machine';
+import {
+  transitionBooking,
+  logBookingEvent,
+} from '../services/booking-state-machine';
 
 // ------------------------------------------------------------------
 // PUBLIC ACTIONS
@@ -30,7 +33,8 @@ export async function requestBooking(params: {
 
     const totalRent = listing.monthly_price * params.months;
     const platformFee = totalRent * 0.05;
-    const totalAmount = totalRent + (listing.security_deposit || 0) + platformFee;
+    const totalAmount =
+      totalRent + (listing.security_deposit || 0) + platformFee;
 
     // 2. Optimistic availability check
     const { data: conflicts } = await supabase
@@ -68,7 +72,7 @@ export async function requestBooking(params: {
       snapshot_monthly_rent: listing.monthly_price,
       snapshot_security_deposit: listing.security_deposit,
       total_amount: totalAmount,
-      months: params.months
+      months: params.months,
     });
 
     // 5. Notify host
@@ -79,7 +83,7 @@ export async function requestBooking(params: {
 
     revalidatePath(`/listings/${listing.public_id}`);
     revalidatePath('/users');
-    
+
     return { bookingId: newBooking.id };
   });
 }
@@ -93,11 +97,19 @@ export async function approveBooking(bookingId: string) {
       .eq('id', bookingId)
       .single();
 
-    if (!authCheck || (authCheck.listings as any).host_id !== user.id) {
+    if (!authCheck) return { error: 'Unauthorized to approve this booking.' };
+    const listings = authCheck.listings as unknown as { host_id: string };
+    if (listings.host_id !== user.id) {
       return { error: 'Unauthorized to approve this booking.' };
     }
 
-    const res = await transitionBooking(bookingId, 'pending', 'approved', user.id, supabase);
+    const res = await transitionBooking(
+      bookingId,
+      'pending',
+      'approved',
+      user.id,
+      supabase
+    );
     if (!res.success) return res;
 
     const booking = res.booking;
@@ -122,11 +134,19 @@ export async function rejectBooking(bookingId: string) {
       .eq('id', bookingId)
       .single();
 
-    if (!authCheck || (authCheck.listings as any).host_id !== user.id) {
+    if (!authCheck) return { error: 'Unauthorized to reject this booking.' };
+    const listings = authCheck.listings as unknown as { host_id: string };
+    if (listings.host_id !== user.id) {
       return { error: 'Unauthorized to reject this booking.' };
     }
 
-    const res = await transitionBooking(bookingId, 'pending', 'rejected', user.id, supabase);
+    const res = await transitionBooking(
+      bookingId,
+      'pending',
+      'rejected',
+      user.id,
+      supabase
+    );
     if (!res.success) return res;
 
     const booking = res.booking;
@@ -144,7 +164,9 @@ export async function rejectBooking(bookingId: string) {
 
 export async function cancelBooking(bookingId: string) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) return { error: 'Unauthorized.' };
 
   const { data: booking } = await supabase
@@ -153,17 +175,28 @@ export async function cancelBooking(bookingId: string) {
     .eq('id', bookingId)
     .single();
 
-  if (!booking || (booking.guest_id !== user.id && (booking.listings as any).host_id !== user.id)) {
+  if (!booking) return { error: 'Unauthorized.' };
+  const listings = booking.listings as unknown as {
+    host_id: string;
+    title: string;
+  };
+  if (booking.guest_id !== user.id && listings.host_id !== user.id) {
     return { error: 'Unauthorized.' };
   }
 
-  const res = await transitionBooking(bookingId, 'pending', 'cancelled', user.id, supabase);
+  const res = await transitionBooking(
+    bookingId,
+    'pending',
+    'cancelled',
+    user.id,
+    supabase
+  );
 
   if (res.success) {
     if (user.id === booking.guest_id) {
       await NotificationService.notifyBookingCancelled(
-        (booking.listings as any).host_id,
-        (booking.listings as any).title
+        listings.host_id,
+        listings.title
       );
     }
   }

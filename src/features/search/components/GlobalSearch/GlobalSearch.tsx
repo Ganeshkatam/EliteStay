@@ -25,7 +25,7 @@ export function GlobalSearch({ variant }: GlobalSearchProps) {
     if (state.city.trim()) params.set('city', state.city.trim());
     if (state.moveIn.trim()) params.set('availableFrom', state.moveIn.trim());
     if (state.type.trim()) params.set('accommodationType', state.type.trim());
-    
+
     setIsExpanded(false);
     router.push(`/s?${params.toString()}`);
   };
@@ -36,9 +36,6 @@ export function GlobalSearch({ variant }: GlobalSearchProps) {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
-
-  const isEmpty = !state.city && !state.moveIn && !state.type;
-  const isCompact = variant === 'compact';
 
   return (
     <>

@@ -5,7 +5,7 @@ import { useSearchContext } from './SearchContext';
 import { SearchSection } from './SearchSection';
 import { type SearchVariant } from './types';
 import { cn } from '@/lib/utils';
-import { MapPin, Navigation } from 'lucide-react';
+import { Navigation } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { buildSearchUrl } from '@/features/search/lib/search-params';
 
@@ -22,7 +22,10 @@ export function SearchWhere({ variant }: SearchWhereProps) {
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
         setShowDropdown(false);
       }
     }
@@ -39,19 +42,22 @@ export function SearchWhere({ variant }: SearchWhereProps) {
     setShowDropdown(false);
     setIsExpanded(false); // Close the global search if expanded
     if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition((pos) => {
-        const url = buildSearchUrl({
-          centerLat: pos.coords.latitude,
-          centerLng: pos.coords.longitude,
-          sort: 'distance',
-        });
-        router.push(url);
-      }, (err) => {
-        console.error("Could not get location", err);
-        alert("Please allow location access to use this feature.");
-      });
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const url = buildSearchUrl({
+            centerLat: pos.coords.latitude,
+            centerLng: pos.coords.longitude,
+            sort: 'distance',
+          });
+          router.push(url);
+        },
+        (err) => {
+          console.error('Could not get location', err);
+          alert('Please allow location access to use this feature.');
+        }
+      );
     } else {
-      alert("Geolocation is not supported by your browser.");
+      alert('Geolocation is not supported by your browser.');
     }
   };
 
@@ -72,8 +78,8 @@ export function SearchWhere({ variant }: SearchWhereProps) {
           type="text"
           placeholder="Search destinations"
           className={cn(
-            "w-full truncate bg-transparent p-0 placeholder-gray-500 focus:outline-none focus:ring-0 border-none outline-none transition-all duration-250",
-            isCompact ? "text-gray-900" : "text-gray-900"
+            'w-full truncate bg-transparent p-0 placeholder-gray-500 focus:outline-none focus:ring-0 border-none outline-none transition-all duration-250',
+            isCompact ? 'text-gray-900' : 'text-gray-900'
           )}
           value={state.city}
           onChange={(e) => updateState({ city: e.target.value })}
@@ -86,8 +92,7 @@ export function SearchWhere({ variant }: SearchWhereProps) {
       {/* Dropdown */}
       {showDropdown && !isCompact && (
         <div className="absolute top-[120%] left-0 w-[400px] bg-white rounded-3xl shadow-[0_8px_28px_rgba(0,0,0,0.15)] border p-4 z-50">
-          
-          <button 
+          <button
             type="button"
             onClick={handleNearbyMe}
             className="w-full flex items-center gap-4 p-4 hover:bg-gray-100 rounded-2xl transition-colors text-left"
@@ -97,7 +102,9 @@ export function SearchWhere({ variant }: SearchWhereProps) {
             </div>
             <div>
               <div className="font-semibold text-gray-900">Nearby me</div>
-              <div className="text-sm text-gray-500">Find places near your location</div>
+              <div className="text-sm text-gray-500">
+                Find places near your location
+              </div>
             </div>
           </button>
 
@@ -113,7 +120,9 @@ export function SearchWhere({ variant }: SearchWhereProps) {
                   onClick={() => handleCitySelect(city.name)}
                   className="group relative h-24 overflow-hidden rounded-xl flex items-end p-3 border hover:border-gray-900 transition-colors"
                 >
-                  <div className={`absolute inset-0 z-0 bg-gradient-to-br ${city.gradient} opacity-90 group-hover:opacity-100 transition-opacity duration-300`} />
+                  <div
+                    className={`absolute inset-0 z-0 bg-gradient-to-br ${city.gradient} opacity-90 group-hover:opacity-100 transition-opacity duration-300`}
+                  />
                   <div className="relative z-10 text-white font-medium text-sm tracking-wide text-shadow-sm">
                     {city.name}
                   </div>
@@ -121,7 +130,6 @@ export function SearchWhere({ variant }: SearchWhereProps) {
               ))}
             </div>
           </div>
-
         </div>
       )}
     </div>

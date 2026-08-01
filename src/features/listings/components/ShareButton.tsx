@@ -8,7 +8,7 @@ export function ShareButton({ title }: { title: string }) {
 
   const handleShare = async () => {
     const url = window.location.href;
-    
+
     // Use native Web Share API if available (most mobile devices and Safari)
     if (navigator.share) {
       try {
@@ -31,8 +31,8 @@ export function ShareButton({ title }: { title: string }) {
         title: 'Link copied!',
         description: 'The property link has been copied to your clipboard.',
       });
-    } catch (err: any) {
-      console.error("Error copying link:", err);
+    } catch (err: unknown) {
+      console.error('Error copying link:', err);
       toast({
         variant: 'destructive',
         title: 'Failed to copy',

@@ -3,11 +3,12 @@
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 
-export type HeaderVariant = 'public-home' | 'public' | 'host' | 'auth' | 'dashboard';
+export type HeaderVariant =
+  'public-home' | 'public' | 'host' | 'auth' | 'dashboard';
 
 export function useHeaderState() {
   const pathname = usePathname();
-  
+
   // Determine variant based on route
   let variant: HeaderVariant = 'public';
   if (pathname === '/') {
@@ -23,11 +24,11 @@ export function useHeaderState() {
   }
 
   // Manage expanded state using hysteresis and throttling
-  const [isExpanded, setIsExpanded] = useState(variant === 'public-home');
+  const [expandedState, setExpandedState] = useState(true);
+  const isExpanded = variant === 'public-home' && expandedState;
 
   useEffect(() => {
     if (variant !== 'public-home') {
-      setIsExpanded(false);
       return;
     }
 
@@ -37,8 +38,8 @@ export function useHeaderState() {
       if (!ticking) {
         window.requestAnimationFrame(() => {
           const currentScrollY = window.scrollY;
-          
-          setIsExpanded((prev) => {
+
+          setExpandedState((prev) => {
             // Hysteresis logic
             // Collapse when scrolling down past 80px
             if (prev && currentScrollY > 80) {
@@ -50,7 +51,7 @@ export function useHeaderState() {
             }
             return prev;
           });
-          
+
           ticking = false;
         });
         ticking = true;

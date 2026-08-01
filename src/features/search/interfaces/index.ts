@@ -8,14 +8,16 @@ export interface MapLayer {
   render(): React.ReactNode;
 }
 
-export type SearchEvent = 
-  | { type: 'SearchPerformed', payload: any }
-  | { type: 'FilterApplied', payload: any }
-  | { type: 'FilterCleared', payload: any }
-  | { type: 'MapMoved', payload: any }
+export type SearchEventPayload = Record<string, unknown>;
+
+export type SearchEvent =
+  | { type: 'SearchPerformed'; payload: SearchEventPayload }
+  | { type: 'FilterApplied'; payload: SearchEventPayload }
+  | { type: 'FilterCleared'; payload: SearchEventPayload }
+  | { type: 'MapMoved'; payload: SearchEventPayload }
   | { type: 'SearchAreaClicked' }
-  | { type: 'ListingHovered', payload: { listingId: string } }
-  | { type: 'ListingOpened', payload: { listingId: string } }
+  | { type: 'ListingHovered'; payload: { listingId: string } }
+  | { type: 'ListingOpened'; payload: { listingId: string } }
   | { type: 'SaveSearchClicked' };
 
 export interface SearchEventPublisher {
@@ -23,7 +25,7 @@ export interface SearchEventPublisher {
 }
 
 export class NoopSearchEventPublisher implements SearchEventPublisher {
-  publish(event: SearchEvent): void {
+  publish(_event: SearchEvent): void {
     // No-op for V1
   }
 }

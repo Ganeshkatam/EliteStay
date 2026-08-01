@@ -26,29 +26,35 @@ export async function submitReview(params: {
       .select('*, listings(host_id, title)')
       .single();
 
-  if (error) {
-    if (error.code === '23505') { // Unique violation
-      return { error: 'You have already reviewed this stay.' };
+    if (error) {
+      if (error.code === '23505') {
+        // Unique violation
+        return { error: 'You have already reviewed this stay.' };
+      }
+      if (error.code === '42501') {
+        // RLS violation
+        return { error: 'You can only review completed stays.' };
+      }
+      console.error('Failed to submit review:', error);
+      return { error: 'Failed to submit review.' };
     }
-    if (error.code === '42501') { // RLS violation
-      return { error: 'You can only review completed stays.' };
-    }
-    console.error('Failed to submit review:', error);
-    return { error: 'Failed to submit review.' };
-  }
 
     // Notify host
+    const listings = data.listings as unknown as {
+      host_id: string;
+      title: string;
+    };
     await createNotification({
-      userId: (data.listings as any).host_id,
+      userId: listings.host_id,
       type: NotificationType.REVIEW_RECEIVED,
       title: 'New Review',
-      message: `You received a new review for ${(data.listings as any).title}.`,
-      link: '/host/reviews'
+      message: `You received a new review for ${listings.title}.`,
+      link: '/host/reviews',
     });
 
     revalidatePath('/users');
     revalidatePath(`/stay/${data.listing_id}`);
-    
+
     return { success: true };
   });
 }
@@ -62,17 +68,18 @@ export async function submitHostResponse(reviewId: string, response: string) {
       .select('guest_id, listings(title)')
       .single();
 
-  if (error) {
-    return { error: 'Failed to submit response.' };
-  }
+    if (error) {
+      return { error: 'Failed to submit response.' };
+    }
 
     // Notify guest
+    const listings = data.listings as unknown as { title: string };
     await createNotification({
       userId: data.guest_id,
       type: NotificationType.HOST_RESPONSE,
       title: 'Host Responded to Your Review',
-      message: `The host of ${(data.listings as any).title} responded to your review.`,
-      link: '/users'
+      message: `The host of ${listings.title} responded to your review.`,
+      link: '/users',
     });
 
     revalidatePath('/users');

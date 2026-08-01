@@ -9,7 +9,15 @@ export const metadata = {
   title: 'Step 6: Review - Build Listing',
 };
 
-function SectionItem({ title, isComplete, editUrl }: { title: string, isComplete: boolean, editUrl: string }) {
+function SectionItem({
+  title,
+  isComplete,
+  editUrl,
+}: {
+  title: string;
+  isComplete: boolean;
+  editUrl: string;
+}) {
   return (
     <div className="flex items-center justify-between p-4 border rounded-lg bg-white">
       <div className="flex items-center gap-3">
@@ -21,7 +29,11 @@ function SectionItem({ title, isComplete, editUrl }: { title: string, isComplete
         <span className="font-medium text-slate-700">{title}</span>
       </div>
       <Link href={editUrl}>
-        <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-700 hover:bg-blue-50">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+        >
           <Edit2 className="h-4 w-4 mr-2" />
           Edit
         </Button>
@@ -41,7 +53,8 @@ export default async function ReviewPage({
   // Fetch all listing data to validate completeness
   const { data: listing } = await supabase
     .from('listings')
-    .select(`
+    .select(
+      `
       id,
       title,
       description,
@@ -50,26 +63,45 @@ export default async function ReviewPage({
       listing_locations(id),
       listing_prices(id),
       listing_images(id)
-    `)
+    `
+    )
     .eq('id', id)
     .single();
 
   if (!listing) redirect('/host/listings');
 
   // Check completeness
-  const hasAccommodation = !!(listing.title && listing.title.length >= 10 && listing.description && listing.description.length >= 20 && listing.accommodation_type_id);
-  const hasLocation = !!(listing.listing_locations && listing.listing_locations.length > 0);
+  const hasAccommodation = !!(
+    listing.title &&
+    listing.title.length >= 10 &&
+    listing.description &&
+    listing.description.length >= 20 &&
+    listing.accommodation_type_id
+  );
+  const hasLocation = !!(
+    listing.listing_locations && listing.listing_locations.length > 0
+  );
   const hasFeatures = !!listing.max_occupants; // Basic check
-  const hasPricing = !!(listing.listing_prices && listing.listing_prices.length > 0);
-  const hasImages = !!(listing.listing_images && listing.listing_images.length > 0);
+  const hasPricing = !!(
+    listing.listing_prices && listing.listing_prices.length > 0
+  );
+  const hasImages = !!(
+    listing.listing_images && listing.listing_images.length > 0
+  );
 
-  const canPublish = hasAccommodation && hasLocation && hasFeatures && hasPricing && hasImages;
+  const canPublish =
+    hasAccommodation && hasLocation && hasFeatures && hasPricing && hasImages;
 
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Review your listing</h1>
-        <p className="text-slate-500 mt-1">Here's what we have so far. Make sure everything looks good before publishing.</p>
+        <h1 className="text-2xl font-bold text-slate-900">
+          Review your listing
+        </h1>
+        <p className="text-slate-500 mt-1">
+          Here&apos;s what we have so far. Make sure everything looks good
+          before publishing.
+        </p>
       </div>
 
       <div className="space-y-3">
@@ -103,13 +135,18 @@ export default async function ReviewPage({
       <div className="bg-slate-50 p-6 rounded-lg border border-slate-200">
         <h3 className="font-semibold text-slate-900">Ready to go live?</h3>
         <p className="text-sm text-slate-500 mt-1 mb-4">
-          By publishing your listing, you agree to EliteStay's Host Terms and Policies.
-          {canPublish ? " Your listing will become visible to guests immediately." : " Please complete all sections above to publish."}
+          By publishing your listing, you agree to EliteStay&apos;s Host Terms
+          and Policies.
+          {canPublish
+            ? ' Your listing will become visible to guests immediately.'
+            : ' Please complete all sections above to publish.'}
         </p>
 
         <div className="flex gap-4">
           <Link href="/host/listings">
-            <Button variant="outline" className="bg-white">Save as Draft & Exit</Button>
+            <Button variant="outline" className="bg-white">
+              Save as Draft & Exit
+            </Button>
           </Link>
           <PublishButton listingId={id} disabled={!canPublish} />
         </div>

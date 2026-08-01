@@ -1,4 +1,7 @@
-import { type NotificationGroup } from '../types';
+import {
+  type NotificationGroup,
+  type NotificationRow as NotificationRowType,
+} from '../types';
 import { NotificationRow } from './NotificationRow';
 
 interface NotificationTimelineProps {
@@ -6,7 +9,10 @@ interface NotificationTimelineProps {
   onMarkRead?: (id: string) => void;
 }
 
-export function NotificationTimeline({ groups, onMarkRead }: NotificationTimelineProps) {
+export function NotificationTimeline({
+  groups,
+  onMarkRead,
+}: NotificationTimelineProps) {
   return (
     <div className="space-y-8 mt-2">
       {groups.map((group) => (
@@ -17,8 +23,8 @@ export function NotificationTimeline({ groups, onMarkRead }: NotificationTimelin
           <div className="flex flex-col">
             {group.items.map((notification, index) => (
               <div key={notification.id} className="relative">
-                <NotificationRow 
-                  notification={notification as any} 
+                <NotificationRow
+                  notification={notification as unknown as NotificationRowType}
                   onMarkRead={onMarkRead}
                 />
                 {/* Horizontal divider between items, except the last one */}

@@ -8,7 +8,9 @@ export interface LocationInsights {
 }
 
 export class LocationInsightsService {
-  static async getInsights(city: string | undefined): Promise<LocationInsights> {
+  static async getInsights(
+    _city: string | undefined
+  ): Promise<LocationInsights> {
     // In V1, this returns static or softly aggregated data.
     return {
       listingCount: 1248,
@@ -16,7 +18,7 @@ export class LocationInsightsService {
       medianRent: 16000,
       furnishedPercentage: 92,
       popularAreas: ['Koramangala', 'HSR Layout', 'Indiranagar'],
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
   }
 }

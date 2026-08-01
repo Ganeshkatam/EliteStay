@@ -1,3 +1,5 @@
+import { SearchFilters } from '../lib/search-params';
+
 export interface RecoveryAction {
   title: string;
   icon?: string;
@@ -13,7 +15,9 @@ export interface RecoveryViewModel {
 }
 
 export class DiscoveryService {
-  static async getRecoveryData(filters: any): Promise<RecoveryViewModel> {
+  static async getRecoveryData(
+    _filters: SearchFilters | Record<string, unknown>
+  ): Promise<RecoveryViewModel> {
     return {
       nearbyLocalities: [],
       suggestedCities: ['Bangalore', 'Mumbai', 'Delhi', 'Pune'],
@@ -22,14 +26,14 @@ export class DiscoveryService {
         {
           title: 'Clear all filters',
           action: 'CLEAR_FILTERS',
-          priority: 1
+          priority: 1,
         },
         {
           title: 'Expand search radius',
           action: 'EXPAND_RADIUS',
-          priority: 2
-        }
-      ]
+          priority: 2,
+        },
+      ],
     };
   }
 }

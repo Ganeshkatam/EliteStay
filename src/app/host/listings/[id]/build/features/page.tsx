@@ -17,7 +17,9 @@ export default async function FeaturesPage({
   // Verify ownership and get base feature values
   const { data: listing } = await supabase
     .from('listings')
-    .select('id, host_id, occupancy_type, furnishing, gender_preference, max_occupants, listing_amenities(amenity_id)')
+    .select(
+      'id, host_id, occupancy_type, furnishing, gender_preference, max_occupants, listing_amenities(amenity_id)'
+    )
     .eq('id', id)
     .single();
 
@@ -31,13 +33,20 @@ export default async function FeaturesPage({
     .order('name');
 
   // Format existing amenities
-  const selectedAmenities = listing.listing_amenities?.map((la: any) => la.amenity_id) || [];
+  const selectedAmenities =
+    listing.listing_amenities?.map(
+      (la: { amenity_id: string }) => la.amenity_id
+    ) || [];
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Features & Amenities</h1>
-        <p className="text-slate-500 mt-1">Let guests know what your property offers.</p>
+        <h1 className="text-2xl font-bold text-slate-900">
+          Features & Amenities
+        </h1>
+        <p className="text-slate-500 mt-1">
+          Let guests know what your property offers.
+        </p>
       </div>
 
       <FeaturesForm

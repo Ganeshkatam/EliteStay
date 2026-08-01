@@ -17,7 +17,9 @@ export type MessageRow = {
   } | null;
 };
 
-export async function getMessages(conversationId: string): Promise<MessageRow[]> {
+export async function getMessages(
+  conversationId: string
+): Promise<MessageRow[]> {
   const user = await getCurrentUser();
   if (!user) throw new Error('Unauthorized');
 
@@ -25,14 +27,16 @@ export async function getMessages(conversationId: string): Promise<MessageRow[]>
 
   const { data: messages, error } = await supabase
     .from('messages')
-    .select(`
+    .select(
+      `
       id,
       conversation_id,
       sender_id,
       content,
       created_at,
       sender:profiles!messages_sender_id_fkey(id, full_name, avatar_storage_path)
-    `)
+    `
+    )
     .eq('conversation_id', conversationId)
     .order('created_at', { ascending: true });
 
@@ -41,21 +45,27 @@ export async function getMessages(conversationId: string): Promise<MessageRow[]>
     throw new Error('Failed to fetch messages');
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (messages || []).map((msg: any) => ({
     id: msg.id,
     conversation_id: msg.conversation_id,
     sender_id: msg.sender_id,
     content: msg.content,
     created_at: msg.created_at,
-    sender: msg.sender ? {
-      id: msg.sender.id,
-      name: msg.sender.full_name || 'Unknown User',
-      avatar_url: msg.sender.avatar_storage_path
-    } : null
+    sender: msg.sender
+      ? {
+          id: msg.sender.id,
+          name: msg.sender.full_name || 'Unknown User',
+          avatar_url: msg.sender.avatar_storage_path,
+        }
+      : null,
   }));
 }
 
-export async function sendMessage(conversationId: string, content: string): Promise<MessageRow> {
+export async function sendMessage(
+  conversationId: string,
+  content: string
+): Promise<MessageRow> {
   const user = await getCurrentUser();
   if (!user) throw new Error('Unauthorized');
 
@@ -71,16 +81,18 @@ export async function sendMessage(conversationId: string, content: string): Prom
     .insert({
       conversation_id: conversationId,
       sender_id: user.id,
-      content: content.trim()
+      content: content.trim(),
     })
-    .select(`
+    .select(
+      `
       id,
       conversation_id,
       sender_id,
       content,
       created_at,
       sender:profiles!messages_sender_id_fkey(id, full_name, avatar_storage_path)
-    `)
+    `
+    )
     .single();
 
   if (error || !newMsg) {
@@ -104,21 +116,39 @@ export async function sendMessage(conversationId: string, content: string): Prom
     );
   }
 
+  const msgData = newMsg as unknown as {
+    id: string;
+    conversation_id: string;
+    sender_id: string | null;
+    content: string;
+    created_at: string;
+    sender: {
+      id: string;
+      full_name?: string | null;
+      avatar_storage_path?: string | null;
+    } | null;
+  };
+
   return {
-    id: (newMsg as any).id,
-    conversation_id: (newMsg as any).conversation_id,
-    sender_id: (newMsg as any).sender_id,
-    content: (newMsg as any).content,
-    created_at: (newMsg as any).created_at,
-    sender: (newMsg as any).sender ? {
-      id: (newMsg as any).sender.id,
-      name: (newMsg as any).sender.full_name || 'Unknown User',
-      avatar_url: (newMsg as any).sender.avatar_storage_path
-    } : null
+    id: msgData.id,
+    conversation_id: msgData.conversation_id,
+    sender_id: msgData.sender_id,
+    content: msgData.content,
+    created_at: msgData.created_at,
+    sender: msgData.sender
+      ? {
+          id: msgData.sender.id,
+          name: msgData.sender.full_name || 'Unknown User',
+          avatar_url: msgData.sender.avatar_storage_path || null,
+        }
+      : null,
   };
 }
 
-export async function getOrCreateConversation(params: { bookingId?: string; stayId?: string }) {
+export async function getOrCreateConversation(params: {
+  bookingId?: string;
+  stayId?: string;
+}) {
   const matchColumn = params.bookingId ? 'booking_id' : 'stay_id';
   const matchValue = params.bookingId || params.stayId;
 
@@ -136,11 +166,11 @@ export async function getOrCreateConversation(params: { bookingId?: string; stay
   if (existing) return { conversationId: existing.id };
 
   // Create new
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const payload: any = { [matchColumn]: matchValue };
   const { data: newConv, error } = await supabase
     .from('conversations')
-    .insert({
-      [matchColumn]: matchValue
-    } as any)
+    .insert(payload)
     .select('id')
     .single();
 

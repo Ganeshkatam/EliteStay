@@ -41,7 +41,8 @@ export async function getConversations(): Promise<ConversationListRow[]> {
   // Query all conversations we have access to
   const { data: conversations, error } = await supabase
     .from('conversations')
-    .select(`
+    .select(
+      `
       id,
       guest_last_read_at,
       host_last_read_at,
@@ -77,7 +78,8 @@ export async function getConversations(): Promise<ConversationListRow[]> {
         created_at,
         sender_id
       )
-    `)
+    `
+    )
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -86,73 +88,84 @@ export async function getConversations(): Promise<ConversationListRow[]> {
   }
 
   // Format the data
-  const formatted: ConversationListRow[] = (conversations || []).map((conv: any) => {
-    // A conversation is tied to either a booking or a stay
-    const reference = conv.booking || conv.stay;
-    const isHost = reference.listing.host_id === user.id;
-    
-    const otherProfile = isHost ? reference.guest : reference.listing.host;
-    const otherParticipant: ConversationParticipant = {
-      id: otherProfile.id,
-      name: otherProfile.full_name || 'Unknown User',
-      avatar_url: otherProfile.avatar_storage_path,
-      role: isHost ? 'guest' : 'host'
-    };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const formatted: ConversationListRow[] = (conversations || []).map(
+    (conv: any) => {
+      // A conversation is tied to either a booking or a stay
+      const reference = conv.booking || conv.stay;
+      const isHost = reference.listing.host_id === user.id;
 
-    // Sort messages by created_at desc to find latest
-    const sortedMessages = (conv.messages || []).sort(
-      (a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    );
-    const latestMessage = sortedMessages[0] || null;
+      const otherProfile = isHost ? reference.guest : reference.listing.host;
+      const otherParticipant: ConversationParticipant = {
+        id: otherProfile.id,
+        name: otherProfile.full_name || 'Unknown User',
+        avatar_url: otherProfile.avatar_storage_path,
+        role: isHost ? 'guest' : 'host',
+      };
 
-    // Calculate unread count
-    const lastReadAt = isHost ? conv.host_last_read_at : conv.guest_last_read_at;
-    const unreadCount = sortedMessages.filter((msg: any) => {
-      // Don't count my own messages as unread
-      if (msg.sender_id === user.id) return false;
-      // If we never read anything, it's unread
-      if (!lastReadAt) return true;
-      // Otherwise, compare timestamps
-      return new Date(msg.created_at).getTime() > new Date(lastReadAt).getTime();
-    }).length;
+      // Sort messages by created_at desc to find latest
+      const sortedMessages = (conv.messages || []).sort(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (a: any, b: any) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+      const latestMessage = sortedMessages[0] || null;
 
-    let contextType: 'booking' | 'stay' | 'inquiry' = 'inquiry';
-    let status: string | undefined;
-    let startDate: string | undefined;
-    let endDate: string | undefined;
+      // Calculate unread count
+      const lastReadAt = isHost
+        ? conv.host_last_read_at
+        : conv.guest_last_read_at;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const unreadCount = sortedMessages.filter((msg: any) => {
+        // Don't count my own messages as unread
+        if (msg.sender_id === user.id) return false;
+        // If we never read anything, it's unread
+        if (!lastReadAt) return true;
+        // Otherwise, compare timestamps
+        return (
+          new Date(msg.created_at).getTime() > new Date(lastReadAt).getTime()
+        );
+      }).length;
 
-    if (conv.stay) {
-      contextType = 'stay';
-      startDate = conv.stay.start_date;
-      endDate = conv.stay.end_date;
-    } else if (conv.booking) {
-      contextType = 'booking';
-      status = conv.booking.status;
-      startDate = conv.booking.requested_move_in;
+      let contextType: 'booking' | 'stay' | 'inquiry' = 'inquiry';
+      let status: string | undefined;
+      let startDate: string | undefined;
+      let endDate: string | undefined;
+
+      if (conv.stay) {
+        contextType = 'stay';
+        startDate = conv.stay.start_date;
+        endDate = conv.stay.end_date;
+      } else if (conv.booking) {
+        contextType = 'booking';
+        status = conv.booking.status;
+        startDate = conv.booking.requested_move_in;
+      }
+
+      return {
+        id: conv.id,
+        listing: {
+          id: reference.listing.id,
+          title: reference.listing.title,
+        },
+        context: {
+          type: contextType,
+          status,
+          startDate,
+          endDate,
+        },
+        otherParticipant,
+        latestMessage,
+        unreadCount,
+        updated_at: latestMessage ? latestMessage.created_at : conv.created_at,
+      };
     }
-
-    return {
-      id: conv.id,
-      listing: {
-        id: reference.listing.id,
-        title: reference.listing.title
-      },
-      context: {
-        type: contextType,
-        status,
-        startDate,
-        endDate
-      },
-      otherParticipant,
-      latestMessage,
-      unreadCount,
-      updated_at: latestMessage ? latestMessage.created_at : conv.created_at
-    };
-  });
+  );
 
   // Sort by latest message first
   return formatted.sort(
-    (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+    (a, b) =>
+      new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
   );
 }
 
@@ -166,10 +179,12 @@ export async function markConversationRead(conversationId: string) {
   // We can just fetch the conversation and inspect the booking/stay.
   const { data: conv, error: fetchErr } = await supabase
     .from('conversations')
-    .select(`
+    .select(
+      `
       booking:bookings(listing:listings(host_id)),
       stay:stays(listing:listings(host_id))
-    `)
+    `
+    )
     .eq('id', conversationId)
     .single();
 
@@ -177,6 +192,7 @@ export async function markConversationRead(conversationId: string) {
     throw new Error('Conversation not found');
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const reference = (conv as any).booking || (conv as any).stay;
   // If the user is the host of the listing, they are the host. Otherwise, guest.
   const isHost = reference.listing.host_id === user.id;
@@ -187,6 +203,7 @@ export async function markConversationRead(conversationId: string) {
 
   const { error: updateErr } = await supabase
     .from('conversations')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .update(updatePayload as any)
     .eq('id', conversationId);
 

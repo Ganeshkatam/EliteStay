@@ -33,12 +33,17 @@ export default async function LocationPage({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Where's your place located?</h1>
-        <p className="text-slate-500 mt-1">Guests will only get your exact address once they've booked a reservation.</p>
+        <h1 className="text-2xl font-bold text-slate-900">
+          Where&apos;s your place located?
+        </h1>
+        <p className="text-slate-500 mt-1">
+          Guests will only get your exact address once they&apos;ve booked a
+          reservation.
+        </p>
       </div>
 
-      <LocationForm 
-        listingId={id} 
+      <LocationForm
+        listingId={id}
         initialData={{
           state: location?.state || '',
           city: location?.city || '',

@@ -3,7 +3,9 @@
 import React, { useState, createContext, useContext } from 'react';
 import { Button } from '@/components/ui/button';
 
-export const ProfileFieldContext = createContext<{ close: () => void } | null>(null);
+export const ProfileFieldContext = createContext<{ close: () => void } | null>(
+  null
+);
 
 export function useProfileField() {
   return useContext(ProfileFieldContext);
@@ -13,10 +15,15 @@ interface ProfileFieldProps {
   label: string;
   value: React.ReactNode;
   isEditable?: boolean;
-  children: React.ReactElement<any>;
+  children: React.ReactElement;
 }
 
-export function ProfileField({ label, value, isEditable = true, children }: ProfileFieldProps) {
+export function ProfileField({
+  label,
+  value,
+  isEditable = true,
+  children,
+}: ProfileFieldProps) {
   const [isEditing, setIsEditing] = useState(false);
 
   return (
@@ -30,8 +37,8 @@ export function ProfileField({ label, value, isEditable = true, children }: Prof
             </div>
           </div>
           {isEditable && (
-            <Button 
-              variant="link" 
+            <Button
+              variant="link"
               onClick={() => setIsEditing(true)}
               className="text-slate-900 font-semibold p-0 h-auto underline decoration-slate-300 underline-offset-4 hover:decoration-slate-900"
             >
@@ -44,7 +51,9 @@ export function ProfileField({ label, value, isEditable = true, children }: Prof
           <div className="flex items-center justify-between mb-4">
             <h4 className="text-slate-900 font-medium">Edit {label}</h4>
           </div>
-          <ProfileFieldContext.Provider value={{ close: () => setIsEditing(false) }}>
+          <ProfileFieldContext.Provider
+            value={{ close: () => setIsEditing(false) }}
+          >
             {children}
           </ProfileFieldContext.Provider>
         </div>

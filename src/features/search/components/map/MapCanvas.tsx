@@ -15,7 +15,7 @@ export function MapCanvas({ children }: MapCanvasProps) {
   const initialLat = map.centerLat ?? 12.9716;
   const initialLng = map.centerLng ?? 77.5946;
 
-  const handleMapMove = useCallback((evt: any) => {
+  const handleMapMove = useCallback(() => {
     // We would update UI state context for map bounds here
   }, []);
 
@@ -24,7 +24,7 @@ export function MapCanvas({ children }: MapCanvasProps) {
       initialViewState={{
         longitude: initialLng,
         latitude: initialLat,
-        zoom: map.zoom ?? 12
+        zoom: map.zoom ?? 12,
       }}
       mapStyle="mapbox://styles/mapbox/streets-v12"
       mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN}

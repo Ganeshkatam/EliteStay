@@ -9,12 +9,15 @@ interface RealtimeSubscriberProps {
   currentUserId: string;
 }
 
-export function RealtimeSubscriber({ conversationId, currentUserId }: RealtimeSubscriberProps) {
+export function RealtimeSubscriber({
+  conversationId,
+  currentUserId,
+}: RealtimeSubscriberProps) {
   const router = useRouter();
 
   useEffect(() => {
     const supabase = createClient();
-    
+
     // Subscribe to all INSERTS on the messages table
     const channel = supabase
       .channel('messages_changes')
@@ -26,11 +29,12 @@ export function RealtimeSubscriber({ conversationId, currentUserId }: RealtimeSu
           table: 'messages',
         },
         (payload) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const newMsg = payload.new as any;
-          
+
           // Don't refresh if we sent it ourselves (we already call router.refresh() in the composer)
           if (newMsg.sender_id === currentUserId) return;
-          
+
           // If we are on a specific conversation page, and the message belongs to it, refresh.
           // Or if we are just on the inbox page (no conversationId), refresh the list.
           if (!conversationId || newMsg.conversation_id === conversationId) {
@@ -46,6 +50,7 @@ export function RealtimeSubscriber({ conversationId, currentUserId }: RealtimeSu
           table: 'conversations',
         },
         (payload) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const updatedConv = payload.new as any;
           if (!conversationId || updatedConv.id === conversationId) {
             router.refresh();

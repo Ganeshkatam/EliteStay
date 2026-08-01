@@ -33,8 +33,6 @@ export function LocationForm({ listingId, initialData }: LocationFormProps) {
   const {
     register,
     handleSubmit,
-    setValue,
-    watch,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -62,7 +60,6 @@ export function LocationForm({ listingId, initialData }: LocationFormProps) {
       )}
 
       <div className="space-y-6">
-
         <div className="space-y-2">
           <Label htmlFor="address_line1">Street Address</Label>
           <Input
@@ -71,7 +68,11 @@ export function LocationForm({ listingId, initialData }: LocationFormProps) {
             {...register('address_line1')}
             className="h-12"
           />
-          {errors.address_line1 && <p className="text-sm text-red-500">{errors.address_line1.message}</p>}
+          {errors.address_line1 && (
+            <p className="text-sm text-red-500">
+              {errors.address_line1.message}
+            </p>
+          )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -83,7 +84,9 @@ export function LocationForm({ listingId, initialData }: LocationFormProps) {
               {...register('city')}
               className="h-12"
             />
-            {errors.city && <p className="text-sm text-red-500">{errors.city.message}</p>}
+            {errors.city && (
+              <p className="text-sm text-red-500">{errors.city.message}</p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -94,7 +97,9 @@ export function LocationForm({ listingId, initialData }: LocationFormProps) {
               {...register('locality')}
               className="h-12"
             />
-            {errors.locality && <p className="text-sm text-red-500">{errors.locality.message}</p>}
+            {errors.locality && (
+              <p className="text-sm text-red-500">{errors.locality.message}</p>
+            )}
           </div>
         </div>
 
@@ -107,7 +112,9 @@ export function LocationForm({ listingId, initialData }: LocationFormProps) {
               {...register('state')}
               className="h-12"
             />
-            {errors.state && <p className="text-sm text-red-500">{errors.state.message}</p>}
+            {errors.state && (
+              <p className="text-sm text-red-500">{errors.state.message}</p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -118,7 +125,11 @@ export function LocationForm({ listingId, initialData }: LocationFormProps) {
               {...register('postal_code')}
               className="h-12"
             />
-            {errors.postal_code && <p className="text-sm text-red-500">{errors.postal_code.message}</p>}
+            {errors.postal_code && (
+              <p className="text-sm text-red-500">
+                {errors.postal_code.message}
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -132,7 +143,11 @@ export function LocationForm({ listingId, initialData }: LocationFormProps) {
         >
           Back
         </Button>
-        <Button type="submit" disabled={isPending} className="bg-slate-900 hover:bg-slate-800 text-white px-8 h-12">
+        <Button
+          type="submit"
+          disabled={isPending}
+          className="bg-slate-900 hover:bg-slate-800 text-white px-8 h-12"
+        >
           {isPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
           Next
         </Button>
@@ -140,4 +155,3 @@ export function LocationForm({ listingId, initialData }: LocationFormProps) {
     </form>
   );
 }
-

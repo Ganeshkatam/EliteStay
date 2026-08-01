@@ -1,6 +1,12 @@
 'use client';
 
-import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  ReactNode,
+  useMemo,
+} from 'react';
 import { useSearchParams } from 'next/navigation';
 
 interface SearchState {
@@ -23,27 +29,25 @@ const SearchContext = createContext<SearchContextValue | undefined>(undefined);
 
 export function SearchProvider({ children }: { children: ReactNode }) {
   const searchParams = useSearchParams();
-  
-  const [state, setState] = useState<SearchState>({
-    city: searchParams?.get('city') || '',
-    moveIn: searchParams?.get('availableFrom') || '',
-    type: searchParams?.get('accommodationType') || '',
-  });
 
-  // Sync state when URL changes (e.g. going back/forward or new searches)
-  useEffect(() => {
-    setState({
+  // Derive initial state from URL params. useMemo ensures we only recompute when searchParams changes.
+  const urlState = useMemo(
+    () => ({
       city: searchParams?.get('city') || '',
       moveIn: searchParams?.get('availableFrom') || '',
       type: searchParams?.get('accommodationType') || '',
-    });
-  }, [searchParams]);
+    }),
+    [searchParams]
+  );
 
+  const [overrides, setOverrides] = useState<Partial<SearchState>>({});
   const [isExpanded, setIsExpanded] = useState(false);
   const [isMobileModalOpen, setIsMobileModalOpen] = useState(false);
 
+  const state: SearchState = { ...urlState, ...overrides };
+
   const updateState = (updates: Partial<SearchState>) => {
-    setState((prev) => ({ ...prev, ...updates }));
+    setOverrides((prev) => ({ ...prev, ...updates }));
   };
 
   return (

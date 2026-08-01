@@ -1,6 +1,7 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 
-export type BookingStatus = 'pending' | 'approved' | 'rejected' | 'cancelled' | 'expired';
+export type BookingStatus =
+  'pending' | 'approved' | 'rejected' | 'cancelled' | 'expired';
 
 const VALID_TRANSITIONS: Record<BookingStatus, BookingStatus[]> = {
   pending: ['approved', 'rejected', 'cancelled', 'expired'],
@@ -15,7 +16,7 @@ export async function logBookingEvent(
   bookingId: string,
   action: string,
   actorId: string,
-  metadata: any = {}
+  metadata: Record<string, unknown> = {}
 ) {
   const { error } = await supabase.from('booking_events').insert({
     booking_id: bookingId,
@@ -34,7 +35,7 @@ export async function transitionBooking(
   newStatus: BookingStatus,
   actorId: string,
   supabase: SupabaseClient,
-  metadata: any = {}
+  metadata: Record<string, unknown> = {}
 ) {
   const { data: booking, error: fetchError } = await supabase
     .from('bookings')
@@ -49,21 +50,31 @@ export async function transitionBooking(
   const currentStatus = booking.status as BookingStatus;
 
   if (!VALID_TRANSITIONS[currentStatus].includes(newStatus)) {
-    return { error: `Invalid transition from ${currentStatus} to ${newStatus}.` };
+    return {
+      error: `Invalid transition from ${currentStatus} to ${newStatus}.`,
+    };
   }
 
-  const { data: updatedBooking, error: updateError } = await supabase.rpc('transition_booking', {
-    p_booking_id: bookingId,
-    p_current_status: currentStatus,
-    p_new_status: newStatus,
-    p_actor_id: actorId,
-    p_metadata: metadata
-  });
+  const { data: updatedBooking, error: updateError } = await supabase.rpc(
+    'transition_booking',
+    {
+      p_booking_id: bookingId,
+      p_current_status: currentStatus,
+      p_new_status: newStatus,
+      p_actor_id: actorId,
+      p_metadata: metadata,
+    }
+  );
 
   if (updateError || !updatedBooking || !updatedBooking.success) {
     console.error('RPC transition_booking failed:', updateError);
-    return { error: 'Booking state changed by another process. Please refresh.' };
+    return {
+      error: 'Booking state changed by another process. Please refresh.',
+    };
   }
 
-  return { success: true, booking: { ...booking, status: newStatus, listings: booking.listings } };
+  return {
+    success: true,
+    booking: { ...booking, status: newStatus, listings: booking.listings },
+  };
 }

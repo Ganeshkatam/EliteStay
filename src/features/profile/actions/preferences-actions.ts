@@ -6,17 +6,19 @@ import { revalidatePath } from 'next/cache';
 
 /**
  * Updates a specific category of user preferences
- * 
+ *
  * @param category The preference category to update (e.g. 'privacy')
  * @param data The partial or full data object for that category
  */
 export async function updateUserPreferences<T extends PreferenceCategory>(
   category: T,
-  data: any
+  data: unknown
 ): Promise<{ success: boolean; error?: string }> {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   if (!user) return { success: false, error: 'Not authenticated' };
 
   try {
@@ -29,7 +31,7 @@ export async function updateUserPreferences<T extends PreferenceCategory>(
     const { error } = await supabase
       .from('user_preferences')
       .update({
-        [category]: validatedData
+        [category]: validatedData,
       })
       .eq('user_id', user.id);
 
@@ -40,8 +42,11 @@ export async function updateUserPreferences<T extends PreferenceCategory>(
 
     revalidatePath('/users/settings');
     return { success: true };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Validation or API error:', err);
-    return { success: false, error: err.message || 'Validation failed' };
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'Validation failed',
+    };
   }
 }

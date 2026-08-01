@@ -6,7 +6,9 @@ import { getCategoryCounts } from '../api/queries';
 import { resolveAccommodationTypeId } from '@/features/search/lib/accommodation-types';
 
 export async function Categories() {
-  const typeIds = HOME_CATEGORIES.map(c => resolveAccommodationTypeId(c.slug)).filter(Boolean) as string[];
+  const typeIds = HOME_CATEGORIES.map((c) =>
+    resolveAccommodationTypeId(c.slug)
+  ).filter(Boolean) as string[];
   const counts = await getCategoryCounts(typeIds);
 
   return (
@@ -17,12 +19,14 @@ export async function Categories() {
       <div className="flex space-x-4 overflow-x-auto pb-4 scrollbar-hide snap-x">
         {HOME_CATEGORIES.map((category) => {
           // Dynamically resolve icon from Lucide
-          const IconComponent = (Icons as any)[
-            category.icon
-              .split('-')
-              .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
-              .join('')
-          ] || Icons.Home;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const IconComponent =
+            (Icons as any)[
+              category.icon
+                .split('-')
+                .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
+                .join('')
+            ] || Icons.Home;
 
           return (
             <Link
@@ -34,12 +38,18 @@ export async function Categories() {
                 <IconComponent className="h-6 w-6 text-gray-700 group-hover:text-blue-600 transition-colors" />
               </div>
               <div className="w-full mt-2">
-                <span className="block text-base font-bold text-gray-900">{category.label}</span>
+                <span className="block text-base font-bold text-gray-900">
+                  {category.label}
+                </span>
                 <div className="flex items-center justify-between mt-1">
                   <span className="text-sm font-medium text-gray-500">
-                    {counts[resolveAccommodationTypeId(category.slug) || ''] || 0} stays
+                    {counts[resolveAccommodationTypeId(category.slug) || ''] ||
+                      0}{' '}
+                    stays
                   </span>
-                  <span className="text-blue-600 font-bold opacity-0 group-hover:opacity-100 transform translate-x-[-10px] group-hover:translate-x-0 transition-all">&rarr;</span>
+                  <span className="text-blue-600 font-bold opacity-0 group-hover:opacity-100 transform translate-x-[-10px] group-hover:translate-x-0 transition-all">
+                    &rarr;
+                  </span>
                 </div>
               </div>
             </Link>
