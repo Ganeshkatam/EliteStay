@@ -1,15 +1,20 @@
 'use client';
 
 import React, { useCallback } from 'react';
-import Map, { NavigationControl } from 'react-map-gl/maplibre';
+import Map, {
+  NavigationControl,
+  ViewStateChangeEvent,
+} from 'react-map-gl/maplibre';
 import { useSearchData } from '../../context/SearchProvider';
 import { getMapConfig } from '@/lib/maps';
+import { MapViewport } from '../../hooks/useMapSearch';
 
 interface MapCanvasProps {
   children: React.ReactNode;
+  onViewportChange: (vp: MapViewport) => void;
 }
 
-export function MapCanvas({ children }: MapCanvasProps) {
+export function MapCanvas({ children, onViewportChange }: MapCanvasProps) {
   const { map } = useSearchData();
   const mapConfig = getMapConfig();
 
@@ -18,9 +23,28 @@ export function MapCanvas({ children }: MapCanvasProps) {
   const initialLng = map.centerLng ?? mapConfig.defaultViewport.longitude;
   const initialZoom = map.zoom ?? mapConfig.defaultViewport.zoom;
 
-  const handleMapMove = useCallback(() => {
-    // We would update UI state context for map bounds here
-  }, []);
+  const handleMapMove = useCallback(
+    (evt: ViewStateChangeEvent) => {
+      const bounds = evt.target.getBounds();
+      if (!bounds) return;
+      const center = evt.target.getCenter();
+
+      onViewportChange({
+        center: {
+          lat: center.lat,
+          lng: center.lng,
+        },
+        zoom: evt.target.getZoom(),
+        bounds: {
+          north: bounds.getNorth(),
+          south: bounds.getSouth(),
+          east: bounds.getEast(),
+          west: bounds.getWest(),
+        },
+      });
+    },
+    [onViewportChange]
+  );
 
   return (
     <Map

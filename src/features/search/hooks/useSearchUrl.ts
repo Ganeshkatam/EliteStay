@@ -17,7 +17,7 @@ export function useSearchUrl(currentFilters: SearchFilters) {
    * Merges with existing filters.
    */
   const updateFilters = useCallback(
-    (newFilters: Partial<SearchFilters>) => {
+    (newFilters: Partial<SearchFilters>, replace = false) => {
       // Build a merged filter object
       const merged: SearchFilters = { ...currentFilters, ...newFilters };
 
@@ -25,9 +25,13 @@ export function useSearchUrl(currentFilters: SearchFilters) {
       const url = buildSearchUrl(merged, pathname);
 
       // We use startTransition so the UI can show a loading state if we
-      // were to expose isPending, while Next.js fetches the new RSC payload.
+      // were to expose isPending, while Next.js fetches the RSC payload.
       startTransition(() => {
-        router.push(url, { scroll: false });
+        if (replace) {
+          router.replace(url, { scroll: false });
+        } else {
+          router.push(url, { scroll: false });
+        }
       });
     },
     [currentFilters, pathname, router]
