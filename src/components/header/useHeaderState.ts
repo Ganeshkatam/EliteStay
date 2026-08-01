@@ -3,6 +3,11 @@
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 
+export const HEADER_SCROLL = {
+  EXPAND_THRESHOLD: 20,
+  COLLAPSE_THRESHOLD: 60,
+};
+
 export type HeaderVariant =
   'public-home' | 'public' | 'host' | 'auth' | 'dashboard';
 
@@ -41,12 +46,12 @@ export function useHeaderState() {
 
           setExpandedState((prev) => {
             // Hysteresis logic
-            // Collapse when scrolling down past 80px
-            if (prev && currentScrollY > 80) {
+            // Collapse when scrolling down past COLLAPSE_THRESHOLD
+            if (prev && currentScrollY > HEADER_SCROLL.COLLAPSE_THRESHOLD) {
               return false;
             }
-            // Expand when scrolling back up past 40px
-            if (!prev && currentScrollY < 40) {
+            // Expand when scrolling back up past EXPAND_THRESHOLD
+            if (!prev && currentScrollY < HEADER_SCROLL.EXPAND_THRESHOLD) {
               return true;
             }
             return prev;

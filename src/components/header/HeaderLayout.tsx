@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { useHeaderState } from './useHeaderState';
+import { useHeaderState, HEADER_SCROLL } from './useHeaderState';
 import { cn } from '@/lib/utils';
 import { Container } from '@/components/layout/Container';
 import { TopBar } from './TopBar';
@@ -39,8 +39,11 @@ export function HeaderLayout({ user, profile }: HeaderLayoutProps) {
       if (!ticking) {
         window.requestAnimationFrame(() => {
           const currentScrollY = window.scrollY;
-          // Any intentional downward scroll (currentScrollY > lastScrollY) past 40px collapses search
-          if (currentScrollY > 40 && currentScrollY > lastScrollY) {
+          // Any intentional downward scroll (currentScrollY > lastScrollY) past threshold collapses search
+          if (
+            currentScrollY > HEADER_SCROLL.EXPAND_THRESHOLD &&
+            currentScrollY > lastScrollY
+          ) {
             setIsSearchExpanded(false);
           }
           lastScrollY = currentScrollY;
@@ -102,13 +105,25 @@ export function HeaderLayout({ user, profile }: HeaderLayoutProps) {
 
       <header
         ref={headerRef}
-        className={cn(
-          'fixed top-0 left-0 z-40 w-full transition-all duration-220 ease-in-out bg-white border-b border-border/40',
-          // If expanded, the header height is 176px. If collapsed, 76px
-          isExpanded ? 'h-[176px]' : 'h-[76px]'
-        )}
+        className="fixed top-0 left-0 z-40 w-full h-[76px] overflow-visible border-none bg-transparent"
       >
-        <Container className="h-full">
+        {/* Glass Layer: GPU-accelerated height scaling */}
+        <div
+          className={cn(
+            'absolute inset-x-0 top-0 h-[176px] bg-white/85 backdrop-blur-md origin-top motion-transform ease-premium border-b border-border/45',
+            isExpanded ? 'scale-y-100' : 'scale-y-[0.4318]'
+          )}
+        />
+
+        {/* Shadow Layer: Fades in only when collapsed and docked */}
+        <div
+          className={cn(
+            'absolute inset-x-0 top-0 h-[76px] shadow-[0_2px_12px_rgba(0,0,0,0.08)] motion-opacity ease-premium pointer-events-none',
+            isExpanded ? 'opacity-0' : 'opacity-100'
+          )}
+        />
+
+        <Container className="h-full relative z-10">
           <div className="flex h-[76px] items-center justify-between gap-4 relative">
             <TopBar
               variant={variant}

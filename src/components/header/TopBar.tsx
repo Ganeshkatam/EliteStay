@@ -22,14 +22,19 @@ export function TopBar({ variant, user, profile, isExpanded }: TopBarProps) {
 
   return (
     <>
-      <div className="flex flex-none items-center justify-start">
+      <div
+        className={cn(
+          'flex flex-none items-center justify-start motion-transform origin-left ease-premium',
+          isExpanded ? 'scale-100' : 'scale-90'
+        )}
+      >
         <Logo />
       </div>
 
       {variant !== 'host' && variant !== 'dashboard' && (
         <div
           className={cn(
-            'flex flex-1 items-center justify-center w-full transition-transform duration-220 ease-in-out',
+            'flex flex-1 items-center justify-center w-full motion-layout ease-premium',
             isExpanded ? 'translate-y-[88px]' : 'translate-y-0'
           )}
         >
