@@ -1,15 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import {
+  useState,
+  useEffect,
+  useContext,
+  forwardRef,
+  useImperativeHandle,
+} from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { updateAccommodation } from '../actions/listing-actions';
-import { Button } from '@/components/ui/button';
+import { saveAccommodation } from '../actions/publishing-actions';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2 } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -17,6 +21,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useAutosave } from '@/hooks/useAutosave';
+import { AutosaveContext } from './PublishingWorkspaceShell';
+import { PublishingSection } from '../view-models/listing-publishing.viewmodel';
 
 const formSchema = z.object({
   title: z
@@ -32,51 +39,85 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-interface AccommodationFormProps {
+export interface AccommodationFormProps {
   listingId: string;
   initialData: FormValues;
   accommodationTypes: { id: string; name: string }[];
 }
 
-export function AccommodationForm({
-  listingId,
-  initialData,
-  accommodationTypes,
-}: AccommodationFormProps) {
-  const [isPending, setIsPending] = useState(false);
+export const AccommodationForm = forwardRef<
+  PublishingSection,
+  AccommodationFormProps
+>(function AccommodationForm(
+  { listingId, initialData, accommodationTypes },
+  ref
+) {
   const [error, setError] = useState('');
+  const autosaveCtx = useContext(AutosaveContext);
 
   const {
     register,
-    handleSubmit,
     setValue,
     control,
-    formState: { errors },
+    reset,
+    trigger,
+    getValues,
+    formState: { errors, isDirty },
   } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: initialData,
   });
 
+  const {
+    save: triggerAutosave,
+    status,
+    lastSavedAt,
+    lastAttemptAt,
+  } = useAutosave<FormValues>(
+    async (vals) => {
+      setError('');
+      await saveAccommodation(listingId, vals);
+    },
+    { debounceMs: 1200 }
+  );
+
+  useEffect(() => {
+    if (autosaveCtx) {
+      autosaveCtx.setStatus(status);
+      autosaveCtx.setLastSavedAt(lastSavedAt);
+      autosaveCtx.setLastAttemptAt(lastAttemptAt);
+    }
+  }, [status, lastSavedAt, lastAttemptAt, autosaveCtx]);
+
   const accommodationTypeId = useWatch({
     control,
     name: 'accommodation_type_id',
   });
+  const allValues = useWatch({ control });
 
-  const onSubmit = async (data: FormValues) => {
-    setIsPending(true);
-    setError('');
-
-    try {
-      await updateAccommodation(listingId, data);
-      // Action redirects to next step on success
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Something went wrong');
-      setIsPending(false);
+  useEffect(() => {
+    if (isDirty) {
+      triggerAutosave(allValues as FormValues);
     }
-  };
+  }, [allValues, isDirty, triggerAutosave]);
+
+  useImperativeHandle(ref, () => ({
+    async save() {
+      await saveAccommodation(listingId, getValues());
+    },
+    async validate() {
+      return await trigger();
+    },
+    reset() {
+      reset(initialData);
+    },
+    autosave() {
+      triggerAutosave(getValues());
+    },
+  }));
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+    <form onSubmit={(e) => e.preventDefault()} className="space-y-8">
       {error && (
         <div className="p-4 rounded-md bg-red-50 text-red-600 text-sm">
           {error}
@@ -101,9 +142,12 @@ export function AccommodationForm({
           <Label htmlFor="accommodation_type_id">Property Type</Label>
           <Select
             value={accommodationTypeId}
-            onValueChange={(val) =>
-              setValue('accommodation_type_id', val, { shouldValidate: true })
-            }
+            onValueChange={(val) => {
+              setValue('accommodation_type_id', val, {
+                shouldValidate: true,
+                shouldDirty: true,
+              });
+            }}
           >
             <SelectTrigger className="h-12">
               <SelectValue placeholder="Select type..." />
@@ -136,17 +180,6 @@ export function AccommodationForm({
           )}
         </div>
       </div>
-
-      <div className="flex justify-end pt-4 border-t">
-        <Button
-          type="submit"
-          disabled={isPending}
-          className="bg-slate-900 hover:bg-slate-800 text-white px-8 h-12"
-        >
-          {isPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
-          Next
-        </Button>
-      </div>
     </form>
   );
-}
+});

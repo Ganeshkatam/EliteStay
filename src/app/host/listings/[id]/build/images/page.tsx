@@ -1,9 +1,10 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
-import { ImagesForm } from '@/features/host/components/ImagesForm';
+import { ImagesForm } from '@/features/host/publishing/components/ImagesForm';
+import { PublishingService } from '@/features/host/publishing/services/publishing.service';
 
 export const metadata = {
-  title: 'Step 5: Images - Build Listing',
+  title: 'Photos - Publishing Workspace',
 };
 
 export default async function ImagesPage({
@@ -13,34 +14,30 @@ export default async function ImagesPage({
 }) {
   const { id } = await params;
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  // Verify ownership
-  const { data: listing } = await supabase
-    .from('listings')
-    .select('id, host_id')
-    .eq('id', id)
-    .single();
+  if (!user) redirect('/login');
 
-  if (!listing) redirect('/host/listings');
+  const data = await PublishingService.getImagesSection(supabase, id, user.id);
 
-  // Fetch current images
-  const { data: images } = await supabase
-    .from('listing_images')
-    .select('*')
-    .eq('listing_id', id)
-    .order('display_order');
+  if (!data) redirect('/host/listings');
+
+  const { images } = data;
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Add photos to your listing</h1>
-        <p className="text-slate-500 mt-1">Upload at least 1 photo (maximum 5) to show off your property.</p>
+        <h1 className="text-2xl font-bold text-slate-900">
+          Add photos to your listing
+        </h1>
+        <p className="text-slate-500 mt-1">
+          Upload at least 1 photo (maximum 5) to show off your property.
+        </p>
       </div>
 
-      <ImagesForm
-        listingId={id}
-        initialImages={images || []}
-      />
+      <ImagesForm listingId={id} initialImages={images} />
     </div>
   );
 }

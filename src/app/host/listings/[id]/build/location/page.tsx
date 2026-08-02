@@ -1,9 +1,10 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
-import { LocationForm } from '@/features/host/components/LocationForm';
+import { LocationForm } from '@/features/host/publishing/components/LocationForm';
+import { PublishingService } from '@/features/host/publishing/services/publishing.service';
 
 export const metadata = {
-  title: 'Step 2: Location - Build Listing',
+  title: 'Location - Publishing Workspace',
 };
 
 export default async function LocationPage({
@@ -13,22 +14,23 @@ export default async function LocationPage({
 }) {
   const { id } = await params;
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  // Verify ownership
-  const { data: listing } = await supabase
-    .from('listings')
-    .select('id, host_id')
-    .eq('id', id)
-    .single();
+  if (!user) redirect('/login');
 
-  if (!listing) redirect('/host/listings');
+  const data = await PublishingService.getLocationSection(
+    supabase,
+    id,
+    user.id
+  );
 
-  // Fetch location data if it exists
-  const { data: location } = await supabase
-    .from('listing_locations')
-    .select('*')
-    .eq('listing_id', id)
-    .single();
+  if (!data) {
+    redirect('/host/listings');
+  }
+
+  const { location } = data;
 
   return (
     <div className="space-y-6">
@@ -45,11 +47,11 @@ export default async function LocationPage({
       <LocationForm
         listingId={id}
         initialData={{
-          state: location?.state || '',
-          city: location?.city || '',
-          locality: location?.locality || '',
-          postal_code: location?.postal_code || '',
-          address_line1: location?.address_line1 || '',
+          state: location.state || '',
+          city: location.city || '',
+          locality: location.locality || '',
+          postal_code: location.postal_code || '',
+          address_line1: location.address_line1 || '',
         }}
       />
     </div>

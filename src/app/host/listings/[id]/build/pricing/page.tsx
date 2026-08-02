@@ -1,9 +1,10 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
-import { PricingForm } from '@/features/host/components/PricingForm';
+import { PricingForm } from '@/features/host/publishing/components/PricingForm';
+import { PublishingService } from '@/features/host/publishing/services/publishing.service';
 
 export const metadata = {
-  title: 'Step 4: Pricing - Build Listing',
+  title: 'Pricing - Publishing Workspace',
 };
 
 export default async function PricingPage({
@@ -13,39 +14,28 @@ export default async function PricingPage({
 }) {
   const { id } = await params;
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  // Verify ownership
-  const { data: listing } = await supabase
-    .from('listings')
-    .select('id, host_id')
-    .eq('id', id)
-    .single();
+  if (!user) redirect('/login');
 
-  if (!listing) redirect('/host/listings');
+  const data = await PublishingService.getPricingSection(supabase, id, user.id);
 
-  // Fetch pricing data if it exists
-  const { data: pricing } = await supabase
-    .from('listing_prices')
-    .select('*')
-    .eq('listing_id', id)
-    .single();
+  if (!data) redirect('/host/listings');
+
+  const { pricing } = data;
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-slate-900">Set your price</h1>
-        <p className="text-slate-500 mt-1">You can change this at any time.</p>
+        <p className="text-slate-500 mt-1">
+          You can adjust pricing at any time.
+        </p>
       </div>
 
-      <PricingForm
-        listingId={id}
-        initialData={{
-          amount: pricing?.amount || 0,
-          billing_period: pricing?.billing_period || 'month',
-          security_deposit: pricing?.security_deposit || 0,
-          maintenance_fee: pricing?.maintenance_fee || 0,
-        }}
-      />
+      <PricingForm listingId={id} initialData={pricing} />
     </div>
   );
 }

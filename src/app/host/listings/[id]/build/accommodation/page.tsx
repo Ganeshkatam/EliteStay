@@ -1,9 +1,10 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
-import { AccommodationForm } from '@/features/host/components/AccommodationForm';
+import { AccommodationForm } from '@/features/host/publishing/components/AccommodationForm';
+import { PublishingService } from '@/features/host/publishing/services/publishing.service';
 
 export const metadata = {
-  title: 'Step 1: Accommodation - Build Listing',
+  title: 'Accommodation - Publishing Workspace',
 };
 
 export default async function AccommodationPage({
@@ -13,23 +14,23 @@ export default async function AccommodationPage({
 }) {
   const { id } = await params;
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  // Fetch listing data to populate form
-  const { data: listing } = await supabase
-    .from('listings')
-    .select('id, title, description, accommodation_type_id')
-    .eq('id', id)
-    .single();
+  if (!user) redirect('/login');
 
-  if (!listing) {
+  const data = await PublishingService.getAccommodationSection(
+    supabase,
+    id,
+    user.id
+  );
+
+  if (!data || !data.listing) {
     redirect('/host/listings');
   }
 
-  // Fetch accommodation types for the dropdown
-  const { data: types } = await supabase
-    .from('accommodation_types')
-    .select('id, name')
-    .order('name');
+  const { listing, accommodationTypes } = data;
 
   return (
     <div className="space-y-6">
@@ -38,8 +39,8 @@ export default async function AccommodationPage({
           Tell us about your place
         </h1>
         <p className="text-slate-500 mt-1">
-          In this step, we&apos;ll ask for the basic information about your
-          property.
+          Provide basic information about your property. Your edits save
+          automatically.
         </p>
       </div>
 
@@ -50,7 +51,7 @@ export default async function AccommodationPage({
           description: listing.description || '',
           accommodation_type_id: listing.accommodation_type_id || '',
         }}
-        accommodationTypes={types || []}
+        accommodationTypes={accommodationTypes}
       />
     </div>
   );

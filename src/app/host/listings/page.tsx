@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { CreateListingButton } from '@/features/host/components/CreateListingButton';
 import { createDraftListing } from '@/features/host/actions/listing-actions';
 import { ListingsWorkspace } from '@/features/host/components/ListingsWorkspace';
+import { HostRepository } from '@/features/host/repositories/host.repository';
 
 export const metadata = {
   title: 'My Listings - Host Workspace - EliteStay',
@@ -19,26 +20,8 @@ export default async function HostListingsPage() {
 
   if (!user) return null;
 
-  // Fetch all listings for this host with related operational data
-  const { data: listings } = await supabase
-    .from('listings')
-    .select(
-      `
-      id,
-      public_id,
-      title,
-      status,
-      updated_at,
-      city,
-      locality,
-      accommodation_type:accommodation_types(name),
-      prices:listing_prices(amount, billing_period),
-      images:listing_images(storage_path),
-      listing_build_progress(percent_complete, last_step)
-    `
-    )
-    .eq('host_id', user.id)
-    .order('updated_at', { ascending: false });
+  // Fetch all listings via repository (Thin Route Rule)
+  const listings = await HostRepository.getListings(supabase, user.id);
 
   return (
     <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-6">

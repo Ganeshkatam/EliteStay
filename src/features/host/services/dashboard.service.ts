@@ -3,8 +3,11 @@ import {
   DashboardKPIs,
   QuickAction,
 } from '../view-models/dashboard.viewmodel';
-import { RawListingData } from '../view-models/listing-health.viewmodel';
-import { ListingHealthService, ListingAction } from './listing-health.service';
+import { RawListingData } from '../publishing/view-models/listing-publishing.viewmodel';
+import {
+  ListingHealthService,
+  ListingAction,
+} from '../publishing/services/listing-health.service';
 
 export class DashboardService {
   static getKPIs(
@@ -55,11 +58,9 @@ export class DashboardService {
 
         let href = `/host/listings/${listing.id}/edit`;
         if (health.primaryAction === ListingAction.ResumeBuild) {
-          const step =
-            listing.listing_build_progress?.[0]?.last_step || 'accommodation';
-          href = `/host/listings/${listing.id}/build/${step}`;
+          href = `/host/listings/${listing.id}/build`;
         } else if (health.primaryAction === ListingAction.AddImages) {
-          href = `/host/listings/${listing.id}/build/photos`;
+          href = `/host/listings/${listing.id}/build/images`;
         } else if (health.primaryAction === ListingAction.AddPricing) {
           href = `/host/listings/${listing.id}/build/pricing`;
         }
@@ -71,13 +72,11 @@ export class DashboardService {
           href,
         });
       } else if (health.status === 'draft') {
-        const step =
-          listing.listing_build_progress?.[0]?.last_step || 'accommodation';
         items.push({
           id: `draft_${listing.id}`,
           title: `Finish setting up "${title}" (${health.completion}% complete)`,
           type: 'warning',
-          href: `/host/listings/${listing.id}/build/${step}`,
+          href: `/host/listings/${listing.id}/build`,
         });
       }
     });
@@ -119,13 +118,11 @@ export class DashboardService {
       });
     } else if (publishedListings.length === 0 && activeDrafts.length > 0) {
       const draft = activeDrafts[0].listing;
-      const step =
-        draft.listing_build_progress?.[0]?.last_step || 'accommodation';
       actions.push({
         id: 'complete_first',
         title: 'Complete your first listing',
         icon: 'file-edit',
-        href: `/host/listings/${draft.id}/build/${step}`,
+        href: `/host/listings/${draft.id}/build`,
         actionText: 'Resume Build',
       });
     } else {

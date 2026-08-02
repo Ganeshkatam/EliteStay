@@ -52,3 +52,5 @@ Next.js pages and layouts may only:
 - Render UI
 
 Business logic, database queries, calculations, and domain decisions must never be implemented inside route files. All host data access must go through repositories and services, never directly through page components.
+
+> **Workspace Rule:** Workspace layouts (`layout.tsx`) and route pages (`page.tsx`) must remain orchestration-only. They may obtain authentication/session context and invoke exactly one application service. They must not compose ViewModels, execute business rules, evaluate policies, or coordinate multiple domain services directly.

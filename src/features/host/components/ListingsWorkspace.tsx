@@ -28,8 +28,8 @@ import { cn } from '@/lib/utils';
 import {
   ListingHealthService,
   ListingAction,
-} from '@/features/host/services/listing-health.service';
-import { RawListingData } from '@/features/host/view-models/listing-health.viewmodel';
+} from '@/features/host/publishing/services/listing-health.service';
+import { RawListingData } from '@/features/host/publishing/view-models/listing-publishing.viewmodel';
 
 interface ListingWorkspaceProps {
   listings: RawListingData[];
@@ -180,7 +180,6 @@ function ListingRow({
   const { health } = listing;
   const isHealthy = health.status === 'healthy';
   const needsAttention = health.status === 'needs_attention';
-  const progress = listing.listing_build_progress?.[0];
   const publicId = (listing as { public_id?: string }).public_id; // Just in case it's in the query
 
   return (
@@ -270,7 +269,7 @@ function ListingRow({
             {health.primaryAction === ListingAction.ResumeBuild ? (
               <DropdownMenuItem asChild>
                 <Link
-                  href={`/host/listings/${listing.id}/build/${progress?.last_step || 'accommodation'}`}
+                  href={`/host/listings/${listing.id}/build`}
                   className="cursor-pointer flex items-center"
                 >
                   <Edit2 className="mr-2 h-4 w-4" /> Resume Build
@@ -279,7 +278,7 @@ function ListingRow({
             ) : health.primaryAction === ListingAction.AddImages ? (
               <DropdownMenuItem asChild>
                 <Link
-                  href={`/host/listings/${listing.id}/build/photos`}
+                  href={`/host/listings/${listing.id}/build/images`}
                   className="cursor-pointer flex items-center"
                 >
                   <ImageIcon className="mr-2 h-4 w-4" /> Add Photos

@@ -5,7 +5,7 @@ import { HostTimelineViewModel } from '../view-models/timeline.viewmodel';
 import { HostRepository } from '../repositories/host.repository';
 import { DashboardRepository } from '../repositories/dashboard.repository';
 import { TimelineRepository } from '../repositories/timeline.repository';
-import { RawListingData } from '../view-models/listing-health.viewmodel';
+import { RawListingData } from '../publishing/view-models/listing-publishing.viewmodel';
 import { DashboardService } from './dashboard.service';
 import { TimelineService } from './timeline.service';
 

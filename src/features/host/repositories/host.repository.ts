@@ -14,14 +14,16 @@ export class HostRepository {
         status, 
         title, 
         description,
+        updated_at,
         city, 
         locality,
+        accommodation_type:accommodation_types(name),
         images:listing_images(storage_path),
-        prices:listing_prices(amount, billing_period),
-        listing_build_progress(percent_complete, last_step)
+        prices:listing_prices(amount, billing_period)
       `
       )
-      .eq('host_id', hostId);
+      .eq('host_id', hostId)
+      .order('updated_at', { ascending: false });
 
     if (error) throw error;
     return data || [];

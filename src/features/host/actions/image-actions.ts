@@ -9,7 +9,9 @@ import { revalidatePath } from 'next/cache';
  */
 export async function addListingImage(listingId: string, formData: FormData) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   if (!user) throw new Error('Unauthorized');
 
@@ -48,13 +50,11 @@ export async function addListingImage(listingId: string, formData: FormData) {
   if (uploadError) throw new Error('Failed to upload image');
 
   // Insert into database
-  const { error: dbError } = await supabase
-    .from('listing_images')
-    .insert({
-      listing_id: listingId,
-      storage_path: filePath,
-      display_order: (count || 0) + 1,
-    });
+  const { error: dbError } = await supabase.from('listing_images').insert({
+    listing_id: listingId,
+    storage_path: filePath,
+    display_order: (count || 0) + 1,
+  });
 
   if (dbError) {
     // Attempt to clean up storage if DB insert fails
@@ -66,9 +66,15 @@ export async function addListingImage(listingId: string, formData: FormData) {
   return { success: true };
 }
 
-export async function removeListingImage(listingId: string, imageId: string, storagePath: string) {
+export async function removeListingImage(
+  listingId: string,
+  imageId: string,
+  storagePath: string
+) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   if (!user) throw new Error('Unauthorized');
 
@@ -96,23 +102,4 @@ export async function removeListingImage(listingId: string, imageId: string, sto
 
   revalidatePath(`/host/listings/${listingId}/build/images`);
   return { success: true };
-}
-
-export async function completeImagesStep(listingId: string) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user) throw new Error('Unauthorized');
-
-  // Update progress
-  await supabase
-    .from('listing_build_progress')
-    .update({
-      last_step: 'review',
-      percent_complete: 95,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('listing_id', listingId);
-
-  revalidatePath(`/host/listings/${listingId}/build/images`);
 }
