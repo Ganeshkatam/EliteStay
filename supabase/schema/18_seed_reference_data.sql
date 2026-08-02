@@ -175,18 +175,18 @@ BEGIN
 END $$;
 
 -- 6. Seed Property Types Reference Data
-INSERT INTO public.property_types (id, name, slug, description, display_order) VALUES
-    (1, 'Apartment', 'apartment', 'Independent residential apartment or flat', 1),
-    (2, 'Villa', 'villa', 'Private villa or upscale independent residence', 2),
-    (3, 'House', 'house', 'Independent residential house or bungalow', 3),
-    (4, 'PG', 'pg', 'Paying guest accommodation with shared amenities', 4),
-    (5, 'Hostel', 'hostel', 'Student or youth hostel dormitory and living spaces', 5),
-    (6, 'Hotel', 'hotel', 'Serviced room inside a hospitality establishment', 6),
-    (7, 'Cabin', 'cabin', 'Private cabin or standalone natural retreat', 7),
-    (8, 'Dormitory', 'dormitory', 'Shared sleeping quarters with common living spaces', 8),
-    (9, 'Resort', 'resort', 'Recreational residential resort suite', 9),
-    (10, 'Farmhouse', 'farmhouse', 'Spacious agricultural estate or weekend farmhouse', 10)
-ON CONFLICT (id) DO UPDATE SET slug = EXCLUDED.slug;
+INSERT INTO public.property_types (id, name, slug, description, icon, display_order) VALUES
+    (1, 'Apartment', 'apartment', 'Independent residential apartment or flat', 'building', 1),
+    (2, 'Villa', 'villa', 'Private villa or upscale independent residence', 'home', 2),
+    (3, 'House', 'house', 'Independent residential house or bungalow', 'home', 3),
+    (4, 'PG', 'pg', 'Paying guest accommodation with shared amenities', 'users', 4),
+    (5, 'Hostel', 'hostel', 'Student or youth hostel dormitory and living spaces', 'bed-double', 5),
+    (6, 'Hotel', 'hotel', 'Serviced room inside a hospitality establishment', 'building-2', 6),
+    (7, 'Cabin', 'cabin', 'Private cabin or standalone natural retreat', 'tent', 7),
+    (8, 'Dormitory', 'dormitory', 'Shared sleeping quarters with common living spaces', 'bed', 8),
+    (9, 'Resort', 'resort', 'Recreational residential resort suite', 'palmtree', 9),
+    (10, 'Farmhouse', 'farmhouse', 'Spacious agricultural estate or weekend farmhouse', 'trees', 10)
+ON CONFLICT (id) DO UPDATE SET slug = EXCLUDED.slug, icon = EXCLUDED.icon;
 
 -- 7. Seed Amenity Categories Reference Data
 INSERT INTO public.amenity_categories (id, name, slug, description, icon, display_order)
