@@ -35,6 +35,7 @@ CREATE TABLE public.listings (
     latitude DOUBLE PRECISION CHECK (latitude >= -90 AND latitude <= 90),
     longitude DOUBLE PRECISION CHECK (longitude >= -180 AND longitude <= 180),
     formatted_address TEXT,
+    available_date DATE DEFAULT CURRENT_DATE NOT NULL,
     
     status public.listing_status DEFAULT 'draft'::public.listing_status NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
@@ -52,6 +53,7 @@ CREATE INDEX IF NOT EXISTS idx_listings_lat_lng ON public.listings(latitude, lon
 CREATE INDEX IF NOT EXISTS listings_city_idx ON public.listings(city_id);
 CREATE INDEX IF NOT EXISTS idx_listings_property_type_id ON public.listings(property_type_id);
 CREATE INDEX IF NOT EXISTS idx_listings_locality_id ON public.listings(locality_id);
+CREATE INDEX IF NOT EXISTS idx_listings_available_date ON public.listings(available_date);
 
 CREATE OR REPLACE FUNCTION public.is_listing_owner(p_listing_id uuid)
 RETURNS BOOLEAN

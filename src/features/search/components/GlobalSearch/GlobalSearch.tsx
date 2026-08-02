@@ -31,7 +31,8 @@ export function GlobalSearch({ variant }: GlobalSearchProps) {
     e.stopPropagation();
     const params = new URLSearchParams();
     if (state.city.trim()) params.set('city', state.city.trim());
-    if (state.moveIn.trim()) params.set('availableFrom', state.moveIn.trim());
+    if (state.availableFrom.trim())
+      params.set('availableFrom', state.availableFrom.trim());
     if (state.type.trim()) params.set('accommodationType', state.type.trim());
 
     setIsExpanded(false);
@@ -60,11 +61,13 @@ export function GlobalSearch({ variant }: GlobalSearchProps) {
           ? 'This map area'
           : 'Anywhere';
 
-  const parsedDate = state.moveIn ? parseISO(state.moveIn) : undefined;
+  const parsedDate = state.availableFrom
+    ? parseISO(state.availableFrom)
+    : undefined;
   const dateSummary =
     parsedDate && isValid(parsedDate)
       ? format(parsedDate, 'dd MMM')
-      : 'Any week';
+      : 'Any date';
 
   const accommodationTypes = [
     { label: 'Any type', value: '' },
@@ -100,16 +103,16 @@ export function GlobalSearch({ variant }: GlobalSearchProps) {
               {/* Location (always visible) */}
               <span className="text-gray-900">{citySummary}</span>
 
-              {/* Type (hidden on mobile, visible on sm and up) */}
+              {/* Date (hidden on mobile, visible on sm and up) */}
               <span className="text-gray-300 sm:inline hidden">•</span>
               <span className="text-gray-500 sm:inline hidden">
-                {typeSummary}
+                {dateSummary}
               </span>
 
-              {/* Date (hidden on mobile and tablet, visible on md and up) */}
+              {/* Type (hidden on mobile and tablet, visible on md and up) */}
               <span className="text-gray-300 md:inline hidden">•</span>
               <span className="text-gray-500 md:inline hidden">
-                {dateSummary}
+                {typeSummary}
               </span>
             </div>
           </div>

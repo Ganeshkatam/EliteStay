@@ -175,15 +175,15 @@ export function SearchDropdown({ duration, setDuration }: SearchDropdownProps) {
 
   const handleDateSelect = (date: Date | undefined) => {
     if (date) {
-      updateState({ moveIn: format(date, 'yyyy-MM-dd') });
+      updateState({ availableFrom: format(date, 'yyyy-MM-dd') });
       setActiveSection(null);
     } else {
-      updateState({ moveIn: '' });
+      updateState({ availableFrom: '' });
     }
   };
 
   const handleMonthSelect = (date: Date) => {
-    updateState({ moveIn: format(date, 'yyyy-MM-01') });
+    updateState({ availableFrom: format(date, 'yyyy-MM-01') });
   };
 
   const handleTypeSelect = (value: string) => {
@@ -191,7 +191,9 @@ export function SearchDropdown({ duration, setDuration }: SearchDropdownProps) {
     setActiveSection(null);
   };
 
-  const parsedDate = state.moveIn ? parseISO(state.moveIn) : undefined;
+  const parsedDate = state.availableFrom
+    ? parseISO(state.availableFrom)
+    : undefined;
   const selectedDate =
     parsedDate && isValid(parsedDate) ? parsedDate : undefined;
 

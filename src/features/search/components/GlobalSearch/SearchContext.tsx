@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 
 interface SearchState {
   city: string;
-  moveIn: string;
+  availableFrom: string;
   type: string;
 }
 
@@ -31,7 +31,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   const urlState = useMemo(
     () => ({
       city: searchParams?.get('city') || '',
-      moveIn: searchParams?.get('availableFrom') || '',
+      availableFrom: searchParams?.get('availableFrom') || '',
       type: searchParams?.get('accommodationType') || '',
     }),
     [searchParams]

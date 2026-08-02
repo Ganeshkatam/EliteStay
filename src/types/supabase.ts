@@ -1004,6 +1004,7 @@ export type Database = {
       listings: {
         Row: {
           accommodation_type_id: string;
+          available_date: string;
           city: string | null;
           city_id: number | null;
           created_at: string;
@@ -1030,6 +1031,7 @@ export type Database = {
         };
         Insert: {
           accommodation_type_id: string;
+          available_date?: string;
           city?: string | null;
           city_id?: number | null;
           created_at?: string;
@@ -1056,6 +1058,7 @@ export type Database = {
         };
         Update: {
           accommodation_type_id?: string;
+          available_date?: string;
           city?: string | null;
           city_id?: number | null;
           created_at?: string;
