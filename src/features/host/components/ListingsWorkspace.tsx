@@ -28,8 +28,8 @@ import { cn } from '@/lib/utils';
 import {
   ListingHealthService,
   ListingAction,
-  RawListingData,
 } from '@/features/host/services/listing-health.service';
+import { RawListingData } from '@/features/host/view-models/listing-health.viewmodel';
 
 interface ListingWorkspaceProps {
   listings: RawListingData[];
@@ -224,9 +224,9 @@ function ListingRow({
         {!isHealthy && health.warnings.length > 0 && (
           <span
             className="text-xs text-amber-600 font-medium truncate"
-            title={health.warnings[0].message}
+            title={health.warnings[0]}
           >
-            ⚠ {health.warnings[0].message}
+            ⚠ {health.warnings[0]}
           </span>
         )}
         {!isHealthy && health.warnings.length === 0 && (

@@ -40,3 +40,15 @@ Always use the Supabase MCP tools (`mcp_supabase_*` or via `call_mcp_tool`) for 
 # Database & SQL Synchronization Rule
 
 Whenever modifying database schemas, migrations, functions, or reference data, you MUST always update the local SQL files (`supabase/schema/*.sql` and migrations) and execute the corresponding changes against the remote live Supabase database at the same time. Never permit local SQL definitions to drift from the active remote database schema.
+
+# Thin Route Rule
+
+Next.js pages and layouts may only:
+
+- Authenticate the user
+- Authorize access
+- Invoke orchestration/services
+- Prepare metadata
+- Render UI
+
+Business logic, database queries, calculations, and domain decisions must never be implemented inside route files. All host data access must go through repositories and services, never directly through page components.
