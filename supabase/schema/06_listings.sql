@@ -212,3 +212,119 @@ CREATE POLICY "Allow read access inherited from listings" ON public.listing_capa
 CREATE POLICY "Allow listing owners to manage capacity" ON public.listing_capacity
     FOR ALL USING (public.is_listing_owner(listing_id) OR public.is_admin())
     WITH CHECK (public.is_listing_owner(listing_id) OR public.is_admin());
+
+-- Listing Features Table (Resident Experience Features)
+CREATE TABLE public.listing_features (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    listing_id UUID NOT NULL UNIQUE REFERENCES public.listings(id) ON DELETE CASCADE,
+    has_attached_bathroom BOOLEAN DEFAULT false NOT NULL,
+    has_attached_balcony BOOLEAN DEFAULT false NOT NULL,
+    has_air_conditioning BOOLEAN DEFAULT false NOT NULL,
+    has_lift BOOLEAN DEFAULT false NOT NULL,
+    is_wheelchair_accessible BOOLEAN DEFAULT false NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_listing_features_listing_id ON public.listing_features(listing_id);
+
+ALTER TABLE public.listing_features ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow read access inherited from listings on features"
+    ON public.listing_features FOR SELECT
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.listings l
+            WHERE l.id = listing_features.listing_id
+              AND (l.status = 'published' OR public.is_listing_owner(l.id) OR public.is_admin())
+        )
+    );
+
+CREATE POLICY "Allow owners to manage listing features"
+    ON public.listing_features FOR ALL
+    USING (public.is_listing_owner(listing_id) OR public.is_admin())
+    WITH CHECK (public.is_listing_owner(listing_id) OR public.is_admin());
+
+CREATE TRIGGER trigger_listing_features_updated_at
+    BEFORE UPDATE ON public.listing_features
+    FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
+
+
+-- Listing Rules Table (Operational Policies)
+CREATE TABLE public.listing_rules (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    listing_id UUID NOT NULL UNIQUE REFERENCES public.listings(id) ON DELETE CASCADE,
+    smoking_allowed BOOLEAN DEFAULT false NOT NULL,
+    pets_allowed BOOLEAN DEFAULT false NOT NULL,
+    visitors_allowed BOOLEAN DEFAULT true NOT NULL,
+    couples_allowed BOOLEAN DEFAULT true NOT NULL,
+    non_vegetarian_allowed BOOLEAN DEFAULT true NOT NULL,
+    parties_allowed BOOLEAN DEFAULT false NOT NULL,
+    quiet_hours_start TIME,
+    quiet_hours_end TIME,
+    gate_closing_time TIME,
+    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    CONSTRAINT check_quiet_hours_pair CHECK (
+        (quiet_hours_start IS NULL AND quiet_hours_end IS NULL) OR 
+        (quiet_hours_start IS NOT NULL AND quiet_hours_end IS NOT NULL)
+    )
+);
+
+CREATE INDEX IF NOT EXISTS idx_listing_rules_listing_id ON public.listing_rules(listing_id);
+
+ALTER TABLE public.listing_rules ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow read access inherited from listings on rules"
+    ON public.listing_rules FOR SELECT
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.listings l
+            WHERE l.id = listing_rules.listing_id
+              AND (l.status = 'published' OR public.is_listing_owner(l.id) OR public.is_admin())
+        )
+    );
+
+CREATE POLICY "Allow owners to manage listing rules"
+    ON public.listing_rules FOR ALL
+    USING (public.is_listing_owner(listing_id) OR public.is_admin())
+    WITH CHECK (public.is_listing_owner(listing_id) OR public.is_admin());
+
+CREATE TRIGGER trigger_listing_rules_updated_at
+    BEFORE UPDATE ON public.listing_rules
+    FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
+
+
+-- Listing Rule Notes Table (Normalized Rule Notes)
+CREATE TABLE public.listing_rule_notes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    listing_id UUID NOT NULL REFERENCES public.listings(id) ON DELETE CASCADE,
+    rule_text TEXT NOT NULL,
+    display_order INTEGER DEFAULT 0 NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_listing_rule_notes_listing_id ON public.listing_rule_notes(listing_id, display_order);
+
+ALTER TABLE public.listing_rule_notes ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow read access inherited from listings on rule notes"
+    ON public.listing_rule_notes FOR SELECT
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.listings l
+            WHERE l.id = listing_rule_notes.listing_id
+              AND (l.status = 'published' OR public.is_listing_owner(l.id) OR public.is_admin())
+        )
+    );
+
+CREATE POLICY "Allow owners to manage listing rule notes"
+    ON public.listing_rule_notes FOR ALL
+    USING (public.is_listing_owner(listing_id) OR public.is_admin())
+    WITH CHECK (public.is_listing_owner(listing_id) OR public.is_admin());
+
+CREATE TRIGGER trigger_listing_rule_notes_updated_at
+    BEFORE UPDATE ON public.listing_rule_notes
+    FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
+

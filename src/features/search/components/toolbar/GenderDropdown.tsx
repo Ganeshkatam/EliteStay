@@ -12,9 +12,9 @@ import { useSearchUrl } from '../../hooks/useSearchUrl';
 import { cn } from '@/lib/utils';
 
 const genderOptions = [
+  { label: 'Any', value: 'any' },
   { label: 'Boys Only', value: 'male' },
   { label: 'Girls Only', value: 'female' },
-  { label: 'Co-ed / Any', value: 'any' },
 ];
 
 export function GenderDropdown() {
@@ -24,11 +24,12 @@ export function GenderDropdown() {
 
   const selectedValue = filters.genderPreference;
   const selectedObj = genderOptions.find((t) => t.value === selectedValue);
-  const label = selectedObj ? selectedObj.label : 'Gender';
+  const label =
+    selectedObj && selectedValue !== null ? selectedObj.label : 'Gender';
   const active = !!selectedValue;
 
   const handleSelect = (value: string) => {
-    if (selectedValue === value) {
+    if (value === 'any' || selectedValue === value) {
       updateFilters({ genderPreference: null });
     } else {
       updateFilters({ genderPreference: value as 'any' | 'male' | 'female' });
@@ -62,7 +63,9 @@ export function GenderDropdown() {
       >
         <div className="space-y-0.5">
           {genderOptions.map((item) => {
-            const isSelected = selectedValue === item.value;
+            const isSelected =
+              selectedValue === item.value ||
+              (item.value === 'any' && !selectedValue);
             return (
               <button
                 key={item.value}

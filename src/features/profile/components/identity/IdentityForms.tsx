@@ -295,16 +295,11 @@ export function OccupationForm({
           >
             <option value="">Select Occupation</option>
             <option value="student">Student</option>
-            <option value="software_engineer">Software Engineer</option>
-            <option value="healthcare_professional">
-              Healthcare Professional
-            </option>
-            <option value="education">Education</option>
-            <option value="design_creative">Design / Creative</option>
-            <option value="finance_accounting">Finance / Accounting</option>
-            <option value="marketing_sales">Marketing / Sales</option>
-            <option value="entrepreneur_founder">Entrepreneur / Founder</option>
+            <option value="working_professional">Working Professional</option>
+            <option value="business_owner">Business Owner</option>
             <option value="freelancer">Freelancer</option>
+            <option value="job_seeker">Job Seeker</option>
+            <option value="retired">Retired</option>
             <option value="other">Other</option>
           </select>
         </div>

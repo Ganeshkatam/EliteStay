@@ -13,7 +13,7 @@ export class SearchFacade {
     const insights = await LocationInsightsService.getInsights(
       filters.city ?? undefined
     );
-    const mapData = await MapService.getMapData(searchResult.listings);
+    const mapData = await MapService.getMapData(searchResult.listings, filters);
     const recoveryData = await DiscoveryService.getRecoveryData(filters);
 
     // Compute dynamic title based on filters
@@ -35,12 +35,15 @@ export class SearchFacade {
 
     const isViewportSearch = filters.minLat != null && filters.maxLat != null;
 
-    if (isViewportSearch) {
-      title += ' in this map area';
-    } else if (filters.locality) {
-      title += ` near ${filters.locality}`;
+    if (filters.locality) {
+      title += ` in ${filters.locality}`;
+      if (filters.city) {
+        title += `, ${filters.city}`;
+      }
     } else if (filters.city) {
       title += ` in ${filters.city}`;
+    } else if (isViewportSearch) {
+      title += ' in this map area';
     } else {
       title += ' to explore';
     }

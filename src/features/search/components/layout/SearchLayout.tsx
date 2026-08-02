@@ -35,8 +35,8 @@ export function SearchLayout({ viewMode, children }: SearchLayoutProps) {
       className="w-full h-full flex flex-col lg:flex-row items-stretch px-4 sm:px-6 lg:px-8 py-6 overflow-hidden"
       style={{ gap: SPACING.SEARCH_LAYOUT.panelPadding }}
     >
-      {/* Results Pane: Takes roughly 60% on XL (scrollable) */}
-      <div className="w-full lg:w-[64%] xl:w-[60%] 2xl:w-[58%] flex-shrink-0 h-full overflow-y-auto pr-2">
+      {/* Results Pane: Takes roughly 60% on XL */}
+      <div className="w-full lg:w-[64%] xl:w-[60%] 2xl:w-[58%] flex-shrink-0 h-full overflow-hidden pr-2">
         {resultsPane}
       </div>
 

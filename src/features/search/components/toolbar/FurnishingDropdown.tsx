@@ -12,6 +12,7 @@ import { useSearchUrl } from '../../hooks/useSearchUrl';
 import { cn } from '@/lib/utils';
 
 const furnishingOptions = [
+  { label: 'Any', value: '_all' },
   { label: 'Fully Furnished', value: 'fully_furnished' },
   { label: 'Semi Furnished', value: 'semi_furnished' },
   { label: 'Unfurnished', value: 'unfurnished' },
@@ -24,11 +25,12 @@ export function FurnishingDropdown() {
 
   const selectedValue = filters.furnishing;
   const selectedObj = furnishingOptions.find((t) => t.value === selectedValue);
-  const label = selectedObj ? selectedObj.label : 'Furnishing';
+  const label =
+    selectedObj && selectedValue !== null ? selectedObj.label : 'Furnishing';
   const active = !!selectedValue;
 
   const handleSelect = (value: string) => {
-    if (selectedValue === value) {
+    if (value === '_all' || selectedValue === value) {
       updateFilters({ furnishing: null });
     } else {
       updateFilters({
@@ -65,7 +67,9 @@ export function FurnishingDropdown() {
       >
         <div className="space-y-0.5">
           {furnishingOptions.map((item) => {
-            const isSelected = selectedValue === item.value;
+            const isSelected =
+              selectedValue === item.value ||
+              (item.value === '_all' && !selectedValue);
             return (
               <button
                 key={item.value}

@@ -20,7 +20,7 @@ Contains:
 */
 
 CREATE TYPE public.user_role AS ENUM ('guest', 'host', 'admin');
-CREATE TYPE public.user_occupation AS ENUM ('student', 'software_engineer', 'healthcare_professional', 'education', 'design_creative', 'finance_accounting', 'marketing_sales', 'entrepreneur_founder', 'freelancer', 'other');
+CREATE TYPE public.user_occupation AS ENUM ('student', 'working_professional', 'business_owner', 'freelancer', 'job_seeker', 'retired', 'other');
 CREATE TYPE public.listing_status AS ENUM ('draft', 'ready', 'pending_review', 'published', 'paused', 'archived');
 CREATE TYPE public.booking_status AS ENUM ('pending', 'approved', 'rejected', 'cancelled', 'expired');
 CREATE TYPE public.stay_status AS ENUM ('upcoming', 'active', 'extended', 'checked_out', 'completed', 'terminated');

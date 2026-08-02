@@ -45,14 +45,20 @@ export function GlobalSearch({ variant }: GlobalSearchProps) {
     }
   };
 
+  const paramLocality = searchParams ? searchParams.get('locality') : null;
+  const paramCity = searchParams ? searchParams.get('city') : null;
   const hasViewport = searchParams && searchParams.get('minLat') != null;
 
   // Settle summary representations
-  const citySummary = hasViewport
-    ? 'This map area'
-    : state.city
-      ? state.city
-      : 'Anywhere';
+  const citySummary = state.city
+    ? state.city
+    : paramLocality
+      ? paramLocality
+      : paramCity
+        ? paramCity
+        : hasViewport
+          ? 'This map area'
+          : 'Anywhere';
 
   const parsedDate = state.moveIn ? parseISO(state.moveIn) : undefined;
   const dateSummary =

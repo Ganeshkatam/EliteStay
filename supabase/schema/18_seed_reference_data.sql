@@ -167,15 +167,32 @@ BEGIN
 END $$;
 
 -- 6. Seed Property Types Reference Data
-INSERT INTO public.property_types (id, name, description, display_order) VALUES
-    (1, 'Apartment', 'Independent residential apartment or flat', 1),
-    (2, 'Villa', 'Private villa or upscale independent residence', 2),
-    (3, 'House', 'Independent residential house or bungalow', 3),
-    (4, 'PG', 'Paying guest accommodation with shared amenities', 4),
-    (5, 'Hostel', 'Student or youth hostel dormitory and living spaces', 5),
-    (6, 'Hotel', 'Serviced room inside a hospitality establishment', 6),
-    (7, 'Cabin', 'Private cabin or standalone natural retreat', 7),
-    (8, 'Dormitory', 'Shared sleeping quarters with common living spaces', 8),
-    (9, 'Resort', 'Recreational residential resort suite', 9),
-    (10, 'Farmhouse', 'Spacious agricultural estate or weekend farmhouse', 10)
+INSERT INTO public.property_types (id, name, slug, description, display_order) VALUES
+    (1, 'Apartment', 'apartment', 'Independent residential apartment or flat', 1),
+    (2, 'Villa', 'villa', 'Private villa or upscale independent residence', 2),
+    (3, 'House', 'house', 'Independent residential house or bungalow', 3),
+    (4, 'PG', 'pg', 'Paying guest accommodation with shared amenities', 4),
+    (5, 'Hostel', 'hostel', 'Student or youth hostel dormitory and living spaces', 5),
+    (6, 'Hotel', 'hotel', 'Serviced room inside a hospitality establishment', 6),
+    (7, 'Cabin', 'cabin', 'Private cabin or standalone natural retreat', 7),
+    (8, 'Dormitory', 'dormitory', 'Shared sleeping quarters with common living spaces', 8),
+    (9, 'Resort', 'resort', 'Recreational residential resort suite', 9),
+    (10, 'Farmhouse', 'farmhouse', 'Spacious agricultural estate or weekend farmhouse', 10)
+ON CONFLICT (id) DO UPDATE SET slug = EXCLUDED.slug;
+
+-- 7. Seed Amenity Categories Reference Data
+INSERT INTO public.amenity_categories (id, name, slug, description, icon, display_order)
+VALUES
+    (1, 'Internet & Connectivity', 'internet-connectivity', 'High-speed internet and digital communications', 'wifi', 10),
+    (2, 'Utilities', 'utilities', 'Essential property power and water supplies', 'zap', 20),
+    (3, 'Kitchen & Dining', 'kitchen-dining', 'Cooking appliances, refrigeration, and dining furnishings', 'utensils', 30),
+    (4, 'Bedroom & Comfort', 'bedroom-comfort', 'Climate control and bedding comforts', 'bed', 40),
+    (5, 'Bathroom & Hygiene', 'bathroom-hygiene', 'Sanitation, hot water geysers, and hygiene fixtures', 'shower', 50),
+    (6, 'Safety & Security', 'safety-security', 'Property surveillance, access systems, and guards', 'shield', 60),
+    (7, 'Parking & Transit', 'parking-transit', 'Dedicated vehicular parking facilities', 'car', 70),
+    (8, 'Laundry & Housekeeping', 'laundry-housekeeping', 'Clothing cleaning and scheduled room maintenance', 'shirt', 80),
+    (9, 'Recreation & Wellness', 'recreation-wellness', 'Fitness centers, swimming pools, and recreation', 'dumbbell', 90),
+    (10, 'Outdoor & Common Spaces', 'outdoor-common-spaces', 'Shared communal lounges, balconies, and lawns', 'sun', 100),
+    (11, 'Services & Managed Care', 'services-managed-care', 'Prepared meals and concierge living assistance', 'concierge-bell', 110)
 ON CONFLICT (id) DO NOTHING;
+

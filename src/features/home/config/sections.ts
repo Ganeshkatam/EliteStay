@@ -4,8 +4,13 @@ export type SectionType =
   | 'trending'
   | 'topRated'
   | 'budget'
-  | 'luxury'
-  | 'premium_coliving';
+  | 'pg'
+  | 'hostel'
+  | 'apartment'
+  | 'independent_house'
+  | 'villa'
+  | 'service_apartment'
+  | 'coliving';
 
 export interface HomeSectionConfig {
   id: string;
@@ -16,35 +21,86 @@ export interface HomeSectionConfig {
   limit: number;
 }
 
+/**
+ * Homepage sections grounded directly in the `public.accommodation_types` database table.
+ */
 export const homepageConfig: HomeSectionConfig[] = [
   {
     id: 'trending',
-    title: 'Trending This Week',
-    subtitle: 'Popular stays high in demand',
+    title: 'Trending Stays',
+    subtitle: 'Popular accommodations high in demand across top cities',
     type: 'trending',
     filter: { sort: 'recommended' },
     limit: 8,
   },
   {
+    id: 'pg',
+    title: 'Paying Guest (PG) Accommodations',
+    subtitle: 'Managed stays with home-style food & daily housekeeping',
+    type: 'pg',
+    filter: { accommodation_type_name: 'PG' },
+    limit: 8,
+  },
+  {
+    id: 'hostel',
+    title: 'Student Hostels',
+    subtitle: 'Vibrant student communities near universities & coaching hubs',
+    type: 'hostel',
+    filter: { accommodation_type_name: 'Hostel' },
+    limit: 8,
+  },
+  {
+    id: 'apartment',
+    title: 'Independent Apartments',
+    subtitle: 'Fully independent private flats ready for move-in',
+    type: 'apartment',
+    filter: { accommodation_type_name: 'Apartment' },
+    limit: 8,
+  },
+  {
+    id: 'coliving',
+    title: 'Co-living Hubs',
+    subtitle: 'Social hubs for working professionals with modern amenities',
+    type: 'coliving',
+    filter: { accommodation_type_name: 'Co-living' },
+    limit: 8,
+  },
+  {
+    id: 'independent_house',
+    title: 'Independent Houses',
+    subtitle: 'Spacious independent houses for families and groups',
+    type: 'independent_house',
+    filter: { accommodation_type_name: 'Independent House' },
+    limit: 8,
+  },
+  {
+    id: 'service_apartment',
+    title: 'Service Apartments',
+    subtitle: 'Fully-serviced corporate stays with premium housekeeping',
+    type: 'service_apartment',
+    filter: { accommodation_type_name: 'Service Apartment' },
+    limit: 8,
+  },
+  {
+    id: 'villa',
+    title: 'Luxe Private Villas',
+    subtitle: 'Luxe private estate stays with gardens and private amenities',
+    type: 'villa',
+    filter: { accommodation_type_name: 'Villa' },
+    limit: 8,
+  },
+  {
     id: 'budget',
-    title: 'Budget Stays',
-    subtitle: 'Affordable coliving spaces under ₹15,000/month',
+    title: 'Budget Friendly Stays',
+    subtitle: 'Quality verified stays under ₹15,000/month',
     type: 'budget',
     filter: { max_price: '15000' },
     limit: 8,
   },
   {
-    id: 'premium_coliving',
-    title: 'Premium Coliving',
-    subtitle: 'Luxury spaces with modern design and amenities',
-    type: 'premium_coliving',
-    filter: { accommodation_type_name: 'Coliving' },
-    limit: 8,
-  },
-  {
     id: 'recent',
-    title: 'Recently Added',
-    subtitle: 'Be the first to secure these fresh listings',
+    title: 'Recently Added Listings',
+    subtitle: 'Be the first to explore and reserve newly listed properties',
     type: 'recent',
     filter: { sort: 'newest' },
     limit: 8,

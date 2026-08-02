@@ -12,6 +12,7 @@ import { useSearchUrl } from '../../hooks/useSearchUrl';
 import { cn } from '@/lib/utils';
 
 const accommodationTypes = [
+  { label: 'Any', value: 'any' },
   { label: 'Apartment', value: 'apartment' },
   { label: 'PG', value: 'pg' },
   { label: 'Hostel', value: 'hostel' },
@@ -29,12 +30,12 @@ export function TypeDropdown() {
   const selectedTypeObj = accommodationTypes.find(
     (t) => t.value === selectedValue
   );
-  const label = selectedTypeObj ? selectedTypeObj.label : 'Type';
-  const active = !!selectedValue;
+  const label =
+    selectedTypeObj && selectedValue !== 'any' ? selectedTypeObj.label : 'Type';
+  const active = !!selectedValue && selectedValue !== 'any';
 
   const handleSelect = (value: string) => {
-    // If clicking already selected type, clear it (toggle behavior)
-    if (selectedValue === value) {
+    if (value === 'any' || selectedValue === value) {
       updateFilters({ accommodationType: null });
     } else {
       updateFilters({ accommodationType: value });
@@ -68,7 +69,9 @@ export function TypeDropdown() {
       >
         <div className="space-y-0.5">
           {accommodationTypes.map((item) => {
-            const isSelected = selectedValue === item.value;
+            const isSelected =
+              selectedValue === item.value ||
+              (item.value === 'any' && !selectedValue);
             return (
               <button
                 key={item.value}

@@ -113,9 +113,13 @@ CREATE TABLE public.localities (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     city_id BIGINT REFERENCES public.cities(id) ON DELETE CASCADE NOT NULL,
     name TEXT NOT NULL,
+    display_name TEXT,
+    aliases TEXT[] DEFAULT '{}',
     slug TEXT NOT NULL,
     latitude DOUBLE PRECISION CHECK (latitude >= -90 AND latitude <= 90),
     longitude DOUBLE PRECISION CHECK (longitude >= -180 AND longitude <= 180),
+    search_rank INTEGER DEFAULT 0 NOT NULL,
+    population INTEGER,
     is_active BOOLEAN DEFAULT true NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
@@ -123,9 +127,12 @@ CREATE TABLE public.localities (
     CONSTRAINT localities_city_name_key UNIQUE (city_id, name)
 );
 
+COMMENT ON COLUMN public.localities.search_rank IS 'Weighting for discovery and autocomplete: 1000 = Tier-1 locality, 500 = Very popular, 100 = Normal locality, 10 = Rare locality';
+
 CREATE INDEX IF NOT EXISTS idx_localities_city_id ON public.localities(city_id);
 CREATE INDEX IF NOT EXISTS idx_localities_slug ON public.localities(slug);
 CREATE INDEX IF NOT EXISTS idx_localities_name_lower ON public.localities(LOWER(name));
+CREATE INDEX IF NOT EXISTS idx_localities_search_rank ON public.localities(search_rank DESC);
 
 CREATE TRIGGER localities_updated_at 
   BEFORE UPDATE ON public.localities FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();

@@ -69,46 +69,126 @@ export type Database = {
         Row: {
           created_at: string;
           description: string | null;
+          display_order: number;
+          icon: string | null;
           id: string;
+          is_active: boolean;
           name: string;
+          slug: string;
           updated_at: string;
         };
         Insert: {
           created_at?: string;
           description?: string | null;
+          display_order?: number;
+          icon?: string | null;
           id?: string;
+          is_active?: boolean;
           name: string;
+          slug: string;
           updated_at?: string;
         };
         Update: {
           created_at?: string;
           description?: string | null;
+          display_order?: number;
+          icon?: string | null;
           id?: string;
+          is_active?: boolean;
           name?: string;
+          slug?: string;
           updated_at?: string;
         };
         Relationships: [];
       };
       amenities: {
         Row: {
+          category_id: number | null;
           created_at: string;
+          description: string | null;
+          display_order: number;
           icon: string | null;
           id: string;
+          is_active: boolean;
+          is_featured: boolean;
+          is_filterable: boolean;
           name: string;
+          search_weight: number;
+          slug: string;
+          updated_at: string;
+        };
+        Insert: {
+          category_id?: number | null;
+          created_at?: string;
+          description?: string | null;
+          display_order?: number;
+          icon?: string | null;
+          id?: string;
+          is_active?: boolean;
+          is_featured?: boolean;
+          is_filterable?: boolean;
+          name: string;
+          search_weight?: number;
+          slug: string;
+          updated_at?: string;
+        };
+        Update: {
+          category_id?: number | null;
+          created_at?: string;
+          description?: string | null;
+          display_order?: number;
+          icon?: string | null;
+          id?: string;
+          is_active?: boolean;
+          is_featured?: boolean;
+          is_filterable?: boolean;
+          name?: string;
+          search_weight?: number;
+          slug?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'amenities_category_id_fkey';
+            columns: ['category_id'];
+            isOneToOne: false;
+            referencedRelation: 'amenity_categories';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      amenity_categories: {
+        Row: {
+          created_at: string;
+          description: string | null;
+          display_order: number;
+          icon: string | null;
+          id: number;
+          is_active: boolean;
+          name: string;
+          slug: string;
           updated_at: string;
         };
         Insert: {
           created_at?: string;
+          description?: string | null;
+          display_order?: number;
           icon?: string | null;
-          id?: string;
+          id?: number;
+          is_active?: boolean;
           name: string;
+          slug: string;
           updated_at?: string;
         };
         Update: {
           created_at?: string;
+          description?: string | null;
+          display_order?: number;
           icon?: string | null;
-          id?: string;
+          id?: number;
+          is_active?: boolean;
           name?: string;
+          slug?: string;
           updated_at?: string;
         };
         Relationships: [];
@@ -680,6 +760,50 @@ export type Database = {
           },
         ];
       };
+      listing_features: {
+        Row: {
+          created_at: string;
+          has_air_conditioning: boolean;
+          has_attached_balcony: boolean;
+          has_attached_bathroom: boolean;
+          has_lift: boolean;
+          id: string;
+          is_wheelchair_accessible: boolean;
+          listing_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          has_air_conditioning?: boolean;
+          has_attached_balcony?: boolean;
+          has_attached_bathroom?: boolean;
+          has_lift?: boolean;
+          id?: string;
+          is_wheelchair_accessible?: boolean;
+          listing_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          has_air_conditioning?: boolean;
+          has_attached_balcony?: boolean;
+          has_attached_bathroom?: boolean;
+          has_lift?: boolean;
+          id?: string;
+          is_wheelchair_accessible?: boolean;
+          listing_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'listing_features_listing_id_fkey';
+            columns: ['listing_id'];
+            isOneToOne: true;
+            referencedRelation: 'listings';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       listing_images: {
         Row: {
           created_at: string;
@@ -781,6 +905,97 @@ export type Database = {
             foreignKeyName: 'listing_prices_listing_id_fkey';
             columns: ['listing_id'];
             isOneToOne: false;
+            referencedRelation: 'listings';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      listing_rule_notes: {
+        Row: {
+          created_at: string;
+          display_order: number;
+          id: string;
+          listing_id: string;
+          rule_text: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          display_order?: number;
+          id?: string;
+          listing_id: string;
+          rule_text: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          display_order?: number;
+          id?: string;
+          listing_id?: string;
+          rule_text?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'listing_rule_notes_listing_id_fkey';
+            columns: ['listing_id'];
+            isOneToOne: false;
+            referencedRelation: 'listings';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      listing_rules: {
+        Row: {
+          couples_allowed: boolean;
+          created_at: string;
+          gate_closing_time: string | null;
+          id: string;
+          listing_id: string;
+          non_vegetarian_allowed: boolean;
+          parties_allowed: boolean;
+          pets_allowed: boolean;
+          quiet_hours_end: string | null;
+          quiet_hours_start: string | null;
+          smoking_allowed: boolean;
+          updated_at: string;
+          visitors_allowed: boolean;
+        };
+        Insert: {
+          couples_allowed?: boolean;
+          created_at?: string;
+          gate_closing_time?: string | null;
+          id?: string;
+          listing_id: string;
+          non_vegetarian_allowed?: boolean;
+          parties_allowed?: boolean;
+          pets_allowed?: boolean;
+          quiet_hours_end?: string | null;
+          quiet_hours_start?: string | null;
+          smoking_allowed?: boolean;
+          updated_at?: string;
+          visitors_allowed?: boolean;
+        };
+        Update: {
+          couples_allowed?: boolean;
+          created_at?: string;
+          gate_closing_time?: string | null;
+          id?: string;
+          listing_id?: string;
+          non_vegetarian_allowed?: boolean;
+          parties_allowed?: boolean;
+          pets_allowed?: boolean;
+          quiet_hours_end?: string | null;
+          quiet_hours_start?: string | null;
+          smoking_allowed?: boolean;
+          updated_at?: string;
+          visitors_allowed?: boolean;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'listing_rules_listing_id_fkey';
+            columns: ['listing_id'];
+            isOneToOne: true;
             referencedRelation: 'listings';
             referencedColumns: ['id'];
           },
@@ -905,35 +1120,47 @@ export type Database = {
       };
       localities: {
         Row: {
+          aliases: string[] | null;
           city_id: number;
           created_at: string;
+          display_name: string | null;
           id: number;
           is_active: boolean;
           latitude: number | null;
           longitude: number | null;
           name: string;
+          population: number | null;
+          search_rank: number;
           slug: string;
           updated_at: string;
         };
         Insert: {
+          aliases?: string[] | null;
           city_id: number;
           created_at?: string;
+          display_name?: string | null;
           id?: never;
           is_active?: boolean;
           latitude?: number | null;
           longitude?: number | null;
           name: string;
+          population?: number | null;
+          search_rank?: number;
           slug: string;
           updated_at?: string;
         };
         Update: {
+          aliases?: string[] | null;
           city_id?: number;
           created_at?: string;
+          display_name?: string | null;
           id?: never;
           is_active?: boolean;
           latitude?: number | null;
           longitude?: number | null;
           name?: string;
+          population?: number | null;
+          search_rank?: number;
           slug?: string;
           updated_at?: string;
         };
@@ -1072,6 +1299,7 @@ export type Database = {
           id: number;
           is_active: boolean;
           name: string;
+          slug: string;
           updated_at: string;
         };
         Insert: {
@@ -1082,6 +1310,7 @@ export type Database = {
           id?: number;
           is_active?: boolean;
           name: string;
+          slug: string;
           updated_at?: string;
         };
         Update: {
@@ -1092,6 +1321,7 @@ export type Database = {
           id?: number;
           is_active?: boolean;
           name?: string;
+          slug?: string;
           updated_at?: string;
         };
         Relationships: [];
@@ -1468,14 +1698,11 @@ export type Database = {
       sync_direction: 'import' | 'export' | 'both';
       user_occupation:
         | 'student'
-        | 'software_engineer'
-        | 'healthcare_professional'
-        | 'education'
-        | 'design_creative'
-        | 'finance_accounting'
-        | 'marketing_sales'
-        | 'entrepreneur_founder'
+        | 'working_professional'
+        | 'business_owner'
         | 'freelancer'
+        | 'job_seeker'
+        | 'retired'
         | 'other';
       user_role: 'guest' | 'host' | 'admin';
     };
@@ -1643,14 +1870,11 @@ export const Constants = {
       sync_direction: ['import', 'export', 'both'],
       user_occupation: [
         'student',
-        'software_engineer',
-        'healthcare_professional',
-        'education',
-        'design_creative',
-        'finance_accounting',
-        'marketing_sales',
-        'entrepreneur_founder',
+        'working_professional',
+        'business_owner',
         'freelancer',
+        'job_seeker',
+        'retired',
         'other',
       ],
       user_role: ['guest', 'host', 'admin'],
