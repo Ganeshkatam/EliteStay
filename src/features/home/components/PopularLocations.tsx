@@ -21,6 +21,14 @@ const LOCAL_CITY_IMAGES: Record<string, string> = {
   chandigarh: '/images/cities/chandigarh.jpg',
   kochi: '/images/cities/kochi.jpg',
   indore: '/images/cities/indore.jpg',
+  visakhapatnam: '/images/cities/visakhapatnam.jpg',
+  vijayawada: '/images/cities/vijayawada.jpg',
+  guntur: '/images/cities/guntur.jpg',
+  warangal: '/images/cities/warangal.jpg',
+  tirupati: '/images/cities/tirupati.jpg',
+  nellore: '/images/cities/nellore.jpg',
+  rajahmundry: '/images/cities/rajahmundry.jpg',
+  kakinada: '/images/cities/kakinada.jpg',
 };
 
 export async function PopularLocations() {
