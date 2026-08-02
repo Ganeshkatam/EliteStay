@@ -6,12 +6,12 @@ import { createClient } from '@/lib/supabase/server';
 
 /** Local city cover images keyed by slug (stored in public/images/cities/) */
 const LOCAL_CITY_IMAGES: Record<string, string> = {
-  bangalore: '/images/cities/bangalore.png',
-  mumbai: '/images/cities/mumbai.png',
-  'new-delhi': '/images/cities/new-delhi.png',
-  hyderabad: '/images/cities/hyderabad.png',
-  pune: '/images/cities/pune.png',
-  chennai: '/images/cities/chennai.png',
+  bangalore: '/images/cities/bangalore.jpg',
+  mumbai: '/images/cities/mumbai.jpg',
+  'new-delhi': '/images/cities/new-delhi.jpg',
+  hyderabad: '/images/cities/hyderabad.jpg',
+  pune: '/images/cities/pune.jpg',
+  chennai: '/images/cities/chennai.jpg',
   kolkata: '/images/cities/kolkata.jpg',
   ahmedabad: '/images/cities/ahmedabad.jpg',
   noida: '/images/cities/noida.jpg',
