@@ -3,7 +3,6 @@ import { HomeSection } from '@/features/home/components/HomeSection';
 import { LazyHomeSection } from '@/features/home/components/LazyHomeSection';
 import { Categories } from '@/features/home/components/Categories';
 import { PopularLocations } from '@/features/home/components/PopularLocations';
-import { MapPreview } from '@/features/home/components/MapPreview';
 
 export default async function HomePage() {
   // First section loads immediately for fast initial rendering (LCP)
@@ -23,7 +22,6 @@ export default async function HomePage() {
       ))}
 
       <PopularLocations />
-      <MapPreview />
     </main>
   );
 }

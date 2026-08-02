@@ -56,6 +56,7 @@ CREATE TABLE public.cities (
     is_featured BOOLEAN DEFAULT false NOT NULL,
     is_active BOOLEAN DEFAULT true NOT NULL,
     sort_order INTEGER DEFAULT 0 NOT NULL,
+    listing_count INTEGER DEFAULT 0 NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
     UNIQUE(state_id, slug)
