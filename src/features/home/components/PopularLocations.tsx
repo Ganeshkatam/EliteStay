@@ -90,9 +90,6 @@ export async function PopularLocations() {
                   <span className="block text-sm sm:text-base font-bold text-white leading-tight">
                     {city.name}
                   </span>
-                  <span className="block text-[10px] sm:text-xs font-medium text-white/80 mt-0.5">
-                    {city.listing_count || 0} stays
-                  </span>
                 </div>
               </Link>
             </div>

@@ -32,24 +32,7 @@ export class LocationService {
       .eq('is_active', true)
       .order('sort_order');
 
-    if (!data || data.length === 0) return [];
-
-    const citiesWithRealCounts = await Promise.all(
-      data.map(async (city) => {
-        const { count } = await supabase
-          .from('listings')
-          .select('*', { count: 'exact', head: true })
-          .ilike('city', `%${city.name}%`)
-          .eq('status', 'published');
-
-        return {
-          ...city,
-          listing_count: count ?? city.listing_count ?? 0,
-        };
-      })
-    );
-
-    return citiesWithRealCounts;
+    return data || [];
   }
 
   static async searchCities(query: string) {
