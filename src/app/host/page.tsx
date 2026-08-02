@@ -13,6 +13,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { CreateListingButton } from '@/features/host/components/CreateListingButton';
 import { createDraftListing } from '@/features/host/actions/listing-actions';
+import {
+  ListingHealthService,
+  ListingAction,
+} from '@/features/host/services/listing-health.service';
 
 export default async function HostDashboardPage() {
   const supabase = await createClient();
@@ -32,29 +36,52 @@ export default async function HostDashboardPage() {
   const firstName = profile?.full_name?.split(' ')[0] || 'Host';
 
   // 2. Fetch operational data
-  const [
-    { data: listings },
-    { count: pendingBookingsCount },
-    { data: draftsInProgress },
-  ] = await Promise.all([
-    supabase.from('listings').select('id, status').eq('host_id', user.id),
-    supabase
-      .from('bookings')
-      .select('id', { count: 'exact', head: true })
-      .eq('status', 'pending')
-      // Note: In a real app we'd join listings to ensure the host owns the listing being booked
-      .limit(1),
-    supabase
-      .from('listing_build_progress')
-      .select('listing_id, percent_complete, last_step, listings(title)')
-      .eq('listings.host_id', user.id)
-      .lt('percent_complete', 100)
-      .order('updated_at', { ascending: false }),
-  ]);
+  const [{ data: listings }, { count: pendingBookingsCount }] =
+    await Promise.all([
+      supabase
+        .from('listings')
+        .select(
+          `
+        id, 
+        public_id,
+        status, 
+        title, 
+        description,
+        city, 
+        locality,
+        images:listing_images(storage_path),
+        prices:listing_prices(amount, billing_period),
+        listing_build_progress(percent_complete, last_step)
+      `
+        )
+        .eq('host_id', user.id),
+      supabase
+        .from('bookings')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'pending')
+        // Note: In a real app we'd join listings to ensure the host owns the listing being booked
+        .limit(1),
+    ]);
 
-  const activeDrafts = draftsInProgress || [];
-  const publishedListings =
-    listings?.filter((l) => l.status === 'published')?.length || 0;
+  const rawListings = listings || [];
+
+  // Evaluate health for all listings
+  const evaluatedListings = rawListings.map((listing) => ({
+    ...listing,
+    health: ListingHealthService.evaluate(
+      listing as unknown as import('@/features/host/services/listing-health.service').RawListingData
+    ),
+  }));
+
+  const activeDrafts = evaluatedListings.filter(
+    (l) => l.health.status === 'draft'
+  );
+  const needsAttentionListings = evaluatedListings.filter(
+    (l) => l.health.status === 'needs_attention'
+  );
+  const publishedListings = evaluatedListings.filter(
+    (l) => l.status === 'published'
+  ).length;
 
   // Calculate "Needs Attention" items
   const attentionItems = [];
@@ -68,16 +95,45 @@ export default async function HostDashboardPage() {
     });
   }
 
-  activeDrafts.forEach((draft) => {
-    const title = Array.isArray(draft.listings)
-      ? draft.listings[0]?.title
-      : (draft.listings as { title?: string })?.title || 'Untitled Listing';
+  // Add listings that need attention (e.g. low score, missing items)
+  needsAttentionListings.forEach((listing) => {
+    const title = listing.title || 'Untitled Listing';
+    const warningMsg =
+      listing.health.warnings.length > 0
+        ? listing.health.warnings[0].message
+        : `Missing required information`;
+
+    // Determine where to link based on the primary action recommended
+    let href = `/host/listings/${listing.id}/edit`;
+    if (listing.health.primaryAction === ListingAction.ResumeBuild) {
+      const step =
+        listing.listing_build_progress?.[0]?.last_step || 'accommodation';
+      href = `/host/listings/${listing.id}/build/${step}`;
+    } else if (listing.health.primaryAction === ListingAction.AddImages) {
+      href = `/host/listings/${listing.id}/build/photos`;
+    } else if (listing.health.primaryAction === ListingAction.AddPricing) {
+      href = `/host/listings/${listing.id}/build/pricing`;
+    }
 
     attentionItems.push({
-      id: `draft_${draft.listing_id}`,
-      title: `Finish setting up "${title}" (${draft.percent_complete}% complete)`,
+      id: `attention_${listing.id}`,
+      title: `"${title}" needs attention: ${warningMsg}`,
+      type: 'urgent',
+      href,
+    });
+  });
+
+  // Add active drafts that are in progress
+  activeDrafts.forEach((draft) => {
+    const title = draft.title || 'Untitled Listing';
+    const step =
+      draft.listing_build_progress?.[0]?.last_step || 'accommodation';
+
+    attentionItems.push({
+      id: `draft_${draft.id}`,
+      title: `Finish setting up "${title}" (${draft.health.completion}% complete)`,
       type: 'warning',
-      href: `/host/listings/${draft.listing_id}/build/${draft.last_step}`,
+      href: `/host/listings/${draft.id}/build/${step}`,
     });
   });
 
@@ -172,13 +228,13 @@ export default async function HostDashboardPage() {
           {/* KPI Snapshot */}
           <section>
             <h2 className="text-sm font-semibold text-slate-900 mb-3 uppercase tracking-wider">
-              Snapshot
+              Overview
             </h2>
             <div className="grid grid-cols-2 gap-4">
               <Card className="border-slate-200 shadow-sm">
                 <CardContent className="p-4">
                   <p className="text-xs font-medium text-slate-500 mb-1">
-                    Active Listings
+                    Published
                   </p>
                   <p className="text-2xl font-semibold text-slate-900">
                     {publishedListings}
@@ -188,43 +244,81 @@ export default async function HostDashboardPage() {
               <Card className="border-slate-200 shadow-sm">
                 <CardContent className="p-4">
                   <p className="text-xs font-medium text-slate-500 mb-1">
-                    Occupancy
+                    Drafts
                   </p>
-                  <p className="text-2xl font-semibold text-slate-900">--%</p>
+                  <p className="text-2xl font-semibold text-slate-900">
+                    {activeDrafts.length}
+                  </p>
                 </CardContent>
               </Card>
               <Card className="border-slate-200 shadow-sm col-span-2">
                 <CardContent className="p-4">
                   <p className="text-xs font-medium text-slate-500 mb-1">
-                    Revenue (This Month)
+                    Pending Bookings
                   </p>
-                  <p className="text-2xl font-semibold text-slate-900">₹0</p>
+                  <p className="text-2xl font-semibold text-slate-900">
+                    {pendingBookingsCount || 0}
+                  </p>
                 </CardContent>
               </Card>
             </div>
           </section>
 
-          {/* Quick Actions */}
+          {/* Quick Actions (Context Aware) */}
           <section>
             <h2 className="text-sm font-semibold text-slate-900 mb-3 uppercase tracking-wider">
               Quick Actions
             </h2>
             <Card className="border-slate-200 shadow-sm overflow-hidden">
               <div className="flex flex-col divide-y divide-slate-100">
-                <Link
-                  href="/host/calendar"
-                  className="flex items-center gap-3 p-4 bg-white hover:bg-slate-50 transition-colors text-sm font-medium text-slate-700"
-                >
-                  <Calendar className="h-4 w-4 text-slate-400" />
-                  Manage Availability
-                </Link>
-                <Link
-                  href="/host/listings"
-                  className="flex items-center gap-3 p-4 bg-white hover:bg-slate-50 transition-colors text-sm font-medium text-slate-700"
-                >
-                  <FileEdit className="h-4 w-4 text-slate-400" />
-                  Edit Listings
-                </Link>
+                {rawListings.length === 0 ? (
+                  <form action={createDraftListing} className="w-full block">
+                    <button
+                      type="submit"
+                      className="w-full flex items-center gap-3 p-4 bg-white hover:bg-slate-50 transition-colors text-sm font-medium text-slate-700 text-left"
+                    >
+                      <FileEdit className="h-4 w-4 text-emerald-500" />
+                      Create your first listing
+                    </button>
+                  </form>
+                ) : publishedListings === 0 && activeDrafts.length > 0 ? (
+                  <Link
+                    href={`/host/listings/${activeDrafts[0].id}/build/${activeDrafts[0].listing_build_progress?.[0]?.last_step || 'accommodation'}`}
+                    className="flex items-center gap-3 p-4 bg-white hover:bg-slate-50 transition-colors text-sm font-medium text-slate-700"
+                  >
+                    <FileEdit className="h-4 w-4 text-amber-500" />
+                    Complete your first listing
+                  </Link>
+                ) : (
+                  <Link
+                    href="/host/listings/new"
+                    className="flex items-center gap-3 p-4 bg-white hover:bg-slate-50 transition-colors text-sm font-medium text-slate-700"
+                  >
+                    <FileEdit className="h-4 w-4 text-slate-400" />
+                    Create new listing
+                  </Link>
+                )}
+
+                {(pendingBookingsCount ?? 0) > 0 && (
+                  <Link
+                    href="/host/bookings"
+                    className="flex items-center gap-3 p-4 bg-white hover:bg-slate-50 transition-colors text-sm font-medium text-slate-700"
+                  >
+                    <Calendar className="h-4 w-4 text-rose-500" />
+                    Review pending bookings
+                  </Link>
+                )}
+
+                {publishedListings > 0 && (
+                  <Link
+                    href="/host/calendar"
+                    className="flex items-center gap-3 p-4 bg-white hover:bg-slate-50 transition-colors text-sm font-medium text-slate-700"
+                  >
+                    <Calendar className="h-4 w-4 text-slate-400" />
+                    Manage Availability
+                  </Link>
+                )}
+
                 <Link
                   href="/host/settings"
                   className="flex items-center gap-3 p-4 bg-white hover:bg-slate-50 transition-colors text-sm font-medium text-slate-700"

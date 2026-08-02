@@ -13,6 +13,7 @@ import {
   Edit2,
   Calendar,
   Eye,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -24,30 +25,28 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-
-export interface WorkspaceListing {
-  id: string;
-  public_id: string | null;
-  title: string | null;
-  status: string;
-  city: string | null;
-  locality: string | null;
-  images: { storage_path: string }[] | null;
-  prices: { amount: number; billing_period: string }[] | null;
-  listing_build_progress:
-    { percent_complete: number; last_step: string }[] | null;
-}
+import {
+  ListingHealthService,
+  ListingAction,
+  RawListingData,
+} from '@/features/host/services/listing-health.service';
 
 interface ListingWorkspaceProps {
-  listings: WorkspaceListing[];
+  listings: RawListingData[];
 }
 
 export function ListingsWorkspace({ listings }: ListingWorkspaceProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
-  const filteredListings = listings.filter((listing) => {
-    if (statusFilter !== 'all' && listing.status !== statusFilter) return false;
+  const listingsWithHealth = listings.map((listing) => ({
+    ...listing,
+    health: ListingHealthService.evaluate(listing),
+  }));
+
+  const filteredListings = listingsWithHealth.filter((listing) => {
+    if (statusFilter !== 'all' && listing.health.status !== statusFilter)
+      return false;
     if (
       searchQuery &&
       !listing.title?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -86,19 +85,19 @@ export function ListingsWorkspace({ listings }: ListingWorkspaceProps) {
             onClick={() => setStatusFilter('all')}
           />
           <FilterPill
-            label="Published"
-            active={statusFilter === 'published'}
-            onClick={() => setStatusFilter('published')}
-          />
-          <FilterPill
-            label="Drafts"
-            active={statusFilter === 'draft'}
-            onClick={() => setStatusFilter('draft')}
+            label="Healthy"
+            active={statusFilter === 'healthy'}
+            onClick={() => setStatusFilter('healthy')}
           />
           <FilterPill
             label="Needs Attention"
             active={statusFilter === 'needs_attention'}
             onClick={() => setStatusFilter('needs_attention')}
+          />
+          <FilterPill
+            label="Drafts"
+            active={statusFilter === 'draft'}
+            onClick={() => setStatusFilter('draft')}
           />
         </div>
       </div>
@@ -157,7 +156,13 @@ function FilterPill({
   );
 }
 
-function ListingRow({ listing }: { listing: WorkspaceListing }) {
+function ListingRow({
+  listing,
+}: {
+  listing: RawListingData & {
+    health: ReturnType<typeof ListingHealthService.evaluate>;
+  };
+}) {
   const imageUrl = listing.images?.[0]?.storage_path
     ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/listings/${listing.images[0].storage_path}`
     : null;
@@ -172,11 +177,11 @@ function ListingRow({ listing }: { listing: WorkspaceListing }) {
     ? `₹${price.amount.toLocaleString('en-IN')} / ${price.billing_period}`
     : 'No pricing';
 
+  const { health } = listing;
+  const isHealthy = health.status === 'healthy';
+  const needsAttention = health.status === 'needs_attention';
   const progress = listing.listing_build_progress?.[0];
-  const percentComplete = progress?.percent_complete || 0;
-
-  const isPublished = listing.status === 'published';
-  const needsAttention = !isPublished && percentComplete < 100;
+  const publicId = (listing as { public_id?: string }).public_id; // Just in case it's in the query
 
   return (
     <div className="grid grid-cols-12 gap-4 p-4 items-center hover:bg-slate-50 transition-colors group">
@@ -187,13 +192,7 @@ function ListingRow({ listing }: { listing: WorkspaceListing }) {
             <Image src={imageUrl} alt={title} fill className="object-cover" />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-slate-300">
-              <Image
-                className="w-5 h-5 opacity-50"
-                src="/placeholder.svg"
-                alt="placeholder"
-                width={20}
-                height={20}
-              />
+              <ImageIcon className="w-5 h-5 opacity-50" />
             </div>
           )}
         </div>
@@ -205,15 +204,15 @@ function ListingRow({ listing }: { listing: WorkspaceListing }) {
 
       {/* Health / Status */}
       <div className="hidden sm:flex sm:col-span-2 flex-col gap-1 justify-center">
-        {isPublished ? (
+        {isHealthy ? (
           <div className="flex items-center gap-1.5 text-sm text-emerald-700 font-medium">
             <CheckCircle2 className="w-4 h-4" />
-            Published
+            Healthy ({health.score}%)
           </div>
         ) : needsAttention ? (
           <div className="flex items-center gap-1.5 text-sm text-amber-600 font-medium">
             <AlertCircle className="w-4 h-4" />
-            Needs Attention
+            Needs Attention ({health.score}%)
           </div>
         ) : (
           <div className="flex items-center gap-1.5 text-sm text-slate-600 font-medium">
@@ -222,9 +221,17 @@ function ListingRow({ listing }: { listing: WorkspaceListing }) {
           </div>
         )}
 
-        {!isPublished && (
+        {!isHealthy && health.warnings.length > 0 && (
+          <span
+            className="text-xs text-amber-600 font-medium truncate"
+            title={health.warnings[0].message}
+          >
+            ⚠ {health.warnings[0].message}
+          </span>
+        )}
+        {!isHealthy && health.warnings.length === 0 && (
           <span className="text-xs text-slate-500 font-medium">
-            {percentComplete}% Complete
+            {health.completion}% Complete
           </span>
         )}
       </div>
@@ -236,7 +243,7 @@ function ListingRow({ listing }: { listing: WorkspaceListing }) {
 
       {/* Availability */}
       <div className="hidden sm:flex sm:col-span-2 items-center">
-        {isPublished ? (
+        {listing.status === 'published' ? (
           <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-50">
             Available
           </Badge>
@@ -260,13 +267,31 @@ function ListingRow({ listing }: { listing: WorkspaceListing }) {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
-            {!isPublished ? (
+            {health.primaryAction === ListingAction.ResumeBuild ? (
               <DropdownMenuItem asChild>
                 <Link
                   href={`/host/listings/${listing.id}/build/${progress?.last_step || 'accommodation'}`}
                   className="cursor-pointer flex items-center"
                 >
                   <Edit2 className="mr-2 h-4 w-4" /> Resume Build
+                </Link>
+              </DropdownMenuItem>
+            ) : health.primaryAction === ListingAction.AddImages ? (
+              <DropdownMenuItem asChild>
+                <Link
+                  href={`/host/listings/${listing.id}/build/photos`}
+                  className="cursor-pointer flex items-center"
+                >
+                  <ImageIcon className="mr-2 h-4 w-4" /> Add Photos
+                </Link>
+              </DropdownMenuItem>
+            ) : health.primaryAction === ListingAction.AddPricing ? (
+              <DropdownMenuItem asChild>
+                <Link
+                  href={`/host/listings/${listing.id}/build/pricing`}
+                  className="cursor-pointer flex items-center"
+                >
+                  <Edit2 className="mr-2 h-4 w-4" /> Add Pricing
                 </Link>
               </DropdownMenuItem>
             ) : (
@@ -287,15 +312,17 @@ function ListingRow({ listing }: { listing: WorkspaceListing }) {
                     <Calendar className="mr-2 h-4 w-4" /> Manage Calendar
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link
-                    href={`/rooms/${listing.public_id}`}
-                    target="_blank"
-                    className="cursor-pointer flex items-center"
-                  >
-                    <Eye className="mr-2 h-4 w-4" /> View as Guest
-                  </Link>
-                </DropdownMenuItem>
+                {publicId && (
+                  <DropdownMenuItem asChild>
+                    <Link
+                      href={`/rooms/${publicId}`}
+                      target="_blank"
+                      className="cursor-pointer flex items-center"
+                    >
+                      <Eye className="mr-2 h-4 w-4" /> View as Guest
+                    </Link>
+                  </DropdownMenuItem>
+                )}
               </>
             )}
           </DropdownMenuContent>
