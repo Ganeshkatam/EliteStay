@@ -62,7 +62,10 @@ export async function PopularLocations() {
             const { data } = supabase.storage
               .from('city-images')
               .getPublicUrl(city.cover_image_storage_path);
-            imageUrl = data.publicUrl;
+            const cacheBuster = city.updated_at
+              ? `?v=${new Date(city.updated_at).getTime()}`
+              : '';
+            imageUrl = `${data.publicUrl}${cacheBuster}`;
           }
 
           return (
