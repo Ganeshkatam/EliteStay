@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -1132,7 +1132,6 @@ export type Database = {
           latitude: number | null;
           longitude: number | null;
           name: string;
-          population: number | null;
           search_rank: number;
           slug: string;
           updated_at: string;
@@ -1147,7 +1146,6 @@ export type Database = {
           latitude?: number | null;
           longitude?: number | null;
           name: string;
-          population?: number | null;
           search_rank?: number;
           slug: string;
           updated_at?: string;
@@ -1162,7 +1160,6 @@ export type Database = {
           latitude?: number | null;
           longitude?: number | null;
           name?: string;
-          population?: number | null;
           search_rank?: number;
           slug?: string;
           updated_at?: string;
