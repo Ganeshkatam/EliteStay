@@ -133,11 +133,11 @@ export function LazyHomeSection({ config }: LazyHomeSectionProps) {
 
         {isLoading ? (
           // Skeleton placeholder while waiting for intentional scroll or data
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          <div className="flex overflow-hidden gap-6 pb-6 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
             {[1, 2, 3, 4].map((idx) => (
               <div
                 key={idx}
-                className="aspect-square rounded-2xl bg-gray-100 animate-pulse border border-gray-100"
+                className="shrink-0 w-[70vw] sm:w-[240px] md:w-[220px] lg:w-[200px] aspect-square rounded-2xl bg-gray-100 animate-pulse border border-gray-100"
               />
             ))}
           </div>
@@ -151,14 +151,45 @@ export function LazyHomeSection({ config }: LazyHomeSectionProps) {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 animate-in fade-in-50 duration-300">
+          <div className="flex overflow-x-auto snap-x snap-mandatory gap-6 pb-6 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 scrollbar-hide animate-in fade-in-50 duration-300">
             {listings?.map((listing) => (
-              <ListingCard
+              <div
                 key={`${config.id}-${listing.publicId}`}
-                listing={listing}
-                aspectRatio="square"
-              />
+                className="snap-start shrink-0 w-[70vw] sm:w-[240px] md:w-[220px] lg:w-[200px]"
+              >
+                <ListingCard listing={listing} aspectRatio="square" />
+              </div>
             ))}
+            {listings && listings.length >= config.limit && (
+              <div className="snap-start shrink-0 w-[70vw] sm:w-[240px] md:w-[220px] lg:w-[200px] flex items-center justify-center">
+                <Link
+                  href={viewAllHref}
+                  className="group flex flex-col items-center justify-center w-full aspect-square rounded-3xl border-2 border-dashed border-gray-200 hover:border-blue-500 hover:bg-blue-50/30 transition-all duration-300"
+                >
+                  <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center mb-3 group-hover:scale-110 group-hover:bg-blue-600 transition-all duration-300 shadow-sm">
+                    <svg
+                      className="w-5 h-5 text-blue-600 group-hover:text-white transition-colors"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={2.5}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M9 5l7 7-7 7"
+                      />
+                    </svg>
+                  </div>
+                  <span className="text-sm font-semibold text-gray-900 group-hover:text-blue-700 transition-colors">
+                    See all
+                  </span>
+                  <span className="text-xs text-gray-500 mt-1">
+                    Explore {config.title}
+                  </span>
+                </Link>
+              </div>
+            )}
           </div>
         )}
       </Container>

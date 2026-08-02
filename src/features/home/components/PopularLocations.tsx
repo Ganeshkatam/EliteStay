@@ -4,6 +4,25 @@ import { Container } from '@/components/layout/Container';
 import { LocationService } from '@/features/location/services/location-service';
 import { createClient } from '@/lib/supabase/server';
 
+/** Local city cover images keyed by slug (stored in public/images/cities/) */
+const LOCAL_CITY_IMAGES: Record<string, string> = {
+  bangalore: '/images/cities/bangalore.png',
+  mumbai: '/images/cities/mumbai.png',
+  'new-delhi': '/images/cities/new-delhi.png',
+  hyderabad: '/images/cities/hyderabad.png',
+  pune: '/images/cities/pune.png',
+  chennai: '/images/cities/chennai.png',
+  kolkata: '/images/cities/kolkata.jpg',
+  ahmedabad: '/images/cities/ahmedabad.jpg',
+  noida: '/images/cities/noida.jpg',
+  gurgaon: '/images/cities/gurgaon.jpg',
+  jaipur: '/images/cities/jaipur.jpg',
+  lucknow: '/images/cities/lucknow.jpg',
+  chandigarh: '/images/cities/chandigarh.jpg',
+  kochi: '/images/cities/kochi.jpg',
+  indore: '/images/cities/indore.jpg',
+};
+
 export async function PopularLocations() {
   const cities = await LocationService.getFeaturedCities();
   const supabase = await createClient();
@@ -16,7 +35,7 @@ export async function PopularLocations() {
     <Container className="py-2">
       <div className="flex items-end justify-between mb-4">
         <h2 className="text-xl font-bold tracking-tight text-slate-900">
-          Popular Locations
+          Search by Cities
         </h2>
         <Link
           href="/s"
@@ -26,10 +45,11 @@ export async function PopularLocations() {
         </Link>
       </div>
 
-      <div className="flex gap-4 sm:gap-6 overflow-x-auto pb-4 scrollbar-none [&::-webkit-scrollbar]:hidden snap-x snap-mandatory scroll-smooth">
+      <div className="flex gap-4 sm:gap-6 overflow-x-auto pb-4 scrollbar-hide snap-x snap-mandatory scroll-smooth">
         {cities.map((city) => {
-          // Get public URL for cover image if it exists
-          let imageUrl = '/images/placeholder-city.png'; // default placeholder
+          // Priority: local image > Supabase storage > placeholder
+          let imageUrl =
+            LOCAL_CITY_IMAGES[city.slug] ?? '/images/placeholder-city.png';
           if (city.cover_image_storage_path) {
             const { data } = supabase.storage
               .from('city-images')
