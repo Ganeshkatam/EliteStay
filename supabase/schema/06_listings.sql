@@ -29,7 +29,9 @@ CREATE TABLE public.listings (
     city TEXT,
     city_id BIGINT REFERENCES public.cities(id) ON DELETE SET NULL,
     locality TEXT,
+    locality_id BIGINT REFERENCES public.localities(id),
     postal_code TEXT,
+    property_type_id SMALLINT REFERENCES public.property_types(id),
     latitude DOUBLE PRECISION CHECK (latitude >= -90 AND latitude <= 90),
     longitude DOUBLE PRECISION CHECK (longitude >= -180 AND longitude <= 180),
     formatted_address TEXT,
@@ -48,6 +50,8 @@ CREATE INDEX IF NOT EXISTS idx_listings_public_id ON public.listings(public_id);
 CREATE INDEX IF NOT EXISTS idx_listings_host_id ON public.listings(host_id);
 CREATE INDEX IF NOT EXISTS idx_listings_lat_lng ON public.listings(latitude, longitude);
 CREATE INDEX IF NOT EXISTS listings_city_idx ON public.listings(city_id);
+CREATE INDEX IF NOT EXISTS idx_listings_property_type_id ON public.listings(property_type_id);
+CREATE INDEX IF NOT EXISTS idx_listings_locality_id ON public.listings(locality_id);
 
 CREATE OR REPLACE FUNCTION public.is_listing_owner(p_listing_id uuid)
 RETURNS BOOLEAN
@@ -175,3 +179,36 @@ CREATE POLICY "Hosts can delete own listing progress" ON public.listing_build_pr
         AND (l.host_id = auth.uid() OR public.is_admin())
     )
   );
+
+-- Listing Capacity Table & Inherited RLS
+CREATE TABLE public.listing_capacity (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    listing_id UUID NOT NULL UNIQUE REFERENCES public.listings(id) ON DELETE CASCADE,
+    beds INTEGER DEFAULT 1 NOT NULL,
+    bathrooms INTEGER DEFAULT 1 NOT NULL,
+    max_guests INTEGER DEFAULT 1 NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    CONSTRAINT check_capacity_counts CHECK (beds > 0 AND bathrooms > 0 AND max_guests > 0)
+);
+
+CREATE INDEX IF NOT EXISTS idx_listing_capacity_listing_id ON public.listing_capacity(listing_id);
+
+CREATE TRIGGER listing_capacity_updated_at 
+    BEFORE UPDATE ON public.listing_capacity
+    FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
+
+ALTER TABLE public.listing_capacity ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow read access inherited from listings" ON public.listing_capacity
+    FOR SELECT USING (
+        EXISTS (
+            SELECT 1 FROM public.listings l
+            WHERE l.id = listing_capacity.listing_id
+              AND (l.status = 'published' OR public.is_listing_owner(l.id) OR public.is_admin())
+        )
+    );
+
+CREATE POLICY "Allow listing owners to manage capacity" ON public.listing_capacity
+    FOR ALL USING (public.is_listing_owner(listing_id) OR public.is_admin())
+    WITH CHECK (public.is_listing_owner(listing_id) OR public.is_admin());

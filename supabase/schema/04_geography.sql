@@ -107,3 +107,30 @@ CREATE POLICY "Only admins can manage cities" ON public.cities FOR ALL USING (pu
 CREATE POLICY "Enable read access for authenticated users" ON public.geocoding_cache FOR SELECT TO authenticated USING (true);
 CREATE POLICY "Enable insert access for authenticated users" ON public.geocoding_cache FOR INSERT TO authenticated WITH CHECK (true);
 CREATE POLICY "Enable update access for authenticated users" ON public.geocoding_cache FOR UPDATE TO authenticated USING (true) WITH CHECK (true);
+
+-- 8. Create Localities Table
+CREATE TABLE public.localities (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    city_id BIGINT REFERENCES public.cities(id) ON DELETE CASCADE NOT NULL,
+    name TEXT NOT NULL,
+    slug TEXT NOT NULL,
+    latitude DOUBLE PRECISION CHECK (latitude >= -90 AND latitude <= 90),
+    longitude DOUBLE PRECISION CHECK (longitude >= -180 AND longitude <= 180),
+    is_active BOOLEAN DEFAULT true NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    CONSTRAINT localities_city_slug_key UNIQUE (city_id, slug),
+    CONSTRAINT localities_city_name_key UNIQUE (city_id, name)
+);
+
+CREATE INDEX IF NOT EXISTS idx_localities_city_id ON public.localities(city_id);
+CREATE INDEX IF NOT EXISTS idx_localities_slug ON public.localities(slug);
+CREATE INDEX IF NOT EXISTS idx_localities_name_lower ON public.localities(LOWER(name));
+
+CREATE TRIGGER localities_updated_at 
+  BEFORE UPDATE ON public.localities FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
+
+ALTER TABLE public.localities ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow public read access on localities" ON public.localities FOR SELECT USING (is_active = true OR public.is_admin());
+CREATE POLICY "Allow admin management on localities" ON public.localities FOR ALL USING (public.is_admin());

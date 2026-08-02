@@ -165,3 +165,17 @@ BEGIN
         (mp_id, 'IN-IDR', 'Indore', '{}', 'indore', 22.7196, 75.8577, 'Asia/Kolkata', false, true, true, 15)
     ON CONFLICT (external_code) DO NOTHING;
 END $$;
+
+-- 6. Seed Property Types Reference Data
+INSERT INTO public.property_types (id, name, description, display_order) VALUES
+    (1, 'Apartment', 'Independent residential apartment or flat', 1),
+    (2, 'Villa', 'Private villa or upscale independent residence', 2),
+    (3, 'House', 'Independent residential house or bungalow', 3),
+    (4, 'PG', 'Paying guest accommodation with shared amenities', 4),
+    (5, 'Hostel', 'Student or youth hostel dormitory and living spaces', 5),
+    (6, 'Hotel', 'Serviced room inside a hospitality establishment', 6),
+    (7, 'Cabin', 'Private cabin or standalone natural retreat', 7),
+    (8, 'Dormitory', 'Shared sleeping quarters with common living spaces', 8),
+    (9, 'Resort', 'Recreational residential resort suite', 9),
+    (10, 'Farmhouse', 'Spacious agricultural estate or weekend farmhouse', 10)
+ON CONFLICT (id) DO NOTHING;

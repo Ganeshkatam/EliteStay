@@ -14,6 +14,57 @@ export type Database = {
   };
   public: {
     Tables: {
+      accommodation_type_amenities: {
+        Row: {
+          accommodation_type_id: string;
+          amenity_id: string;
+          category: string;
+          created_at: string;
+          display_order: number;
+          id: string;
+          is_default: boolean;
+          is_required: boolean;
+          updated_at: string;
+        };
+        Insert: {
+          accommodation_type_id: string;
+          amenity_id: string;
+          category?: string;
+          created_at?: string;
+          display_order?: number;
+          id?: string;
+          is_default?: boolean;
+          is_required?: boolean;
+          updated_at?: string;
+        };
+        Update: {
+          accommodation_type_id?: string;
+          amenity_id?: string;
+          category?: string;
+          created_at?: string;
+          display_order?: number;
+          id?: string;
+          is_default?: boolean;
+          is_required?: boolean;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'accommodation_type_amenities_accommodation_type_id_fkey';
+            columns: ['accommodation_type_id'];
+            isOneToOne: false;
+            referencedRelation: 'accommodation_types';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'accommodation_type_amenities_amenity_id_fkey';
+            columns: ['amenity_id'];
+            isOneToOne: false;
+            referencedRelation: 'amenities';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       accommodation_types: {
         Row: {
           created_at: string;
@@ -591,6 +642,44 @@ export type Database = {
           },
         ];
       };
+      listing_capacity: {
+        Row: {
+          bathrooms: number;
+          beds: number;
+          created_at: string;
+          id: string;
+          listing_id: string;
+          max_guests: number;
+          updated_at: string;
+        };
+        Insert: {
+          bathrooms?: number;
+          beds?: number;
+          created_at?: string;
+          id?: string;
+          listing_id: string;
+          max_guests?: number;
+          updated_at?: string;
+        };
+        Update: {
+          bathrooms?: number;
+          beds?: number;
+          created_at?: string;
+          id?: string;
+          listing_id?: string;
+          max_guests?: number;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'listing_capacity_listing_id_fkey';
+            columns: ['listing_id'];
+            isOneToOne: true;
+            referencedRelation: 'listings';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       listing_images: {
         Row: {
           created_at: string;
@@ -711,11 +800,13 @@ export type Database = {
           id: string;
           latitude: number | null;
           locality: string | null;
+          locality_id: number | null;
           longitude: number | null;
           max_occupants: number;
           occupancy_type: Database['public']['Enums']['occupancy_type'];
           postal_code: string | null;
           property_type: string;
+          property_type_id: number | null;
           public_id: string;
           state: string | null;
           status: Database['public']['Enums']['listing_status'];
@@ -735,11 +826,13 @@ export type Database = {
           id?: string;
           latitude?: number | null;
           locality?: string | null;
+          locality_id?: number | null;
           longitude?: number | null;
           max_occupants?: number;
           occupancy_type?: Database['public']['Enums']['occupancy_type'];
           postal_code?: string | null;
           property_type?: string;
+          property_type_id?: number | null;
           public_id: string;
           state?: string | null;
           status?: Database['public']['Enums']['listing_status'];
@@ -759,11 +852,13 @@ export type Database = {
           id?: string;
           latitude?: number | null;
           locality?: string | null;
+          locality_id?: number | null;
           longitude?: number | null;
           max_occupants?: number;
           occupancy_type?: Database['public']['Enums']['occupancy_type'];
           postal_code?: string | null;
           property_type?: string;
+          property_type_id?: number | null;
           public_id?: string;
           state?: string | null;
           status?: Database['public']['Enums']['listing_status'];
@@ -786,10 +881,68 @@ export type Database = {
             referencedColumns: ['id'];
           },
           {
+            foreignKeyName: 'listings_locality_id_fkey';
+            columns: ['locality_id'];
+            isOneToOne: false;
+            referencedRelation: 'localities';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'listings_property_type_id_fkey';
+            columns: ['property_type_id'];
+            isOneToOne: false;
+            referencedRelation: 'property_types';
+            referencedColumns: ['id'];
+          },
+          {
             foreignKeyName: 'listings_type_id_fkey';
             columns: ['accommodation_type_id'];
             isOneToOne: false;
             referencedRelation: 'accommodation_types';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      localities: {
+        Row: {
+          city_id: number;
+          created_at: string;
+          id: number;
+          is_active: boolean;
+          latitude: number | null;
+          longitude: number | null;
+          name: string;
+          slug: string;
+          updated_at: string;
+        };
+        Insert: {
+          city_id: number;
+          created_at?: string;
+          id?: never;
+          is_active?: boolean;
+          latitude?: number | null;
+          longitude?: number | null;
+          name: string;
+          slug: string;
+          updated_at?: string;
+        };
+        Update: {
+          city_id?: number;
+          created_at?: string;
+          id?: never;
+          is_active?: boolean;
+          latitude?: number | null;
+          longitude?: number | null;
+          name?: string;
+          slug?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'localities_city_id_fkey';
+            columns: ['city_id'];
+            isOneToOne: false;
+            referencedRelation: 'cities';
             referencedColumns: ['id'];
           },
         ];
@@ -907,6 +1060,39 @@ export type Database = {
           timezone?: string | null;
           updated_at?: string;
           username?: string | null;
+        };
+        Relationships: [];
+      };
+      property_types: {
+        Row: {
+          created_at: string;
+          description: string | null;
+          display_order: number;
+          icon: string | null;
+          id: number;
+          is_active: boolean;
+          name: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          description?: string | null;
+          display_order?: number;
+          icon?: string | null;
+          id?: number;
+          is_active?: boolean;
+          name: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          description?: string | null;
+          display_order?: number;
+          icon?: string | null;
+          id?: number;
+          is_active?: boolean;
+          name?: string;
+          updated_at?: string;
         };
         Relationships: [];
       };
