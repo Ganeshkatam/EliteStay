@@ -162,7 +162,15 @@ BEGIN
         (up_id, 'IN-LKO', 'Lucknow', '{"Awadh"}', 'lucknow', 26.8467, 80.9462, 'Asia/Kolkata', true, true, true, 12),
         (ch_id, 'IN-IXC', 'Chandigarh', '{}', 'chandigarh', 30.7333, 76.7794, 'Asia/Kolkata', true, true, true, 13),
         (kl_id, 'IN-COK', 'Kochi', '{"Cochin"}', 'kochi', 9.9312, 76.2673, 'Asia/Kolkata', false, true, true, 14),
-        (mp_id, 'IN-IDR', 'Indore', '{}', 'indore', 22.7196, 75.8577, 'Asia/Kolkata', false, true, true, 15)
+        (mp_id, 'IN-IDR', 'Indore', '{}', 'indore', 22.7196, 75.8577, 'Asia/Kolkata', false, true, true, 15),
+        (ap_id, 'IN-AP-VIZAG', 'Visakhapatnam', '{"Vizag"}', 'visakhapatnam', 17.6868, 83.2185, 'Asia/Kolkata', true, true, true, 16),
+        (ap_id, 'IN-AP-VIJA', 'Vijayawada', '{}', 'vijayawada', 16.5062, 80.6480, 'Asia/Kolkata', false, false, true, 17),
+        (ap_id, 'IN-AP-GUNT', 'Guntur', '{}', 'guntur', 16.3067, 80.4365, 'Asia/Kolkata', false, false, true, 18),
+        (tg_id, 'IN-TG-WARA', 'Warangal', '{}', 'warangal', 17.9815, 79.5982, 'Asia/Kolkata', false, false, true, 19),
+        (ap_id, 'IN-AP-TIRU', 'Tirupati', '{}', 'tirupati', 13.6288, 79.4192, 'Asia/Kolkata', false, false, true, 20),
+        (ap_id, 'IN-AP-NELL', 'Nellore', '{}', 'nellore', 14.4426, 79.9865, 'Asia/Kolkata', false, false, true, 21),
+        (ap_id, 'IN-AP-RAJA', 'Rajahmundry', '{}', 'rajahmundry', 17.0005, 81.8040, 'Asia/Kolkata', false, false, true, 22),
+        (ap_id, 'IN-AP-KAKI', 'Kakinada', '{}', 'kakinada', 16.9891, 82.2475, 'Asia/Kolkata', false, false, true, 23)
     ON CONFLICT (external_code) DO NOTHING;
 END $$;
 
