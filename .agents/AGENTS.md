@@ -101,3 +101,53 @@ Mandatory regression checklist:
 - No existing tests are broken; add or update tests when behavior changes.
 
 A task is not considered complete until all affected functionality has been updated and verified.
+
+# Host Bounded Context Infrastructure Rules (Permanent Standard)
+
+The Host operational platform (`Dashboard -> Listings -> Calendar -> Publishing -> Bookings -> Stays`) is formally governed by the following immutable standards:
+
+1. **Thin Route Rule**: Next.js route files (`page.tsx`, `layout.tsx`) may only authenticate sessions, authorize access, invoke orchestration services, prepare metadata, and render UI. Never implement business logic, database queries, calculations, or domain decisions inside routes.
+2. **Repository Rule**: Repositories must handle pure persistence access and RPC invocations, returning database row models (e.g., `EnrichedBookingRow`). They must never be coupled to specific UI workspaces and never return presentation ViewModels.
+3. **Operational Workspace Rule**: Every Host workspace must be driven by a domain-specific ViewModel composed by a single orchestration service. Components must render only from ViewModels and must never derive operational state from raw database entities.
+4. **ViewModel Rule**: UI components must receive immutable, presentation-ready ViewModel contracts composed by factory functions or services.
+5. **Policy Rule**: Domain business rules, SLA calculations, queue classifications, and state validation must reside strictly inside dedicated Policy classes (e.g., Lifecycle, Operations, and Decision policies).
+6. **Service Orchestration Rule**: Domain services must remain thin orchestration layers coordinating `Repositories -> Policies -> ViewModels`. Services should not execute database commands directly nor implement inline classification rules.
+7. **No Duplicate Business State**: Domain contracts and shared operational presentations (such as Guest summaries and Listing summaries) must be housed in `src/features/host/shared/` to serve across multiple host modules without duplication.
+8. **Connected Workflows Preservation**: Feature additions and operational workspace changes must preserve all connected resident and host workflows without regressions.
+9. **Workspace Independence Rule**: Each operational workspace (`Dashboard`, `Listings`, `Calendar`, `Publishing`, `Bookings`, `Stays`) must own its orchestration, policies, repositories, and ViewModels. Shared functionality belongs only in `src/features/host/shared/`. No workspace may directly depend on another workspace's implementation details.
+10. **Capability Rule**: Never model mutually exclusive user roles when a user can legitimately perform multiple product capabilities simultaneously. Prefer capability-based design (Guest, Host, Resident, etc.) over role replacement.
+11. **Host Specialization Rule**: Every Host Profile has exactly one immutable primary accommodation specialization (`primary_accommodation_type_id`). After activation (`ACTIVE`), all listings, publishing workflows, operational dashboards, validation rules, and policies inherit this specialization automatically. Never allow a host to publish listings outside their specialization, and enforce this boundary across UI, Services, and Database/RPC layers.
+
+# Observability Platform Rule (Mandatory)
+
+The Observability platform in `src/lib/observability/` is frozen infrastructure.
+Every new Repository, Service, Server Action, RPC wrapper, scheduled task, or infrastructure component must be instrumented through the Observability Platform. No new execution path may bypass tracing, logging, metrics, or request context.
+
+- Use `instrumentExecution` or `@ObserveService` / `@ObserveRepository` for backend functions.
+- Record domain lifecycle milestones via `recordBusinessEvent`.
+- Observe cache hits/misses via `observeCache` and React views via `observeServerComponent`.
+
+# Observability Transparency Rule
+
+Observability must remain a cross-cutting infrastructure concern. Business services, repositories, policies, and UI components must never contain telemetry-specific business logic. Instrumentation is applied exclusively through wrappers, middleware, decorators, or infrastructure adapters so domain code remains focused solely on business behavior.
+
+# Final Infrastructure Freeze
+
+The EliteStay core platform foundation is formally **FROZEN**. No further architectural refactors are permitted. Only additive extensions and bug fixes may touch these layers.
+
+The following layers are explicitly frozen:
+
+- Database Layer
+- Repository Layer
+- Service Layer
+- Policy Layer
+- ViewModels
+- Observability
+- Feature Flags
+- Audit
+- Security
+- Hosting
+- Host
+- Shared Components
+
+All future engineering effort MUST be directed towards **guest-facing product development** (Discovery, Search, Listing Detail, Booking Flow, Messaging, Payments, Reviews).

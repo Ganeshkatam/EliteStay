@@ -1,0 +1,174 @@
+'use server';
+
+import { createClient } from '@/lib/supabase/server';
+import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
+import { HostingService } from '../services/hosting.service';
+import { HostProfileService } from '../services/host-profile.service';
+import { HostBusinessType } from '../types/hosting.types';
+import { createDraftListing } from '@/features/host/actions/listing-actions';
+
+const hostingService = new HostingService();
+const profileService = new HostProfileService();
+
+async function getAuthenticatedUser() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    throw new Error('Unauthorized: Authentication required');
+  }
+  return user;
+}
+
+/**
+ * Initializes hosting capability onboarding from the marketing landing page (/host/start).
+ */
+export async function startHostingAction() {
+  const user = await getAuthenticatedUser();
+  await hostingService.initializeOnboarding(user.id);
+
+  revalidatePath('/host/onboarding');
+  redirect('/host/onboarding');
+}
+
+/**
+ * Submits verified identity details (Step 1) and navigates to bank setup.
+ */
+export async function submitIdentityStepAction(formData: FormData) {
+  const user = await getAuthenticatedUser();
+  const fullName = String(formData.get('fullName') || '');
+  const phone = String(formData.get('phone') || '');
+
+  if (!fullName || !phone) {
+    throw new Error('Full name and verified phone number are required');
+  }
+
+  await hostingService.submitIdentityStep(user.id, fullName, phone);
+  revalidatePath('/host/onboarding');
+  redirect('/host/onboarding?step=bank');
+}
+
+/**
+ * Submits payout bank account details (Step 2) and navigates to business configuration.
+ */
+export async function submitBankStepAction(formData: FormData) {
+  const user = await getAuthenticatedUser();
+  const bankName = String(formData.get('bankName') || '');
+  const accountNumber = String(formData.get('accountNumber') || '');
+
+  if (!bankName || !accountNumber) {
+    throw new Error('Bank name and account details are required');
+  }
+
+  await hostingService.submitBankStep(user.id, bankName, accountNumber);
+  revalidatePath('/host/onboarding');
+  redirect('/host/onboarding?step=business');
+}
+
+/**
+ * Submits business entity type and tax credentials (Step 3) and navigates to policy agreement.
+ */
+export async function submitBusinessStepAction(formData: FormData) {
+  const user = await getAuthenticatedUser();
+  const businessType = String(
+    formData.get('businessType') || 'individual'
+  ) as HostBusinessType;
+  const businessName = String(formData.get('businessName') || '');
+  const primaryAccommodationSlug = String(
+    formData.get('primaryAccommodationSlug') || ''
+  );
+  const taxIdType = String(formData.get('taxIdType') || 'PAN');
+  const taxIdNumber = String(formData.get('taxIdNumber') || '');
+  const supportPhone = String(formData.get('supportPhone') || '');
+  const supportEmail = String(formData.get('supportEmail') || '');
+
+  if (!businessName || !taxIdNumber || !primaryAccommodationSlug) {
+    throw new Error(
+      'Business entity name, primary accommodation specialization, and tax ID are required'
+    );
+  }
+
+  await hostingService.submitBusinessStep(
+    user.id,
+    businessType,
+    businessName,
+    primaryAccommodationSlug,
+    taxIdType,
+    taxIdNumber,
+    supportPhone,
+    supportEmail
+  );
+
+  revalidatePath('/host/onboarding');
+  redirect('/host/onboarding?step=policies');
+}
+
+/**
+ * Confirms SLA agreements (Step 4), promotes status to READY, and navigates to completion screen.
+ */
+export async function submitPoliciesStepAction() {
+  const user = await getAuthenticatedUser();
+  await hostingService.submitPoliciesStep(user.id);
+  await hostingService.confirmReadyToHost(user.id);
+
+  revalidatePath('/host/onboarding');
+  redirect('/host/onboarding?step=ready');
+}
+
+/**
+ * Concludes hosting onboarding by invoking the publishing workspace draft creator.
+ */
+export async function launchFirstListingAction() {
+  await getAuthenticatedUser();
+  // Call established listing builder server action
+  await createDraftListing();
+}
+
+/**
+ * Updates permanent Host Profile settings in /host/profile.
+ */
+export async function updateHostProfileSettingsAction(formData: FormData) {
+  const user = await getAuthenticatedUser();
+  const businessType = String(
+    formData.get('businessType') || 'individual'
+  ) as HostBusinessType;
+  const businessName = String(formData.get('businessName') || '');
+  const primaryAccommodationSlug = String(
+    formData.get('primaryAccommodationSlug') || ''
+  );
+  const supportPhone = String(formData.get('supportPhone') || '');
+  const supportEmail = String(formData.get('supportEmail') || '');
+  const bankName = String(formData.get('bankName') || '');
+  const accountLast4 = String(formData.get('accountLast4') || '');
+
+  await profileService.updateBusinessDetails(
+    user.id,
+    businessType,
+    businessName,
+    supportPhone,
+    supportEmail,
+    primaryAccommodationSlug
+  );
+
+  if (bankName || accountLast4) {
+    await profileService.updatePayoutDetails(user.id, bankName, accountLast4);
+  }
+
+  revalidatePath('/host/profile');
+  revalidatePath('/host');
+}
+
+/**
+ * Toggles operational hosting capabilities between ACTIVE and PAUSED.
+ */
+export async function toggleHostOperationalStatusAction(
+  newStatus: 'ACTIVE' | 'PAUSED'
+) {
+  const user = await getAuthenticatedUser();
+  await profileService.toggleOperationalStatus(user.id, newStatus);
+
+  revalidatePath('/host/profile');
+  revalidatePath('/host');
+}

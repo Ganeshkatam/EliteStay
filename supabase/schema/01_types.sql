@@ -32,3 +32,5 @@ CREATE TYPE public.gender AS ENUM ('male', 'female');
 CREATE TYPE public.gender_preference AS ENUM ('any', 'male', 'female');
 CREATE TYPE public.furnishing AS ENUM ('unfurnished', 'semi_furnished', 'fully_furnished');
 CREATE TYPE public.sync_direction AS ENUM ('import', 'export', 'both');
+CREATE TYPE public.host_status AS ENUM ('NOT_STARTED', 'ONBOARDING', 'READY', 'ACTIVE', 'PAUSED', 'SUSPENDED');
+CREATE TYPE public.host_business_type AS ENUM ('individual', 'company', 'property_manager');

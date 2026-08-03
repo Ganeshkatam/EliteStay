@@ -14,13 +14,6 @@ import { saveAccommodation } from '../actions/publishing-actions';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { useAutosave } from '@/hooks/useAutosave';
 import { AutosaveContext } from './PublishingWorkspaceShell';
 import { PublishingSection } from '../view-models/listing-publishing.viewmodel';
@@ -57,7 +50,6 @@ export const AccommodationForm = forwardRef<
 
   const {
     register,
-    setValue,
     control,
     reset,
     trigger,
@@ -139,32 +131,22 @@ export const AccommodationForm = forwardRef<
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="accommodation_type_id">Property Type</Label>
-          <Select
-            value={accommodationTypeId}
-            onValueChange={(val) => {
-              setValue('accommodation_type_id', val, {
-                shouldValidate: true,
-                shouldDirty: true,
-              });
-            }}
-          >
-            <SelectTrigger className="h-12">
-              <SelectValue placeholder="Select type..." />
-            </SelectTrigger>
-            <SelectContent>
-              {accommodationTypes.map((type) => (
-                <SelectItem key={type.id} value={type.id}>
-                  {type.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {errors.accommodation_type_id && (
-            <p className="text-sm text-red-500">
-              {errors.accommodation_type_id.message}
-            </p>
-          )}
+          <Label htmlFor="accommodation_type_id">Accommodation Type</Label>
+          <div className="flex items-center justify-between p-4 rounded-xl bg-slate-900/80 border border-slate-800 text-sm">
+            <div className="flex items-center gap-2.5">
+              <span className="font-bold text-white">
+                {accommodationTypes.find((t) => t.id === accommodationTypeId)
+                  ?.name || 'Paying Guest'}
+              </span>
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-md bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-semibold">
+                Inherited from Host Profile
+              </span>
+            </div>
+            <span className="text-xs font-mono text-slate-500">
+              (Read-only)
+            </span>
+          </div>
+          <input type="hidden" {...register('accommodation_type_id')} />
         </div>
 
         <div className="space-y-2">

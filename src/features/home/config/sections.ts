@@ -1,7 +1,7 @@
 export type SectionType =
   | 'featured'
   | 'recent'
-  | 'trending'
+  | 'popular_homes'
   | 'topRated'
   | 'budget'
   | 'pg'
@@ -26,10 +26,10 @@ export interface HomeSectionConfig {
  */
 export const homepageConfig: HomeSectionConfig[] = [
   {
-    id: 'trending',
-    title: 'Trending Stays',
-    subtitle: 'Popular accommodations high in demand across top cities',
-    type: 'trending',
+    id: 'popular_homes',
+    title: 'Popular Homes',
+    subtitle: 'Highly sought-after living accommodations across top cities',
+    type: 'popular_homes',
     filter: { sort: 'recommended' },
     limit: 8,
   },

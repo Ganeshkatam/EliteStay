@@ -1,8 +1,11 @@
 import { createClient } from '@/lib/supabase/server';
 import { User, SupabaseClient } from '@supabase/supabase-js';
-import { logger } from './logger';
-import { randomUUID } from 'crypto';
-import { checkRateLimit } from './rate-limiter';
+import { checkRateLimit } from './security/rate-limiter';
+import {
+  instrumentExecution,
+  RequestContext,
+  logger,
+} from '@/lib/observability';
 
 type ActionState<T> = {
   success?: boolean;
@@ -13,58 +16,72 @@ type ActionState<T> = {
 export async function safeAction<T>(
   actionFn: (user: User, supabase: SupabaseClient) => Promise<T>
 ): Promise<ActionState<T>> {
-  const traceId = randomUUID();
-  const startTime = Date.now();
-  let actionLogger = logger.child({ traceId, action: actionFn.name || 'anonymous_action' });
+  const actionName = actionFn.name || 'anonymous_action';
 
-  try {
-    const supabase = await createClient();
-    
-    // Authenticate
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
-    if (authError || !user) {
-      actionLogger.warn({ status: 'unauthorized', durationMs: Date.now() - startTime }, 'Unauthorized action attempt');
-      return { error: 'Unauthorized. Please log in.' };
-    }
+  return instrumentExecution(
+    actionName,
+    'ACTION',
+    async () => {
+      try {
+        const supabase = await createClient();
 
-    actionLogger = actionLogger.child({ userId: user.id });
+        // Authenticate within action trace
+        const {
+          data: { user },
+          error: authError,
+        } = await supabase.auth.getUser();
 
-    // Rate Limiting
-    const rateLimit = checkRateLimit(user.id, actionFn.name || 'anonymous');
-    if (!rateLimit.success) {
-      actionLogger.warn({ status: 'rate_limited', durationMs: Date.now() - startTime }, 'Rate limit exceeded');
-      return { error: 'Too many requests. Please try again later.' };
-    }
+        if (authError || !user) {
+          logger
+            .category('AUTH')
+            .warn('Unauthorized action attempt', { action: actionName });
+          return { error: 'Unauthorized. Please log in.' };
+        }
 
-    // Execute with validated user
-    const data = await actionFn(user, supabase);
-    const durationMs = Date.now() - startTime;
-    
-    const logData = { status: 'success', durationMs };
-    if (durationMs > 1000) {
-      actionLogger.error(logData, 'Action completed very slowly');
-    } else if (durationMs > 500) {
-      actionLogger.warn(logData, 'Action completed slowly');
-    } else if (durationMs > 100) {
-      actionLogger.info(logData, 'Action completed normally');
-    } else {
-      actionLogger.debug(logData, 'Action completed fast');
-    }
-    
-    return { success: true, data };
-  } catch (error: unknown) {
-    const durationMs = Date.now() - startTime;
-    
-    // Prevent leaking SQL errors or sensitive backend info
-    const err = error as { code?: string; message?: string };
-    
-    actionLogger.error({ status: 'error', durationMs, errCode: err.code, errMsg: err.message }, 'Server Action Error');
+        // Attach user identity metadata to active trace and all subsequent child spans
+        RequestContext.setAttribute('userId', user.id);
 
-    if (err.code && err.code.startsWith('23')) {
-      return { error: 'A data conflict occurred. Please try again.' };
-    }
-    
-    return { error: err.message || 'An unexpected error occurred.' };
-  }
+        // Rate Limiting verification
+        const rateLimit = checkRateLimit(user.id, actionName);
+        if (!rateLimit.success) {
+          logger
+            .category('SECURITY')
+            .warn('Rate limit exceeded for user action', {
+              action: actionName,
+              userId: user.id,
+            });
+          return { error: 'Too many requests. Please try again later.' };
+        }
+
+        // Execute action domain logic
+        const data = await actionFn(user, supabase);
+        logger
+          .category('ACTION')
+          .info(`Action completed successfully: ${actionName}`, {
+            userId: user.id,
+          });
+
+        return { success: true, data };
+      } catch (error: unknown) {
+        const err = error as {
+          code?: string;
+          message?: string;
+          stack?: string;
+        };
+        logger
+          .category('ERROR')
+          .error(`Server action execution error in ${actionName}`, {
+            errCode: err.code,
+            errMsg: err.message,
+          });
+
+        if (err.code && err.code.startsWith('23')) {
+          return { error: 'A data conflict occurred. Please try again.' };
+        }
+
+        return { error: err.message || 'An unexpected error occurred.' };
+      }
+    },
+    { action: actionName }
+  );
 }

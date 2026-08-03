@@ -42,7 +42,6 @@ export function GlobalSearch({ variant }: GlobalSearchProps) {
   const handleShellClick = () => {
     if (variant === 'compact') {
       setIsExpanded(true);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
@@ -99,7 +98,7 @@ export function GlobalSearch({ variant }: GlobalSearchProps) {
                 : 'opacity-0 scale-95 pointer-events-none'
             )}
           >
-            <div className="flex items-center gap-2 text-sm font-semibold text-gray-800 truncate">
+            <div className="flex items-center gap-4 text-sm font-semibold text-gray-800 truncate">
               {/* Location (always visible) */}
               <span className="text-gray-900">{citySummary}</span>
 

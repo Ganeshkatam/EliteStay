@@ -5,7 +5,6 @@ Purpose: Core marketplace domain for property listings and host workflows.
 Contains: 
 - listings
 - listing_amenities
-- listing_build_progress
 - is_listing_owner helper function
 - triggers, RLS, & performance indexes
 ==================================================
@@ -80,16 +79,7 @@ CREATE TABLE public.listing_amenities (
 
 CREATE INDEX IF NOT EXISTS listing_amenities_amenity_idx ON public.listing_amenities(amenity_id);
 
-CREATE TABLE public.listing_build_progress (
-    listing_id UUID PRIMARY KEY REFERENCES public.listings(id) ON DELETE CASCADE,
-    step_completed TEXT,
-    last_step TEXT NOT NULL DEFAULT 'accommodation',
-    percent_complete INTEGER NOT NULL DEFAULT 0,
-    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-    updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
-);
-
--- Triggers
+-- Triggers & Host Specialization Enforcement
 CREATE TRIGGER listings_updated_at 
   BEFORE UPDATE ON public.listings 
   FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
@@ -97,6 +87,35 @@ CREATE TRIGGER listings_updated_at
 CREATE TRIGGER listings_set_public_id
   BEFORE INSERT ON public.listings
   FOR EACH ROW EXECUTE PROCEDURE public.trigger_set_public_id();
+
+CREATE OR REPLACE FUNCTION public.enforce_host_accommodation_specialization()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_host_specialization_id UUID;
+BEGIN
+  SELECT primary_accommodation_type_id INTO v_host_specialization_id
+  FROM public.host_profiles
+  WHERE user_id = NEW.host_id;
+
+  IF v_host_specialization_id IS NOT NULL THEN
+    IF NEW.accommodation_type_id IS NULL THEN
+      NEW.accommodation_type_id := v_host_specialization_id;
+    ELSIF NEW.accommodation_type_id <> v_host_specialization_id THEN
+      RAISE EXCEPTION 'Host Specialization Rule Violation: Listing accommodation_type_id (%) does not match Host Profile primary_accommodation_type_id (%). Hosts are strictly limited to one accommodation specialization.', NEW.accommodation_type_id, v_host_specialization_id;
+    END IF;
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER trg_enforce_host_specialization
+  BEFORE INSERT OR UPDATE OF accommodation_type_id ON public.listings
+  FOR EACH ROW EXECUTE FUNCTION public.enforce_host_accommodation_specialization();
 
 CREATE TRIGGER listings_prevent_public_id_update
   BEFORE UPDATE ON public.listings
@@ -106,14 +125,9 @@ CREATE TRIGGER listing_amenities_updated_at
   BEFORE UPDATE ON public.listing_amenities 
   FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
 
-CREATE TRIGGER listing_build_progress_updated_at 
-  BEFORE UPDATE ON public.listing_build_progress 
-  FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
-
 -- RLS
 ALTER TABLE public.listings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.listing_amenities ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.listing_build_progress ENABLE ROW LEVEL SECURITY;
 
 -- Listings Policies
 CREATE POLICY "Public can read published listings" ON public.listings
@@ -141,43 +155,6 @@ CREATE POLICY "Hosts can manage own listing amenities" ON public.listing_ameniti
     EXISTS (
         SELECT 1 FROM public.listings l 
         WHERE l.id = listing_amenities.listing_id 
-        AND (l.host_id = auth.uid() OR public.is_admin())
-    )
-  );
-
--- Listing Build Progress Policies
-CREATE POLICY "Hosts can view own listing progress" ON public.listing_build_progress
-  FOR SELECT USING (
-    EXISTS (
-        SELECT 1 FROM public.listings l 
-        WHERE l.id = listing_build_progress.listing_id 
-        AND (l.host_id = auth.uid() OR public.is_admin())
-    )
-  );
-
-CREATE POLICY "Hosts can insert own listing progress" ON public.listing_build_progress
-  FOR INSERT WITH CHECK (
-    EXISTS (
-        SELECT 1 FROM public.listings l 
-        WHERE l.id = listing_build_progress.listing_id 
-        AND (l.host_id = auth.uid() OR public.is_admin())
-    )
-  );
-
-CREATE POLICY "Hosts can update own listing progress" ON public.listing_build_progress
-  FOR UPDATE USING (
-    EXISTS (
-        SELECT 1 FROM public.listings l 
-        WHERE l.id = listing_build_progress.listing_id 
-        AND (l.host_id = auth.uid() OR public.is_admin())
-    )
-  );
-
-CREATE POLICY "Hosts can delete own listing progress" ON public.listing_build_progress
-  FOR DELETE USING (
-    EXISTS (
-        SELECT 1 FROM public.listings l 
-        WHERE l.id = listing_build_progress.listing_id 
         AND (l.host_id = auth.uid() OR public.is_admin())
     )
   );

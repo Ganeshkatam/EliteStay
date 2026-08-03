@@ -58,13 +58,6 @@ export function HeaderLayout({ user, profile }: HeaderLayoutProps) {
     },
   };
 
-  // Ensure manual expansion turns off whenever the public header collapses on scroll
-  useEffect(() => {
-    if (variant === 'public-home' && !isHeaderExpanded && isSearchExpanded) {
-      setIsSearchExpanded(false);
-    }
-  }, [variant, isHeaderExpanded, isSearchExpanded, setIsSearchExpanded]);
-
   // Collapse manual search expansion when scrolling down (ignores scroll-to-top animation)
   useEffect(() => {
     if (!isSearchExpanded) return;
@@ -148,11 +141,8 @@ export function HeaderLayout({ user, profile }: HeaderLayoutProps) {
       {/* Static placeholder prevents document flow jumps when the fixed header height animates */}
       <div
         className={cn(
-          'transition-all duration-300 ease-premium',
           isSearchRoute
-            ? isExpanded
-              ? 'h-[240px]'
-              : 'h-[140px]'
+            ? 'h-[140px]'
             : variant === 'public-home'
               ? 'h-[176px]'
               : 'h-[76px]'
@@ -183,7 +173,7 @@ export function HeaderLayout({ user, profile }: HeaderLayoutProps) {
         />
 
         <div className="relative z-10 h-full flex flex-col justify-between">
-          <Container className="flex h-[76px] items-center justify-between gap-4 relative py-0">
+          <Container className="flex h-[76px] items-center justify-between gap-4 relative py-0 px-4 md:px-8 xl:px-12 max-w-[1800px]">
             <TopBar
               variant={variant}
               user={user}
@@ -196,7 +186,7 @@ export function HeaderLayout({ user, profile }: HeaderLayoutProps) {
           {isSearchRoute && (
             <SearchProvider viewModel={dummyViewModel}>
               <div className="h-16 flex items-center border-t border-gray-100/80 w-full">
-                <Container className="h-full flex items-center py-0">
+                <Container className="h-full flex items-center py-0 px-4 md:px-8 xl:px-12 max-w-[1800px]">
                   <div className="w-full overflow-x-auto no-scrollbar">
                     <ToolbarRenderer />
                   </div>

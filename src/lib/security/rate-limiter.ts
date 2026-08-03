@@ -11,10 +11,15 @@ const globalForRateLimiter = globalThis as unknown as {
   rateLimits: Map<string, RateLimitEntry>;
 };
 
-const rateLimits = globalForRateLimiter.rateLimits || new Map<string, RateLimitEntry>();
-if (process.env.NODE_ENV !== 'production') globalForRateLimiter.rateLimits = rateLimits;
+const rateLimits =
+  globalForRateLimiter.rateLimits || new Map<string, RateLimitEntry>();
+if (process.env.NODE_ENV !== 'production')
+  globalForRateLimiter.rateLimits = rateLimits;
 
-export function checkRateLimit(userId: string, actionName: string): { success: boolean; resetTime: number } {
+export function checkRateLimit(
+  userId: string,
+  actionName: string
+): { success: boolean; resetTime: number } {
   const key = `${userId}:${actionName}`;
   const now = Date.now();
   let entry = rateLimits.get(key);

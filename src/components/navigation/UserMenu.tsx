@@ -1,6 +1,5 @@
 'use client';
 
-import { ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import type { User } from '@supabase/supabase-js';
@@ -67,19 +66,13 @@ export function UserMenu({ user, profile }: UserMenuProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button className="flex items-center gap-2 rounded-xl p-1 pr-2 hover:bg-slate-50 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-slate-400 border border-transparent hover:border-slate-200">
-          <Avatar className="h-8 w-8 rounded-lg">
+        <button className="flex items-center justify-center rounded-lg p-0.5 hover:ring-2 hover:ring-slate-300 transition-all outline-none focus-visible:ring-2 focus-visible:ring-slate-400">
+          <Avatar className="h-9 w-9 rounded-lg">
             <AvatarImage src={avatarUrl} alt={profile?.full_name || 'User'} />
-            <AvatarFallback className="rounded-lg bg-slate-900 text-white text-xs">
+            <AvatarFallback className="rounded-lg bg-slate-900 text-white text-xs font-semibold">
               {initials}
             </AvatarFallback>
           </Avatar>
-          <div className="hidden sm:flex flex-col items-start mr-1">
-            <span className="text-sm font-semibold text-slate-900 leading-none">
-              {profile?.full_name?.split(' ')[0] || 'User'}
-            </span>
-          </div>
-          <ChevronDown className="h-4 w-4 text-slate-400" />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">

@@ -1,21 +1,48 @@
-import { getHostStays } from '@/features/stays/api/queries';
-import { StayList } from '@/features/stays/components/StayList';
+import React from 'react';
+import { createClient } from '@/lib/supabase/server';
+import {
+  StayOperationsService,
+  StayOperationsWorkspace,
+  type StayQueueType,
+} from '@/features/host/stays';
 
-export default async function HostStaysPage() {
-  const stays = await getHostStays();
+interface PageProps {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}
 
-  return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <div className="sm:flex sm:items-center sm:justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Active & Upcoming Stays</h1>
-          <p className="mt-2 text-sm text-gray-700">
-            Manage your tenants, handle check-ins, and view completed stays.
-          </p>
-        </div>
-      </div>
-      
-      <StayList initialStays={stays} viewType="host" />
-    </div>
+/**
+ * Thin Route Component for Host Stay & Resident Operations Workspace (Phase 7).
+ * Strictly orchestrates authentication and invokes domain services without inline business logic or SQL queries.
+ */
+export default async function HostStaysPage({ searchParams }: PageProps) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return null;
+  }
+
+  const params = searchParams ? await searchParams : {};
+  const activeQueueParam =
+    typeof params.queue === 'string'
+      ? (params.queue as StayQueueType)
+      : 'current-residents';
+  const validQueues: StayQueueType[] = [
+    'check-ins',
+    'departures',
+    'current-residents',
+    'past-stays',
+  ];
+  const activeQueue = validQueues.includes(activeQueueParam)
+    ? activeQueueParam
+    : 'current-residents';
+
+  const viewModel = await StayOperationsService.getWorkspaceViewModel(
+    user.id,
+    activeQueue
   );
+
+  return <StayOperationsWorkspace viewModel={viewModel} />;
 }

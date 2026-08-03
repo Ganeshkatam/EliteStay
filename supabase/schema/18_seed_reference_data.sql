@@ -21,49 +21,50 @@ INSERT INTO public.accommodation_types (id, name, description) VALUES
 ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description;
 
 -- 2. Insert Amenities
--- Essentials
-INSERT INTO public.amenities (id, name, icon) VALUES
-  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b11', 'Wi-Fi', 'wifi'),
-  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b12', 'Electricity', 'zap'),
-  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b13', 'Water', 'droplets')
-ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, icon = EXCLUDED.icon;
-
--- Comfort
-INSERT INTO public.amenities (id, name, icon) VALUES
-  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b14', 'AC', 'snowflake'),
-  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b15', 'Geyser', 'thermometer'),
-  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b16', 'Refrigerator', 'refrigerator')
-ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, icon = EXCLUDED.icon;
-
--- Services
-INSERT INTO public.amenities (id, name, icon) VALUES
-  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b17', 'Laundry', 'shirt'),
-  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b18', 'Housekeeping', 'broom'),
-  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b19', 'Meals', 'utensils')
-ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, icon = EXCLUDED.icon;
-
--- Security
-INSERT INTO public.amenities (id, name, icon) VALUES
-  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b20', 'CCTV', 'camera'),
-  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b21', 'Security Guard', 'shield'),
-  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b22', 'Biometric Entry', 'fingerprint')
-ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, icon = EXCLUDED.icon;
-
--- Parking
-INSERT INTO public.amenities (id, name, icon) VALUES
-  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b23', 'Bike Parking', 'bike'),
-  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b24', 'Car Parking', 'car')
-ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, icon = EXCLUDED.icon;
-
-
-INSERT INTO public.amenities (id, name, icon) VALUES 
-  ('911cfcae-3f3a-4638-a375-db160ececf88', 'Air Conditioning', 'snowflake'),
-  ('e0b3bf05-9d7e-40c4-8566-e6402681f486', 'Kitchen', 'kitchen'),
-  ('347b67d2-2cbb-4b77-a855-26ad3435fb73', 'Parking', 'parking'),
-  ('ffd25b7b-7ed3-43bf-aea6-2aa8dbcf1326', 'Pool', 'pool'),
-  ('e85bbea1-df7e-47af-986e-52c6f39e2d26', 'Gym', 'dumbbell'),
-  ('c2d5152e-fd3d-4ff7-b7f0-1cdf7af7f22e', 'WiFi', 'wifi')
-ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, icon = EXCLUDED.icon;
+INSERT INTO public.amenities (id, slug, name, icon, description) VALUES
+  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b14', 'ac', 'AC', 'snowflake', 'Individual air conditioning unit for temperature-controlled comfort'),
+  ('911cfcae-3f3a-4638-a375-db160ececf88', 'air-conditioning', 'Air Conditioning', 'snowflake', 'Centralized or individual air conditioning system throughout the living spaces'),
+  ('a7e555fa-4355-42d4-b771-74683e20de69', 'balcony', 'Balcony', 'sun', 'Private open-air balcony offering natural light and outdoor seating'),
+  ('61893515-ae4c-4d5c-816e-a9362637774b', 'bbq-area', 'BBQ Area', 'flame', 'Designated outdoor barbecue cooking area for social gatherings'),
+  ('be6cd78c-da65-48a3-9623-182dfd0cf360', 'bed', 'Bed', 'bed', 'Sturdy bed frame equipped with a comfortable, quality mattress'),
+  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b23', 'bike-parking', 'Bike Parking', 'bike', 'Secure on-site covered two-wheeler parking'),
+  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b22', 'biometric-entry', 'Biometric Entry', 'fingerprint', 'Keyless fingerprint or smart biometric access for enhanced resident security'),
+  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b24', 'car-parking', 'Car Parking', 'car', 'Designated parking slot for cars within the gated premises'),
+  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b20', 'cctv', 'CCTV', 'shield', '24/7 common area video surveillance monitoring for resident safety'),
+  ('5417bf3b-a8af-4b4e-9c25-1c3762a26334', 'common-room', 'Common Room', 'users', 'Shared community lounge for socializing, reading, and relaxing'),
+  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b12', 'electricity', 'Electricity', 'zap', 'Reliable 24-hour grid electrical connection included or sub-metered'),
+  ('dbf2738f-2a14-4195-b23d-62cea709774b', 'fire-alarm', 'Fire Alarm', 'bell', 'Integrated smoke detectors and emergency fire alert system'),
+  ('a4c3cb40-766b-4775-bdd2-01a63408f4ad', 'garden', 'Garden', 'trees', 'Lush landscaped green garden area on the property ground'),
+  ('063a5337-40b4-421e-b48e-3c55435c7b4a', 'gas-stove', 'Gas Stove', 'flame', 'Cooking cooktop with secure gas connection for daily meal prep'),
+  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b15', 'geyser', 'Geyser', 'thermometer', 'Instant electric or solar water heater for warm showers at any time'),
+  ('e85bbea1-df7e-47af-986e-52c6f39e2d26', 'gym', 'Gym', 'dumbbell', 'On-site fitness facility equipped with free weights and workout cardio machines'),
+  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b18', 'housekeeping', 'Housekeeping', 'sparkles', 'Professional room cleaning and common facility housekeeping service'),
+  ('e0b3bf05-9d7e-40c4-8566-e6402681f486', 'kitchen', 'Kitchen', 'kitchen', 'Access to a well-equipped shared or private cooking kitchen'),
+  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b17', 'laundry', 'Laundry', 'shirt', 'Washing machines and drying amenities available on-site for daily laundry'),
+  ('d5316f00-a375-4bb2-8251-1500461bcba5', 'lift', 'Lift', 'arrow-up-down', 'Modern building elevator providing step-free access to all floor levels'),
+  ('ae9c1663-7a71-4e25-939f-5ba836638b3c', 'lockers', 'Lockers', 'lock', 'Personal secure lockable storage compartments for valuables'),
+  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b19', 'meals', 'Meals', 'utensils', 'Nutritious daily breakfast, lunch, and dinner meal service included or optional'),
+  ('dc002ec2-8f06-4394-b23c-299c7ea87cf2', 'mess', 'Mess', 'utensils', 'Dedicated communal dining hall served with prepared home-style food'),
+  ('695b7d1b-50cd-4827-bbc3-a5840b6604a6', 'microwave', 'Microwave', 'microwave', 'Shared or private microwave appliance for quick reheating and cooking'),
+  ('347b67d2-2cbb-4b77-a855-26ad3435fb73', 'parking', 'Parking', 'parking', 'Safe residential vehicular parking available on or directly beside property'),
+  ('c12de6da-5ab8-4de0-b783-e9967c0aa087', 'pet-friendly', 'Pet Friendly', 'heart', 'Accommodates well-behaved companion domestic pets'),
+  ('ffd25b7b-7ed3-43bf-aea6-2aa8dbcf1326', 'pool', 'Pool', 'waves', 'Relaxing recreational swimming pool accessible to community residents'),
+  ('56ea708d-2211-4727-be02-8dd3867c0c16', 'power-backup', 'Power Backup', 'zap', 'Uninterrupted generator or inverter backup power during grid outages'),
+  ('460d474f-4b90-4be8-acf2-7c18be016c76', 'private-parking', 'Private Parking', 'car', 'Dedicated personal parking space reserved exclusively for this listing'),
+  ('651ca3d4-7149-4351-9921-28aa51726114', 'reception', 'Reception', 'user-check', 'On-site help desk or front desk concierge for mail and visitor support'),
+  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b16', 'refrigerator', 'Refrigerator', 'refrigerator', 'Cold storage food preservation refrigerator provided in kitchen or room'),
+  ('457d57b6-8de8-4fe0-bf0c-f40325163c64', 'ro-water', 'RO Water', 'droplets', 'Filtered Reverse Osmosis drinking water purified on location'),
+  ('0baca21b-d280-4fc4-9e90-eab66bbded46', 'security', 'Security', 'shield-check', 'Gated premises featuring rigorous security measures and monitored ingress'),
+  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b21', 'security-guard', 'Security Guard', 'shield', 'Trained physical security personnel patrolling the property around the clock'),
+  ('31482418-e3aa-4fc0-8a31-97a8d4e314b4', 'study-area', 'Study Area', 'book-open', 'Quiet dedicated co-working and study atmosphere with adequate reading lighting'),
+  ('e2da738d-cc56-4fca-b4c9-07480b68c52d', 'study-table', 'Study Table', 'table', 'Private work desk and ergonomic study chair furnished inside the bedroom'),
+  ('6a8f3e6b-ee6c-4c1b-b84b-433f6a34bcfd', 'terrace', 'Terrace', 'sun', 'Open rooftop communal terrace overlooking neighborhood surroundings'),
+  ('84cab1c3-4d43-4aba-bfbe-de3814f2ad22', 'wardrobe', 'Wardrobe', 'archive', 'Spacious storage cupboard or closet with clothes hanging rail and shelving'),
+  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b13', 'water', 'Water', 'droplets', 'Dependable around-the-clock municipal or borewell utility water supply'),
+  ('49fee734-7dfc-45d1-a812-b2c138cfa5ec', 'wheelchair-access', 'Wheelchair Access', 'accessibility', 'Step-free level access ramps and widened doorways for mobility support'),
+  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b11', 'wi-fi', 'Wi-Fi', 'wifi', 'High-speed wireless internet broadband connectivity for work and entertainment'),
+  ('c2d5152e-fd3d-4ff7-b7f0-1cdf7af7f22e', 'wifi', 'WiFi', 'wifi', 'Fast wireless internet coverage across individual rooms and shared facilities')
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, slug = EXCLUDED.slug, icon = EXCLUDED.icon, description = EXCLUDED.description;
 
 -- 3. Seed Country: India
 INSERT INTO public.countries (external_code, name, iso2, iso3, currency_code, phone_code, timezone_default)
