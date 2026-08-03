@@ -10,6 +10,12 @@ import { SearchFacade } from '@/features/search/services/SearchFacade';
 import { type SearchFilters } from '@/features/search/lib/search-params';
 
 import { ListingGuestService } from '@/features/guest/discovery/listing-details/services/ListingGuestService';
+import { ReservationService } from '@/features/guest/reservation/services/reservation.service';
+import {
+  ReservationState,
+  type ReservationIntent,
+} from '@/features/guest/reservation/types/reservation.types';
+import { Database } from '@/types/database.types';
 
 export class GuestService {
   /**
@@ -37,12 +43,47 @@ export class GuestService {
   }
 
   /**
-   * Retrieves the view model for the Guest Reservation Workspace
+   * Initializes a new Reservation Intent by fetching the necessary raw data
+   * to power the client-side state machine.
    */
-  static async getReservation(listingId: string) {
-    // TODO: Delegate to ReservationService
-    return {
-      listingId,
-    };
+  static async createReservationIntent(
+    publicId: string,
+    _guestProfile: Pick<
+      Database['public']['Tables']['profiles']['Row'],
+      'gender'
+    > | null = null
+  ) {
+    // For Sprint 1, the client machine needs raw policies (pricing/availability rules).
+    const { ReservationRepository } =
+      await import('@/features/guest/reservation/repositories/reservation.repository');
+    return await ReservationRepository.getListingForReservation(publicId);
+  }
+
+  /**
+   * Validates an existing Reservation Intent and returns an updated view model
+   */
+  static async validateReservation(
+    intent: ReservationIntent,
+    guestProfile: Pick<
+      Database['public']['Tables']['profiles']['Row'],
+      'gender'
+    > | null = null
+  ) {
+    return await ReservationService.getReservationViewModel(
+      intent.listingId,
+      intent.moveInDate,
+      intent.duration,
+      guestProfile,
+      intent.guestDetails || null,
+      ReservationState.DRAFT // State machine manages actual state client-side
+    );
+  }
+
+  /**
+   * Prepares the intent for booking persistence (Sprint 2)
+   */
+  static async prepareBooking(_intent: ReservationIntent) {
+    // Sprint 2 implementation
+    throw new Error('Not implemented yet');
   }
 }

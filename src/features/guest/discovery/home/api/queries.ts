@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { ListingCardData } from '@/features/listings/types';
 import { HomeSectionConfig } from '../config/sections';
+import { resolveAccommodationTypeId } from './accommodation-type-cache';
 
 function resolveImageUrl(path: string | null): string | null {
   if (!path) return null;
@@ -35,13 +36,11 @@ export async function getSectionListings(
   }
 
   if (config.filter?.accommodation_type_name) {
-    const { data: typeData } = await supabase
-      .from('accommodation_types')
-      .select('id')
-      .ilike('name', config.filter.accommodation_type_name)
-      .single();
-    if (typeData) {
-      rpcParams.p_accommodation_type_id = typeData.id;
+    const typeId = await resolveAccommodationTypeId(
+      config.filter.accommodation_type_name
+    );
+    if (typeId) {
+      rpcParams.p_accommodation_type_id = typeId;
     }
   }
 

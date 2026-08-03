@@ -2,7 +2,6 @@
 
 import { ImageGallery } from '@/features/listings/components/ImageGallery';
 import { ShareButton } from '@/features/listings/components/ShareButton';
-import { BookingWidget } from '@/features/bookings/components/BookingWidget';
 import Image from 'next/image';
 import { ListingDetailsViewModel } from '../types';
 
@@ -204,21 +203,33 @@ export function ListingDetailsWorkspace({
           </div>
         </div>
 
-        {/* Right Column - Booking Widget Sidebar */}
+        {/* Right Column - Reservation CTA Sidebar */}
         <div className="lg:col-span-1">
           <div className="sticky top-28">
-            <BookingWidget
-              listingId={listing.id}
-              pricing={{
-                amount: listing.pricing.amount,
-                currency: listing.pricing.currency,
-                billingPeriod: listing.pricing.billingPeriod,
-                securityDeposit: listing.pricing.securityDeposit,
-                maintenanceFee: listing.pricing.maintenanceFee,
-                maintenanceFeePeriod: listing.pricing.maintenanceFeePeriod,
-                minimumDuration: listing.pricing.minimumDuration,
-              }}
-            />
+            <div className="bg-white rounded-2xl shadow-xl border p-6">
+              <div className="mb-6">
+                <span className="text-2xl font-bold">
+                  {listing.pricing.currency === 'INR'
+                    ? '₹'
+                    : listing.pricing.currency}
+                  {listing.pricing.amount.toLocaleString('en-IN')}
+                </span>
+                <span className="text-gray-500">
+                  {' '}
+                  / {listing.pricing.billingPeriod.toLowerCase()}
+                </span>
+              </div>
+
+              <a
+                href={`/reserve/${listing.publicId}`}
+                className="w-full block text-center bg-black hover:bg-gray-800 text-white font-semibold py-3 px-4 rounded-lg transition-colors"
+              >
+                Reserve
+              </a>
+              <p className="text-center text-sm text-gray-500 mt-4">
+                You won&apos;t be charged yet
+              </p>
+            </div>
           </div>
         </div>
       </div>

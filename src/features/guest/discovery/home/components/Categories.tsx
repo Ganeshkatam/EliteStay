@@ -2,13 +2,10 @@ import Link from 'next/link';
 import { HOME_CATEGORIES } from '../constants';
 import * as Icons from 'lucide-react';
 import { Container } from '@/components/layout/Container';
-import { createClient } from '@/lib/supabase/server';
+import { getAccommodationTypes } from '../api/accommodation-type-cache';
 
 export async function Categories() {
-  const supabase = await createClient();
-  const { data: types } = await supabase
-    .from('accommodation_types')
-    .select('name, description');
+  const types = await getAccommodationTypes();
 
   return (
     <Container className="py-2">

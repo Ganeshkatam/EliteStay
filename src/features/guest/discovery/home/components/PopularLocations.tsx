@@ -56,16 +56,19 @@ export async function PopularLocations() {
       <div className="flex gap-4 sm:gap-6 overflow-x-auto pb-4 scrollbar-hide snap-x snap-mandatory scroll-smooth">
         {cities.map((city) => {
           // Priority: local image > Supabase storage > placeholder
-          let imageUrl =
-            LOCAL_CITY_IMAGES[city.slug] ?? '/images/placeholder-city.png';
-          if (city.cover_image_storage_path) {
+          const localImage = LOCAL_CITY_IMAGES[city.slug];
+          let imageUrl: string;
+
+          if (localImage) {
+            // Fast local image -- no remote fetch or optimization timeout
+            imageUrl = localImage;
+          } else if (city.cover_image_storage_path) {
             const { data } = supabase.storage
               .from('city-images')
               .getPublicUrl(city.cover_image_storage_path);
-            const cacheBuster = city.updated_at
-              ? `?v=${new Date(city.updated_at).getTime()}`
-              : '';
-            imageUrl = `${data.publicUrl}${cacheBuster}`;
+            imageUrl = data.publicUrl;
+          } else {
+            imageUrl = '/images/placeholder-city.png';
           }
 
           return (
