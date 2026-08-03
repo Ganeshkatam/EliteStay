@@ -9,6 +9,8 @@
 import { SearchFacade } from '@/features/search/services/SearchFacade';
 import { type SearchFilters } from '@/features/search/lib/search-params';
 
+import { ListingGuestService } from '@/features/guest/discovery/listing-details/services/ListingGuestService';
+
 export class GuestService {
   /**
    * Retrieves the view model for the Guest Home Page
@@ -31,10 +33,7 @@ export class GuestService {
    * Retrieves the view model for the Guest Listing Details Page (PDP)
    */
   static async getListingDetails(listingId: string) {
-    // TODO: Delegate to ListingGuestService
-    return {
-      listingId,
-    };
+    return await ListingGuestService.getListingDetails(listingId);
   }
 
   /**
