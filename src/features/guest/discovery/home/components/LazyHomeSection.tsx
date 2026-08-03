@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { HomeSectionConfig } from '../config/sections';
 import { ListingCardData } from '@/features/listings/types';
-import { ListingCard } from '@/features/listings/components/ListingCard';
+import { ListingCard } from '@/features/guest/discovery/shared/components/ListingCard';
 import { Container } from '@/components/layout/Container';
 
 interface LazyHomeSectionProps {

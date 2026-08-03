@@ -1,7 +1,7 @@
 'use client';
 
 import { ListingCardData } from '@/features/listings/types';
-import { ListingCard } from '@/features/listings/components/ListingCard';
+import { ListingCard } from '@/features/guest/discovery/shared/components/ListingCard';
 import { SPACING } from '@/config/spacing';
 import { SearchViewMode } from '../../types';
 import { cn } from '@/lib/utils';

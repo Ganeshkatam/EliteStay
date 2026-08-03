@@ -53,8 +53,7 @@ export function MapCanvas({ children, onViewportChange }: MapCanvasProps) {
         latitude: initialLat,
         zoom: initialZoom,
       }}
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      mapStyle={mapConfig.styleUrl as any}
+      mapStyle={mapConfig.styleUrl as string}
       minZoom={mapConfig.minZoom}
       maxZoom={mapConfig.maxZoom}
       onMoveEnd={handleMapMove}

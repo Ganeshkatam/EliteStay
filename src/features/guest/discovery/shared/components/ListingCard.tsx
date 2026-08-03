@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import Image from 'next/image';
-import { ListingCardData } from '../types';
+import { ListingCardData } from '@/features/listings/types';
 import { PLATFORM } from '@/config/platform';
 import { cn } from '@/lib/utils';
 

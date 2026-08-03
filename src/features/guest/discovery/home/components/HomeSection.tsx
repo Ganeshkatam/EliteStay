@@ -2,7 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import { HomeSectionConfig } from '../config/sections';
 import { getSectionListings } from '../api/queries';
-import { ListingCard } from '@/features/listings/components/ListingCard';
+import { ListingCard } from '@/features/guest/discovery/shared/components/ListingCard';
 import { Container } from '@/components/layout/Container';
 
 interface HomeSectionProps {

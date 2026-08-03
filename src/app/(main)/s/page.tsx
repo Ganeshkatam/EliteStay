@@ -1,16 +1,21 @@
-import { SearchFacade } from '@/features/search/services/SearchFacade';
-import { parseSearchParams, normalizeFilters } from '@/features/search/lib/search-params';
-import { SearchWorkspace } from '@/features/search/components/SearchWorkspace';
+import {
+  parseSearchParams,
+  normalizeFilters,
+} from '@/features/search/lib/search-params';
+import { GuestSearchWorkspace } from '@/features/guest/discovery/search/components/GuestSearchWorkspace';
+import { GuestService } from '@/features/guest/services/guest.service';
 import type { Metadata } from 'next';
 
 type Props = {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
-export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
+export async function generateMetadata({
+  searchParams,
+}: Props): Promise<Metadata> {
   const rawParams = await searchParams;
   const filters = normalizeFilters(parseSearchParams(rawParams));
-  const pageData = await SearchFacade.getPageData(filters);
+  const pageData = await GuestService.getSearchData(filters);
 
   return {
     title: pageData.metadata.title,
@@ -25,7 +30,7 @@ export default async function DiscoverPage({ searchParams }: Props) {
   const rawParams = await searchParams;
   const filters = normalizeFilters(parseSearchParams(rawParams));
 
-  const pageData = await SearchFacade.getPageData(filters);
+  const pageData = await GuestService.getSearchData(filters);
 
-  return <SearchWorkspace viewModel={pageData.workspace} />;
+  return <GuestSearchWorkspace viewModel={pageData.workspace} />;
 }

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { homepageConfig } from '@/features/home/config/sections';
-import { getSectionListings } from '@/features/home/api/queries';
+import { homepageConfig } from '@/features/guest/discovery/home/config/sections';
+import { getSectionListings } from '@/features/guest/discovery/home/api/queries';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
