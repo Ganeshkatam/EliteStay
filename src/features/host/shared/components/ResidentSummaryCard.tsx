@@ -7,7 +7,6 @@ Purpose: Reusable resident occupancy card designed specifically for Phase 7 (Sta
 ==================================================
 */
 
-import React from 'react';
 import Image from 'next/image';
 import { User, Calendar, Key, CheckCircle2, AlertCircle } from 'lucide-react';
 import { type ResidentSummary } from '../types/summary.types';
