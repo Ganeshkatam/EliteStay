@@ -46,23 +46,18 @@ export class GeocodingCacheRepository {
     };
   }
 
-  static async saveToCache(address: string, result: GeocodeResult): Promise<void> {
+  static async saveToCache(
+    address: string,
+    result: GeocodeResult
+  ): Promise<void> {
     const key = this.normalizeKey(address);
     const supabase = await createClient();
 
-    // The cache is saved with Service Role privileges implicitly, or we just rely on RLS 
-    // being configured to allow authenticated users to insert/update, OR
-    // we assume the 'createClient' here is the regular one and RLS allows inserting.
-    // Let's use the admin client if needed, or better, since this is server-side,
-    // we can use the regular client. But RLS on geocoding_cache was set to ENABLE ROW LEVEL SECURITY.
-    // We should make sure we have access. I will use the service role key to write to cache if it fails,
-    // actually, let's use the admin client explicitly for cache writes since it's a system table.
-    
-    // For now, let's use the regular client. If RLS blocks it, we'll fix RLS or use admin client.
-    
-    const { error } = await supabase
-      .from('geocoding_cache')
-      .upsert({
+    // Cache writes use the authenticated user context.
+    // RLS scopes INSERT/UPDATE to the 'authenticated' role.
+
+    const { error } = await supabase.from('geocoding_cache').upsert(
+      {
         cache_key: key,
         latitude: result.latitude,
         longitude: result.longitude,
@@ -71,7 +66,9 @@ export class GeocodingCacheRepository {
         provider_place_id: result.providerPlaceId,
         confidence: result.confidence,
         // expires_at is handled by default value + interval
-      }, { onConflict: 'cache_key' });
+      },
+      { onConflict: 'cache_key' }
+    );
 
     if (error) {
       console.error('Error saving to geocoding cache:', error);
