@@ -19,11 +19,16 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return (
+  console.time('RootLayout-Boot');
+
+  const layout = (
     <html lang="en" className={`${plusJakartaSans.variable}`}>
       <body className="flex min-h-screen flex-col antialiased">
         <Suspense>{children}</Suspense>
       </body>
     </html>
   );
+
+  console.timeEnd('RootLayout-Boot');
+  return layout;
 }
