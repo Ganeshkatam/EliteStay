@@ -13,6 +13,7 @@ CREATE TABLE public.notifications (
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
     title TEXT NOT NULL,
     message TEXT NOT NULL,
+    link TEXT,
     type TEXT NOT NULL,
     data JSONB DEFAULT '{}'::jsonb,
     read_at TIMESTAMPTZ,
