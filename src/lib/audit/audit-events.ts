@@ -1,4 +1,5 @@
 export enum AuditEventType {
+  USER_SIGNED_IN = 'UserSignedIn',
   LISTING_PUBLISHED = 'ListingPublished',
   LISTING_DELETED = 'ListingDeleted',
   BOOKING_APPROVED = 'BookingApproved',

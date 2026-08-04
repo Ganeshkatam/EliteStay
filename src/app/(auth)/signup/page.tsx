@@ -17,9 +17,31 @@ import { OAuthButton } from '@/features/auth/components/OAuthButton';
 import { OAuthDivider } from '@/features/auth/components/OAuthDivider';
 
 function SignupForm() {
-  const [serverError, setServerError] = useState<string | null>(null);
-  const [isPending, setIsPending] = useState(false);
   const searchParams = useSearchParams();
+  const errorParam = searchParams.get('error');
+
+  // Map common OAuth/Auth errors to friendly messages
+  const getErrorMessage = (errorCode: string | null) => {
+    if (!errorCode) return null;
+    switch (errorCode) {
+      case 'access_denied':
+        return 'Access was denied. Please authorize the application to continue.';
+      case 'server_error':
+        return 'An error occurred with the authentication provider. Please try again.';
+      case 'temporarily_unavailable':
+        return 'The authentication provider is temporarily unavailable.';
+      case 'auth_failed':
+        return 'Authentication failed. Please try again.';
+      default:
+        // Attempt to render the raw error nicely if we don't recognize it
+        return `Authentication failed: ${errorCode.replace(/_/g, ' ')}`;
+    }
+  };
+
+  const [serverError, setServerError] = useState<string | null>(
+    getErrorMessage(errorParam)
+  );
+  const [isPending, setIsPending] = useState(false);
   const reason = searchParams.get('reason');
   const returnTo = searchParams.get('returnTo');
   const nextParams = searchParams.get('next');
