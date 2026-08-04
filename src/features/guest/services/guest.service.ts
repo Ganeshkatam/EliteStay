@@ -24,7 +24,7 @@ export class GuestService {
   static async getHomeData() {
     // TODO: Delegate to HomeService
     return {
-      title: 'Find your next premium stay',
+      title: 'Find your next place to live',
     };
   }
 

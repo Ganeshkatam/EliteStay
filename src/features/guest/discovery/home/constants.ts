@@ -1,11 +1,5 @@
 export const HOME_CATEGORIES = [
   {
-    label: 'Apartment',
-    slug: 'apartment',
-    icon: 'building-2',
-    description: 'Fully independent flat',
-  },
-  {
     label: 'PG',
     slug: 'pg',
     icon: 'users',
@@ -14,26 +8,32 @@ export const HOME_CATEGORIES = [
   {
     label: 'Hostel',
     slug: 'hostel',
-    icon: 'bed',
-    description: 'Vibrant student rooms',
+    icon: 'bed-double',
+    description: 'Vibrant student communities',
   },
   {
-    label: 'Hotel',
-    slug: 'hotel',
-    icon: 'hotel',
-    description: 'Premium short-term stays',
+    label: 'Apartment',
+    slug: 'apartment',
+    icon: 'building',
+    description: 'Fully independent flat',
   },
   {
-    label: 'Villa',
-    slug: 'villa',
+    label: 'House',
+    slug: 'house',
     icon: 'home',
-    description: 'Luxe private houses',
+    description: 'Spacious independent houses',
   },
   {
     label: 'Co-Living',
     slug: 'co-living',
-    icon: 'coffee',
+    icon: 'share-2',
     description: 'Social professional hubs',
+  },
+  {
+    label: 'Student Housing',
+    slug: 'student-housing',
+    icon: 'graduation-cap',
+    description: 'Dedicated student living',
   },
 ];
 

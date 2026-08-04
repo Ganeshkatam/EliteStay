@@ -182,7 +182,6 @@ INSERT INTO public.property_types (id, name, slug, description, icon, display_or
     (3, 'House', 'house', 'Independent residential house or bungalow', 'home', 3),
     (4, 'PG', 'pg', 'Paying guest accommodation with shared amenities', 'users', 4),
     (5, 'Hostel', 'hostel', 'Student or youth hostel dormitory and living spaces', 'bed-double', 5),
-    (6, 'Hotel', 'hotel', 'Serviced room inside a hospitality establishment', 'building-2', 6),
     (7, 'Cabin', 'cabin', 'Private cabin or standalone natural retreat', 'tent', 7),
     (8, 'Dormitory', 'dormitory', 'Shared sleeping quarters with common living spaces', 'bed', 8),
     (9, 'Resort', 'resort', 'Recreational residential resort suite', 'palmtree', 9),
