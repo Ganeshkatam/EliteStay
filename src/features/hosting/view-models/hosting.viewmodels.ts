@@ -79,6 +79,7 @@ export function buildHostProfileWorkspaceViewModel(
     status === 'ACTIVE' || status === 'PAUSED' || status === 'SUSPENDED';
 
   return {
+    id: hostProfile?.id ?? null,
     userId,
     status,
     isEligible: eligibilityAudit.isEligible,

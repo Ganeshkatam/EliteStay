@@ -8,6 +8,7 @@ import {
   CalendarDays,
   Inbox,
   Users,
+  Settings,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -19,6 +20,7 @@ const navigation = [
   { name: 'Calendar', href: '/host/calendar', icon: CalendarDays },
   { name: 'Bookings', href: '/host/bookings', icon: Inbox },
   { name: 'Stays', href: '/host/stays', icon: Users },
+  { name: 'Settings', href: '/host/profile', icon: Settings },
 ];
 
 export function HostSidebar() {

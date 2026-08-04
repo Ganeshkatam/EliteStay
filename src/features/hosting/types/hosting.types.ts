@@ -14,6 +14,7 @@ export type HostSpecializationSlug = 'pg' | 'hostel' | 'apartment' | 'other';
  * Database Row Model representing permanent entity facts in public.host_profiles.
  */
 export interface HostProfileRow {
+  id: string;
   user_id: string;
   status: HostStatus;
   business_type: HostBusinessType;
@@ -101,6 +102,7 @@ export interface OnboardingWorkspaceViewModel {
  * Presentation ViewModel for the permanent Host Profile settings workspace (/host/profile).
  */
 export interface HostProfileWorkspaceViewModel {
+  id: string | null;
   userId: string;
   status: HostStatus;
   isEligible: boolean;

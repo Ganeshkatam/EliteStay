@@ -131,11 +131,21 @@ export const HostProfileWorkspace: React.FC<HostProfileWorkspaceProps> = ({
                   {viewModel.identitySummary.phone || 'None'}
                 </span>
               </div>
-              <div className="pt-2 border-t border-slate-800/60 flex items-center justify-between">
-                <span className="text-slate-400">Fact Verification Status</span>
-                <span className="inline-flex items-center gap-1 text-emerald-400 font-bold">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> Confirmed
-                </span>
+              <div className="pt-2 border-t border-slate-800/60 flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400">Host Registration ID</span>
+                  <span className="text-slate-200 font-mono text-[10px]">
+                    {viewModel.id || 'Pending'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400">
+                    Fact Verification Status
+                  </span>
+                  <span className="inline-flex items-center gap-1 text-emerald-400 font-bold">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Confirmed
+                  </span>
+                </div>
               </div>
             </div>
           </div>
