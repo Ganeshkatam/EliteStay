@@ -2,6 +2,7 @@ import { useMachine } from '@xstate/react';
 import { reservationMachine } from '../machine/reservation.machine';
 import { ReservationState } from '../types/reservation.types';
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function useReservationMachine(_listingId: string) {
   const [state, send] = useMachine(reservationMachine, {
     // initialize context overriding default empty string for listingId

@@ -48,6 +48,7 @@ export class GuestService {
    */
   static async createReservationIntent(
     publicId: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _guestProfile: Pick<
       Database['public']['Tables']['profiles']['Row'],
       'gender'
@@ -82,6 +83,7 @@ export class GuestService {
   /**
    * Prepares the intent for booking persistence (Sprint 2)
    */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   static async prepareBooking(_intent: ReservationIntent) {
     // Sprint 2 implementation
     throw new Error('Not implemented yet');
