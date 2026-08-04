@@ -28,3 +28,16 @@ export async function createClient() {
     }
   );
 }
+
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+
+/**
+ * A static Supabase client that does NOT read cookies.
+ * This is safe to use inside `unstable_cache` scopes for fetching public data.
+ */
+export function createStaticClient() {
+  return createSupabaseClient(
+    env.NEXT_PUBLIC_SUPABASE_URL,
+    env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+  );
+}

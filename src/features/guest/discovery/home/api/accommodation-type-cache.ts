@@ -1,5 +1,5 @@
 import { unstable_cache } from 'next/cache';
-import { createClient } from '@/lib/supabase/server';
+import { createStaticClient } from '@/lib/supabase/server';
 
 interface AccommodationTypeMapping {
   id: string;
@@ -15,7 +15,7 @@ interface AccommodationTypeMapping {
  */
 export const getAccommodationTypes = unstable_cache(
   async (): Promise<AccommodationTypeMapping[]> => {
-    const supabase = await createClient();
+    const supabase = createStaticClient();
     const { data } = await supabase
       .from('accommodation_types')
       .select('id, name, description');

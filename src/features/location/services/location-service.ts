@@ -1,13 +1,13 @@
 import { GeocodeResult, GeocodingProvider } from '../types';
 import { NominatimProvider } from '../providers/NominatimProvider';
 import { GeocodingCacheRepository } from '../repositories/GeocodingCacheRepository';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createStaticClient } from '@/lib/supabase/server';
 
 import { unstable_cache } from 'next/cache';
 
 const getCachedFeaturedCities = unstable_cache(
   async () => {
-    const supabase = await createClient();
+    const supabase = createStaticClient();
     const { data } = await supabase
       .from('cities')
       .select('*')

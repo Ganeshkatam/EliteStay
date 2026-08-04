@@ -1,5 +1,5 @@
 import { unstable_cache } from 'next/cache';
-import { createClient } from '@/lib/supabase/server';
+import { createStaticClient } from '@/lib/supabase/server';
 import { ListingCardData } from '@/features/listings/types';
 import { HomeSectionConfig } from '../config/sections';
 import { resolveAccommodationTypeId } from './accommodation-type-cache';
@@ -15,7 +15,7 @@ function resolveImageUrl(path: string | null): string | null {
 const getSectionListingsInternal = async (
   config: HomeSectionConfig
 ): Promise<ListingCardData[]> => {
-  const supabase = await createClient();
+  const supabase = createStaticClient();
   const sort = config.filter?.sort || 'recommended';
 
   const rpcParams: Record<string, unknown> = {
@@ -107,7 +107,7 @@ const getCategoryCountsInternal = async (
   typeIds: string[]
 ): Promise<Record<string, number>> => {
   if (!typeIds.length) return {};
-  const supabase = await createClient();
+  const supabase = createStaticClient();
 
   // To avoid N+1 count queries, we can use an RPC, or just do a generic aggregation.
   // Since this is V1 and we have a small dataset, we can do parallel count requests.
@@ -138,7 +138,7 @@ const getLocationCountsInternal = async (
   cities: string[]
 ): Promise<Record<string, number>> => {
   if (!cities.length) return {};
-  const supabase = await createClient();
+  const supabase = createStaticClient();
 
   const counts: Record<string, number> = {};
 
