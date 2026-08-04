@@ -6,7 +6,7 @@ import { Container } from '@/components/layout/Container';
 export function GuestFooter() {
   const pathname = usePathname();
 
-  if (pathname?.startsWith('/users/notifications')) {
+  if (pathname?.startsWith('/users')) {
     return null;
   }
 
