@@ -84,7 +84,9 @@ export async function signup(data: SignupInput): Promise<AuthResult> {
   // We can only trigger this if user was created and we have the session/user.
   // SignUp doesn't guarantee an immediate user object if email confirmation is required.
   // But we can try to fire it if we have the user ID.
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (user) {
     NotificationService.notifyWelcome(user.id).catch(console.error);
   }
@@ -113,7 +115,7 @@ export async function forgotPassword(
   const { error } = await supabase.auth.resetPasswordForEmail(
     parsed.data.email,
     {
-      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'}/callback?next=/reset-password`,
+      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'}/auth/callback?next=/reset-password`,
     }
   );
 
@@ -158,7 +160,9 @@ export async function resetPassword(
     };
   }
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (user) {
     NotificationService.notifyPasswordChanged(user.id).catch(console.error);
   }

@@ -13,12 +13,19 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Building2 } from 'lucide-react';
+import { OAuthButton } from '@/features/auth/components/OAuthButton';
+import { OAuthDivider } from '@/features/auth/components/OAuthDivider';
 
 function SignupForm() {
   const [serverError, setServerError] = useState<string | null>(null);
   const [isPending, setIsPending] = useState(false);
   const searchParams = useSearchParams();
   const reason = searchParams.get('reason');
+  const returnTo = searchParams.get('returnTo');
+  const nextParams = searchParams.get('next');
+
+  // Resolve the intended destination for OAuth callback
+  const nextDestination = returnTo || nextParams || '/';
 
   let headline = 'Create an account';
   let subheadline = '';
@@ -70,9 +77,7 @@ function SignupForm() {
         {headline}
       </h2>
       {subheadline && (
-        <p className="mt-2 text-lg text-slate-600">
-          {subheadline}
-        </p>
+        <p className="mt-2 text-lg text-slate-600">{subheadline}</p>
       )}
       <p className="mt-2 text-sm text-slate-600">
         Already have an account?{' '}
@@ -85,6 +90,14 @@ function SignupForm() {
       </p>
 
       <div className="mt-8">
+        <OAuthButton
+          provider="google"
+          next={nextDestination}
+          className="w-full"
+        />
+
+        <OAuthDivider text="or sign up with email" />
+
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <div>
             <label className="block text-sm font-medium leading-6 text-slate-800">
@@ -170,7 +183,13 @@ function SignupForm() {
 
 export default function SignupPage() {
   return (
-    <Suspense fallback={<div className="h-full flex items-center justify-center">Loading...</div>}>
+    <Suspense
+      fallback={
+        <div className="h-full flex items-center justify-center">
+          Loading...
+        </div>
+      }
+    >
       <SignupForm />
     </Suspense>
   );
