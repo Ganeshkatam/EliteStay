@@ -151,3 +151,11 @@ The following layers are explicitly frozen:
 - Shared Components
 
 All future engineering effort MUST be directed towards **guest-facing product development** (Discovery, Search, Listing Detail, Booking Flow, Messaging, Payments, Reviews).
+
+# Rule 12 - Semantic Icon Rule
+
+Every domain concept has one canonical icon. The same concept must reuse the same icon across all tables and UI. Icons represent semantics, not database records.
+
+# Rule 13 - Canonical Taxonomy Rule
+
+ccommodation_types is the single source of truth for EliteStay's accommodation taxonomy. New categories require an explicit product decision and corresponding database migration. Avoid introducing synonymous or overlapping categories.
