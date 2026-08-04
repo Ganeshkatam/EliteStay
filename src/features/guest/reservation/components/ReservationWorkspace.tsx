@@ -1,4 +1,6 @@
-import React, { useEffect } from 'react';
+'use client';
+
+import { useEffect } from 'react';
 import { useReservationMachine } from '../hooks/useReservationMachine';
 import { ReservationViewModelFactory } from '../view-models/reservation.viewmodel';
 import { AvailabilityService } from '../services/availability.service';

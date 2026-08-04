@@ -11,7 +11,6 @@ export default async function GuestLayout({
 }: {
   children: React.ReactNode;
 }) {
-  console.time('MainLayout-Boot');
   const supabase = await createClient();
   const cookieStore = await cookies();
 
@@ -49,8 +48,6 @@ export default async function GuestLayout({
     user && user.id === potentialUserId
       ? (profileResponse.data as ExtendedProfile | null)
       : null;
-
-  console.timeEnd('MainLayout-Boot');
 
   return (
     <SearchProvider>

@@ -1,4 +1,6 @@
-import React, { useEffect } from 'react';
+'use client';
+
+import { useEffect } from 'react';
 import { ReservationState } from '../types/reservation.types';
 import { ReservationEvent } from '../machine/reservation.machine';
 
