@@ -188,7 +188,8 @@ INSERT INTO public.property_types (id, name, slug, description, icon, display_or
     (7, 'Cabin', 'cabin', 'Private cabin or standalone natural retreat', 'tent', 7),
     (8, 'Dormitory', 'dormitory', 'Shared sleeping quarters with common living spaces', 'bed', 8),
     (9, 'Resort', 'resort', 'Recreational residential resort suite', 'palmtree', 9),
-    (10, 'Farmhouse', 'farmhouse', 'Spacious agricultural estate or weekend farmhouse', 'trees', 10)
+    (10, 'Farmhouse', 'farmhouse', 'Spacious agricultural estate or weekend farmhouse', 'trees', 10),
+    (11, 'Penthouse', 'penthouse', 'Luxury top-floor apartment with panoramic views', 'building', 11)
 ON CONFLICT (id) DO UPDATE SET slug = EXCLUDED.slug, icon = EXCLUDED.icon;
 
 -- 7. Seed Amenity Categories Reference Data
