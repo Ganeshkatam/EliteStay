@@ -1,7 +1,6 @@
 import React from 'react';
 import { Metadata } from 'next';
-import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { HostAccessService } from '@/features/hosting/services/host-access.service';
 import { HostProfileService, HostProfileWorkspace } from '@/features/hosting';
 
 export const metadata: Metadata = {
@@ -15,14 +14,7 @@ export const metadata: Metadata = {
  * Strictly adheres to the Thin Route Rule: authenticates user, invokes HostProfileService, prepares metadata, renders UI.
  */
 export default async function HostProfilePage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect('/auth/login?redirectTo=/host/profile');
-  }
+  const { user } = await HostAccessService.requireHostProfile();
 
   const profileService = new HostProfileService();
   const viewModel = await profileService.getHostProfileWorkspace(user.id);

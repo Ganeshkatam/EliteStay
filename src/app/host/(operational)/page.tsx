@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { HostAccessService } from '@/features/hosting/services/host-access.service';
 import { HostOperationsService } from '@/features/host/services/host-operations.service';
 import Link from 'next/link';
 import {
@@ -16,12 +16,7 @@ import { CreateListingButton } from '@/features/host/components/CreateListingBut
 import { createDraftListing } from '@/features/host/actions/listing-actions';
 
 export default async function HostDashboardPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return null;
+  const { supabase, user } = await HostAccessService.requireOperationalHost();
 
   const viewModel = await HostOperationsService.getDashboardOverview(
     supabase,

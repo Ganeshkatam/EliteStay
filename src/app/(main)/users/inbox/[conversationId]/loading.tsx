@@ -1,7 +1,7 @@
-import { 
-  ConversationHeaderSkeleton, 
-  MessageTimelineSkeleton, 
-  MessageComposerSkeleton 
+import {
+  ConversationHeaderSkeleton,
+  MessageTimelineSkeleton,
+  MessageComposerSkeleton,
 } from '@/features/messaging/components/skeletons';
 
 export default function ConversationLoading() {

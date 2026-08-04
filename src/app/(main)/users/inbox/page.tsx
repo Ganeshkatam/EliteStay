@@ -8,8 +8,8 @@ export default function InboxEmptyState() {
       </div>
       <h3 className="text-xl font-bold text-slate-900 mb-2">Your Messages</h3>
       <p className="text-slate-500 max-w-sm text-sm">
-        Select a conversation from the list to view your messages.
-        Once you contact a host or receive a booking enquiry, they will appear here.
+        Select a conversation from the list to view your messages. Once you
+        contact a host or receive a booking enquiry, they will appear here.
       </p>
     </div>
   );

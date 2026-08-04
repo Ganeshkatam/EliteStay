@@ -1,29 +1,18 @@
-import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
-import { HostSidebar } from '@/features/host/components/HostSidebar';
-
 export const metadata = {
-  title: 'Host Workspace - EliteStay',
+  title: 'Host - EliteStay',
 };
 
-export default async function HostLayout({
+/**
+ * Minimal root host layout. No sidebar, no auth check.
+ * Authorization is enforced by nested route group layouts:
+ *   (operational)/layout.tsx  -> requireOperationalHost()
+ *   (host-profile)/layout.tsx -> requireHostProfile()
+ * Top-level pages (start, onboarding, suspended) have their own access logic.
+ */
+export default function HostLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect('/login');
-  }
-
-  return (
-    <div className="flex min-h-[calc(100vh-4rem)]">
-      <HostSidebar />
-      <main className="flex-1 overflow-y-auto bg-slate-50">{children}</main>
-    </div>
-  );
+  return <>{children}</>;
 }

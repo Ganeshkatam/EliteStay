@@ -1,17 +1,13 @@
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { LocationService } from '@/features/location/services/location-service';
 import { PublishingService } from '../services/publishing.service';
+import { HostAccessService } from '@/features/hosting/services/host-access.service';
 
 export async function publishListing(listingId: string) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) throw new Error('Unauthorized');
+  const { user, supabase } =
+    await HostAccessService.requireHostCapabilityForAction();
 
   await PublishingService.publish(supabase, listingId, user.id);
 
@@ -21,12 +17,8 @@ export async function publishListing(listingId: string) {
 }
 
 export async function unpublishListing(listingId: string) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) throw new Error('Unauthorized');
+  const { user, supabase } =
+    await HostAccessService.requireHostCapabilityForAction();
 
   await PublishingService.unpublish(supabase, listingId, user.id);
 
@@ -43,12 +35,8 @@ export async function saveAccommodation(
     accommodation_type_id: string;
   }
 ) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) throw new Error('Unauthorized');
+  const { user, supabase } =
+    await HostAccessService.requireHostCapabilityForAction();
 
   const { error } = await supabase
     .from('listings')
@@ -80,12 +68,8 @@ export async function saveLocation(
     address_line1: string;
   }
 ) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) throw new Error('Unauthorized');
+  const { user, supabase } =
+    await HostAccessService.requireHostCapabilityForAction();
 
   const { data: listing } = await supabase
     .from('listings')
@@ -156,12 +140,8 @@ export async function saveFeatures(
     amenity_ids: string[];
   }
 ) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) throw new Error('Unauthorized');
+  const { user, supabase } =
+    await HostAccessService.requireHostCapabilityForAction();
 
   const { data: listing } = await supabase
     .from('listings')
@@ -213,12 +193,8 @@ export async function savePricing(
     maintenance_fee: number;
   }
 ) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) throw new Error('Unauthorized');
+  const { user, supabase } =
+    await HostAccessService.requireHostCapabilityForAction();
 
   const { data: listing } = await supabase
     .from('listings')

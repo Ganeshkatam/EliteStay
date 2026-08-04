@@ -12,6 +12,7 @@ const nextConfig: NextConfig = {
   ],
   experimental: {
     serverActions: {
+      bodySizeLimit: '5mb',
       allowedOrigins: [
         'localhost:3000',
         'confutative-hypersentimentally-mei.ngrok-free.dev',

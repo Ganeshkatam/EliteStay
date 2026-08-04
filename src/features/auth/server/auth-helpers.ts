@@ -48,22 +48,6 @@ export async function requireUser(redirectTo = '/login'): Promise<User> {
   return user;
 }
 
-export async function requireHost(
-  redirectTo = '/login'
-): Promise<{ user: User; profile: Profile }> {
-  const data = await getCurrentProfile();
-  if (!data || !data.user) {
-    redirect(redirectTo);
-  }
-
-  if (data.profile.role !== 'host' && data.profile.role !== 'admin') {
-    // If authenticated but not a host, maybe redirect to a forbidden page or host onboarding
-    redirect('/forbidden');
-  }
-
-  return data;
-}
-
 export async function requireAdmin(
   redirectTo = '/login'
 ): Promise<{ user: User; profile: Profile }> {

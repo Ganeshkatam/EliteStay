@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { HostAccessService } from '@/features/hosting/services/host-access.service';
 import { HostOperationsService } from '@/features/host/services/host-operations.service';
 import { HostRepository } from '@/features/host/repositories/host.repository';
 import { CalendarWorkspace } from '@/features/host/components/CalendarWorkspace';
@@ -10,12 +10,7 @@ export const metadata = {
 };
 
 export default async function HostCalendarPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return null;
+  const { supabase, user } = await HostAccessService.requireOperationalHost();
 
   const listings = await HostRepository.getListings(supabase, user.id);
   const dropdownListings = listings.map((l) => ({ id: l.id, title: l.title }));

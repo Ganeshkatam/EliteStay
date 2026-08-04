@@ -43,11 +43,20 @@ export default async function GuestLayout({
 
   const user = userResponse.data.user;
 
-  // 3. Fallback verification: profiles only bind if the validated user matches
-  const profile =
+  let profile =
     user && user.id === potentialUserId
       ? (profileResponse.data as ExtendedProfile | null)
       : null;
+
+  // 4. Sequential fallback: If the fast cookie parse failed (e.g. cookie name mismatch), fetch now
+  if (user && !profile) {
+    const fallbackProfileResponse = await supabase
+      .from('profiles')
+      .select('id, full_name, avatar_storage_path')
+      .eq('id', user.id)
+      .maybeSingle();
+    profile = fallbackProfileResponse.data as ExtendedProfile | null;
+  }
 
   return (
     <SearchProvider>

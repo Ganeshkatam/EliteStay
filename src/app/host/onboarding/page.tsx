@@ -1,7 +1,6 @@
 import React from 'react';
 import { Metadata } from 'next';
-import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { HostAccessService } from '@/features/hosting/services/host-access.service';
 import { HostingService, HostOnboardingWizard } from '@/features/hosting';
 
 export const metadata: Metadata = {
@@ -16,19 +15,12 @@ interface OnboardingPageProps {
 
 /**
  * Thin Route for Host Capabilities Onboarding (/host/onboarding).
- * Strictly adheres to the Thin Route Rule: authenticates session, invokes service, prepares metadata, renders UI.
+ * Uses HostAccessService.getHostContext() for authentication without requiring operational status.
  */
 export default async function HostOnboardingPage({
   searchParams,
 }: OnboardingPageProps) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect('/auth/login?redirectTo=/host/onboarding');
-  }
+  const { user } = await HostAccessService.getHostContext();
 
   const params = await searchParams;
   const activeStepParam = params?.step ?? null;

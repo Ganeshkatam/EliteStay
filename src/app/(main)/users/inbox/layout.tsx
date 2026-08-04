@@ -7,7 +7,11 @@ import { RealtimeSubscriber } from '@/features/messaging/components/RealtimeSubs
 import { ConversationListServer } from '@/features/messaging/components/ConversationListServer';
 import { ConversationListSkeleton } from '@/features/messaging/components/skeletons';
 
-export default async function InboxLayout({ children }: { children: ReactNode }) {
+export default async function InboxLayout({
+  children,
+}: {
+  children: ReactNode;
+}) {
   const user = await getCurrentUser();
 
   if (!user) return null;

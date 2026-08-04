@@ -1,21 +1,15 @@
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { HostAccessService } from '@/features/hosting/services/host-access.service';
 
 /**
  * Creates a new Draft listing and redirects to the publishing workspace.
  */
 export async function createDraftListing() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    throw new Error('Unauthorized');
-  }
+  const { user, supabase } =
+    await HostAccessService.requireHostCapabilityForAction();
 
   // Create the base listing row
   const { data: listing, error: listingError } = await supabase
@@ -43,14 +37,8 @@ export async function createDraftListing() {
  * Discards an abandoned draft.
  */
 export async function discardDraftListing(listingId: string) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    throw new Error('Unauthorized');
-  }
+  const { user, supabase } =
+    await HostAccessService.requireHostCapabilityForAction();
 
   const { error } = await supabase
     .from('listings')

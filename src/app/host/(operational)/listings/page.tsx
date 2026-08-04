@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { HostAccessService } from '@/features/hosting/services/host-access.service';
 import { CreateListingButton } from '@/features/host/components/CreateListingButton';
 import { createDraftListing } from '@/features/host/actions/listing-actions';
 import { ListingsWorkspace } from '@/features/host/components/ListingsWorkspace';
@@ -13,12 +13,7 @@ export const metadata = {
 // ---------------------------------------------------------------------------
 
 export default async function HostListingsPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return null;
+  const { supabase, user } = await HostAccessService.requireOperationalHost();
 
   // Fetch all listings via repository (Thin Route Rule)
   const listings = await HostRepository.getListings(supabase, user.id);

@@ -1,19 +1,15 @@
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
+import { HostAccessService } from '@/features/hosting/services/host-access.service';
 
 /**
  * Uploads an image for a listing.
  * Enforces a maximum of 5 images.
  */
 export async function addListingImage(listingId: string, formData: FormData) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) throw new Error('Unauthorized');
+  const { user, supabase } =
+    await HostAccessService.requireHostCapabilityForAction();
 
   // Verify ownership
   const { data: listing } = await supabase
@@ -41,7 +37,7 @@ export async function addListingImage(listingId: string, formData: FormData) {
   // Upload to storage
   const fileExt = file.name.split('.').pop();
   const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-  const filePath = `${listingId}/${fileName}`; // We don't include user.id to keep urls simple, but we enforce RLS on DB
+  const filePath = `${listingId}/${fileName}`;
 
   const { error: uploadError } = await supabase.storage
     .from('listings')
@@ -71,12 +67,8 @@ export async function removeListingImage(
   imageId: string,
   storagePath: string
 ) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) throw new Error('Unauthorized');
+  const { user, supabase } =
+    await HostAccessService.requireHostCapabilityForAction();
 
   // We explicitly check host_id via listing join
   const { data: img } = await supabase

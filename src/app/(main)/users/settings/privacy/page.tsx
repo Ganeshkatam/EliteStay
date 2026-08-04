@@ -30,7 +30,8 @@ export default async function PrivacyPage() {
       <div className="mt-16 pt-8 border-t border-slate-200">
         <h3 className="text-lg font-medium text-red-600 mb-2">Danger Zone</h3>
         <p className="text-sm text-slate-500 max-w-xl">
-          Permanently delete your EliteStay account and all of your content. This action is not reversible, so please continue with caution.
+          Permanently delete your EliteStay account and all of your content.
+          This action is not reversible, so please continue with caution.
         </p>
         <DeleteAccountDialog />
       </div>

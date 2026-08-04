@@ -1,5 +1,5 @@
 import React from 'react';
-import { createClient } from '@/lib/supabase/server';
+import { HostAccessService } from '@/features/hosting/services/host-access.service';
 import { BookingOperationsService } from '@/features/host/bookings/services/booking-operations.service';
 import { BookingOperationsWorkspace } from '@/features/host/bookings/components/BookingOperationsWorkspace';
 import { type OperationalQueueType } from '@/features/host/bookings/types/booking.types';
@@ -13,14 +13,7 @@ interface PageProps {
  * Strictly orchestrates authentication and invokes domain services without inline business logic or SQL queries.
  */
 export default async function HostBookingsPage({ searchParams }: PageProps) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return null;
-  }
+  const { supabase, user } = await HostAccessService.requireOperationalHost();
 
   const params = searchParams ? await searchParams : {};
   const activeQueueParam =

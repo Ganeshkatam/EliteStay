@@ -7,21 +7,15 @@ Purpose: Thin orchestration actions delegating execution to BookingOperationsSer
 ==================================================
 */
 
-import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { BookingOperationsService } from '../services/booking-operations.service';
+import { HostAccessService } from '@/features/hosting/services/host-access.service';
 
 export async function approveBookingAction(
   bookingId: string
 ): Promise<{ success: boolean; error?: string }> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return { success: false, error: 'Unauthorized user session.' };
-  }
+  const { user, supabase } =
+    await HostAccessService.requireHostCapabilityForAction();
 
   const result = await BookingOperationsService.approveBooking(
     supabase,
@@ -40,14 +34,8 @@ export async function approveBookingAction(
 export async function rejectBookingAction(
   bookingId: string
 ): Promise<{ success: boolean; error?: string }> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return { success: false, error: 'Unauthorized user session.' };
-  }
+  const { user, supabase } =
+    await HostAccessService.requireHostCapabilityForAction();
 
   const result = await BookingOperationsService.rejectBooking(
     supabase,
