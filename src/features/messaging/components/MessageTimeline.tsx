@@ -1,16 +1,21 @@
 'use client';
 
 import { useEffect, useRef, Fragment } from 'react';
-import { type MessageRow } from '../actions/message-actions';
+import { type MessageViewModel } from '../view-models/inbox.viewmodel';
 import { MessageBubble } from './MessageBubble';
-import { isSameDay, isToday, isYesterday, format, differenceInMinutes } from 'date-fns';
+import {
+  isSameDay,
+  isToday,
+  isYesterday,
+  format,
+  differenceInMinutes,
+} from 'date-fns';
 
 interface MessageTimelineProps {
-  messages: MessageRow[];
-  currentUserId: string;
+  messages: MessageViewModel[];
 }
 
-export function MessageTimeline({ messages, currentUserId }: MessageTimelineProps) {
+export function MessageTimeline({ messages }: MessageTimelineProps) {
   const endOfMessagesRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom whenever messages change
@@ -25,16 +30,22 @@ export function MessageTimeline({ messages, currentUserId }: MessageTimelineProp
       {messages.length === 0 ? (
         <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-500">
           <p className="text-sm font-medium">No messages yet.</p>
-          <p className="text-xs mt-1">Send a message to start the conversation.</p>
+          <p className="text-xs mt-1">
+            Send a message to start the conversation.
+          </p>
         </div>
       ) : (
         messages.map((msg, index) => {
-          const currentMsgDate = new Date(msg.created_at);
+          const currentMsgDate = new Date(msg.createdAt);
           const prevMsg = index > 0 ? messages[index - 1] : null;
-          const nextMsg = index < messages.length - 1 ? messages[index + 1] : null;
+          const nextMsg =
+            index < messages.length - 1 ? messages[index + 1] : null;
 
           let showDateSeparator = false;
-          if (!prevMsg || !isSameDay(currentMsgDate, new Date(prevMsg.created_at))) {
+          if (
+            !prevMsg ||
+            !isSameDay(currentMsgDate, new Date(prevMsg.createdAt))
+          ) {
             showDateSeparator = true;
           }
 
@@ -45,16 +56,24 @@ export function MessageTimeline({ messages, currentUserId }: MessageTimelineProp
             else dateLabel = format(currentMsgDate, 'MMM d, yyyy');
           }
 
-          const isSameSenderAsNext = Boolean(nextMsg && nextMsg.sender_id === msg.sender_id);
-          const isSameSenderAsPrev = Boolean(prevMsg && prevMsg.sender_id === msg.sender_id);
-          const isConsecutiveWithPrev = isSameSenderAsPrev && !showDateSeparator;
+          const isSameSenderAsNext = Boolean(
+            nextMsg && nextMsg.isMine === msg.isMine
+          );
+          const isSameSenderAsPrev = Boolean(
+            prevMsg && prevMsg.isMine === msg.isMine
+          );
+          const isConsecutiveWithPrev =
+            isSameSenderAsPrev && !showDateSeparator;
 
-          // Show timestamp only if the next message is from a different sender, 
+          // Show timestamp only if the next message is from a different sender,
           // or if the next message is significantly later (e.g. > 10 mins),
           // or if this is the last message in the list.
           let showTimestamp = true;
           if (isSameSenderAsNext && nextMsg) {
-            const minsDiff = differenceInMinutes(new Date(nextMsg.created_at), currentMsgDate);
+            const minsDiff = differenceInMinutes(
+              new Date(nextMsg.createdAt),
+              currentMsgDate
+            );
             if (minsDiff < 10) {
               showTimestamp = false;
             }
@@ -71,8 +90,8 @@ export function MessageTimeline({ messages, currentUserId }: MessageTimelineProp
               )}
               <MessageBubble
                 content={msg.content}
-                createdAt={msg.created_at}
-                isOwn={msg.sender_id === currentUserId}
+                createdAt={msg.createdAt}
+                isOwn={msg.isMine}
                 showTimestamp={showTimestamp}
                 isConsecutive={isConsecutiveWithPrev}
               />

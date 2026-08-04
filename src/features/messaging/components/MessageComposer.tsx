@@ -9,9 +9,13 @@ import { useRouter } from 'next/navigation';
 
 interface MessageComposerProps {
   conversationId: string;
+  senderRole: 'guest' | 'host';
 }
 
-export function MessageComposer({ conversationId }: MessageComposerProps) {
+export function MessageComposer({
+  conversationId,
+  senderRole,
+}: MessageComposerProps) {
   const [content, setContent] = useState('');
   const [isSending, setIsSending] = useState(false);
   const router = useRouter();
@@ -21,7 +25,11 @@ export function MessageComposer({ conversationId }: MessageComposerProps) {
 
     try {
       setIsSending(true);
-      await sendMessage(conversationId, content);
+      await sendMessage({
+        conversationId,
+        content,
+        senderRole,
+      });
       setContent('');
       // Refresh the page data to show the new message
       router.refresh();
@@ -46,7 +54,7 @@ export function MessageComposer({ conversationId }: MessageComposerProps) {
       <div className="flex items-end gap-2 max-w-4xl mx-auto">
         {/* Placeholder for future left-side actions (e.g., attachments, images) */}
         <div className="flex items-center pb-2 px-1 hidden">
-           {/* Future: <Button variant="ghost" size="icon">...</Button> */}
+          {/* Future: <Button variant="ghost" size="icon">...</Button> */}
         </div>
 
         <Textarea
@@ -60,8 +68,8 @@ export function MessageComposer({ conversationId }: MessageComposerProps) {
 
         {/* Placeholder for future right-side actions inside input (e.g., emoji) */}
         <div className="flex items-center gap-2">
-          <Button 
-            onClick={handleSend} 
+          <Button
+            onClick={handleSend}
             disabled={!content.trim() || isSending}
             size="icon"
             className="h-12 w-12 rounded-full shrink-0 shadow-sm"

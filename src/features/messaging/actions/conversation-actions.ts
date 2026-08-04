@@ -2,251 +2,80 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { getCurrentUser } from '@/features/auth/server/auth-helpers';
+import { MessagingService } from '../services/messaging.service';
+import { ConversationType } from '../repositories/conversation.repository';
+import {
+  GuestInboxViewModel,
+  HostInboxViewModel,
+} from '../view-models/inbox.viewmodel';
 
-export type ConversationParticipant = {
-  id: string;
-  name: string;
-  avatar_url: string | null;
-  role: 'host' | 'guest';
-};
-
-export type ConversationListRow = {
-  id: string;
-  listing: {
-    id: string;
-    title: string;
-  };
-  context: {
-    type: 'booking' | 'stay' | 'inquiry';
-    status?: string;
-    startDate?: string;
-    endDate?: string;
-  };
-  otherParticipant: ConversationParticipant;
-  latestMessage: {
-    content: string;
-    created_at: string;
-    sender_id: string | null;
-  } | null;
-  unreadCount: number;
-  updated_at: string; // Used for sorting
-};
-
-export async function getConversations(): Promise<ConversationListRow[]> {
+export async function getGuestConversations(): Promise<GuestInboxViewModel[]> {
   const user = await getCurrentUser();
   if (!user) throw new Error('Unauthorized');
 
   const supabase = await createClient();
-
-  // Query all conversations we have access to
-  const { data: conversations, error } = await supabase
-    .from('conversations')
-    .select(
-      `
-      id,
-      guest_last_read_at,
-      host_last_read_at,
-      booking:bookings (
-        id,
-        guest_id,
-        status,
-        requested_move_in,
-        guest:profiles!bookings_guest_id_fkey(id, full_name, avatar_storage_path),
-        listing:listings (
-          id,
-          title,
-          host_id,
-          host:profiles!listings_host_id_fkey(id, full_name, avatar_storage_path)
-        )
-      ),
-      stay:stays (
-        id,
-        guest_id,
-        start_date,
-        end_date,
-        guest:profiles!stays_guest_id_fkey(id, full_name, avatar_storage_path),
-        listing:listings (
-          id,
-          title,
-          host_id,
-          host:profiles!listings_host_id_fkey(id, full_name, avatar_storage_path)
-        )
-      ),
-      messages (
-        id,
-        content,
-        created_at,
-        sender_id
-      )
-    `
-    )
-    .order('created_at', { ascending: false });
-
-  if (error) {
-    console.error('Error fetching conversations:', error);
-    throw new Error('Failed to fetch conversations');
-  }
-
-  interface RawMessage {
-    id: string;
-    content: string;
-    created_at: string;
-    sender_id: string;
-    read_at?: string | null;
-  }
-  interface RawProfile {
-    id: string;
-    full_name: string | null;
-    avatar_storage_path: string | null;
-  }
-  interface RawReference {
-    id: string;
-    status?: string;
-    start_date?: string;
-    end_date?: string;
-    requested_move_in?: string;
-    listing: {
-      id: string;
-      title: string;
-      host_id: string;
-      host: RawProfile;
-    };
-    guest: RawProfile;
-  }
-  interface RawConversationRow {
-    id: string;
-    created_at: string;
-    booking?: RawReference | null;
-    stay?: RawReference | null;
-    host_last_read_at?: string | null;
-    guest_last_read_at?: string | null;
-    messages?: RawMessage[];
-  }
-
-  // Format the data
-  const formatted: ConversationListRow[] = (
-    (conversations || []) as unknown as RawConversationRow[]
-  ).map((conv: RawConversationRow) => {
-    // A conversation is tied to either a booking or a stay
-    const reference = (conv.booking || conv.stay)!;
-    const isHost = reference.listing.host_id === user.id;
-
-    const otherProfile = isHost ? reference.guest : reference.listing.host;
-    const otherParticipant: ConversationParticipant = {
-      id: otherProfile.id,
-      name: otherProfile.full_name || 'Unknown User',
-      avatar_url: otherProfile.avatar_storage_path,
-      role: isHost ? 'guest' : 'host',
-    };
-
-    // Sort messages by created_at desc to find latest
-    const sortedMessages = (conv.messages || []).sort(
-      (a: RawMessage, b: RawMessage) =>
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    );
-    const latestMessage = sortedMessages[0] || null;
-
-    // Calculate unread count
-    const lastReadAt = isHost
-      ? conv.host_last_read_at
-      : conv.guest_last_read_at;
-    const unreadCount = sortedMessages.filter((msg: RawMessage) => {
-      // Don't count my own messages as unread
-      if (msg.sender_id === user.id) return false;
-      // If we never read anything, it's unread
-      if (!lastReadAt) return true;
-      // Otherwise, compare timestamps
-      return (
-        new Date(msg.created_at).getTime() > new Date(lastReadAt).getTime()
-      );
-    }).length;
-
-    let contextType: 'booking' | 'stay' | 'inquiry' = 'inquiry';
-    let status: string | undefined;
-    let startDate: string | undefined;
-    let endDate: string | undefined;
-
-    if (conv.stay) {
-      contextType = 'stay';
-      startDate = conv.stay.start_date;
-      endDate = conv.stay.end_date;
-    } else if (conv.booking) {
-      contextType = 'booking';
-      status = conv.booking.status;
-      startDate = conv.booking.requested_move_in;
-    }
-
-    return {
-      id: conv.id,
-      listing: {
-        id: reference.listing.id,
-        title: reference.listing.title,
-      },
-      context: {
-        type: contextType,
-        status,
-        startDate,
-        endDate,
-      },
-      otherParticipant,
-      latestMessage,
-      unreadCount,
-      updated_at: latestMessage ? latestMessage.created_at : conv.created_at,
-    };
-  });
-
-  // Sort by latest message first
-  return formatted.sort(
-    (a, b) =>
-      new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-  );
+  const service = new MessagingService(supabase);
+  return service.getGuestInbox(user.id);
 }
 
-export async function markConversationRead(conversationId: string) {
+export async function getHostConversations(
+  hostProfileId: string
+): Promise<HostInboxViewModel[]> {
   const user = await getCurrentUser();
   if (!user) throw new Error('Unauthorized');
 
   const supabase = await createClient();
+  const service = new MessagingService(supabase);
+  return service.getHostInbox(hostProfileId);
+}
 
-  // First we need to determine if we are the host or guest to know which column to update.
-  // We can just fetch the conversation and inspect the booking/stay.
-  const { data: conv, error: fetchErr } = await supabase
-    .from('conversations')
-    .select(
-      `
-      booking:bookings(listing:listings(host_id)),
-      stay:stays(listing:listings(host_id))
-    `
-    )
-    .eq('id', conversationId)
-    .single();
+export async function createConversation(params: {
+  type: ConversationType;
+  listingId?: string;
+  bookingId?: string;
+  stayId?: string;
+  guestId: string;
+  hostProfileId: string;
+}) {
+  const user = await getCurrentUser();
+  if (!user) throw new Error('Unauthorized');
 
-  if (fetchErr || !conv) {
-    throw new Error('Conversation not found');
+  const supabase = await createClient();
+  const service = new MessagingService(supabase);
+  return service.createConversation(params);
+}
+
+export async function archiveConversation(conversationId: string) {
+  const user = await getCurrentUser();
+  if (!user) throw new Error('Unauthorized');
+
+  const supabase = await createClient();
+  const service = new MessagingService(supabase);
+  return service.archiveConversation(conversationId);
+}
+
+export async function getOrCreateConversation(params: {
+  stayId?: string;
+  bookingId?: string;
+  listingId?: string;
+}): Promise<{ conversationId?: string; error?: string }> {
+  const user = await getCurrentUser();
+  if (!user) return { error: 'Unauthorized' };
+  const supabase = await createClient();
+
+  // Very simplified version just for compatibility with existing UI components
+  // Real version should use Repositories.
+  let query = supabase.from('conversations').select('id').limit(1);
+  if (params.stayId) query = query.eq('stay_id', params.stayId);
+  else if (params.bookingId) query = query.eq('booking_id', params.bookingId);
+  else if (params.listingId) query = query.eq('listing_id', params.listingId);
+  else return { error: 'Must provide context' };
+
+  const { data: existing } = await query.single();
+  if (existing) {
+    return { conversationId: existing.id };
   }
 
-  const typedConv = conv as unknown as {
-    booking?: { listing: { host_id: string } } | null;
-    stay?: { listing: { host_id: string } } | null;
-  };
-  const reference = typedConv.booking || typedConv.stay;
-  // If the user is the host of the listing, they are the host. Otherwise, guest.
-  const isHost = reference?.listing?.host_id === user.id;
-
-  const updatePayload: {
-    host_last_read_at?: string;
-    guest_last_read_at?: string;
-  } = isHost
-    ? { host_last_read_at: new Date().toISOString() }
-    : { guest_last_read_at: new Date().toISOString() };
-
-  const { error: updateErr } = await supabase
-    .from('conversations')
-    .update(updatePayload as unknown as Record<string, unknown>)
-    .eq('id', conversationId);
-
-  if (updateErr) {
-    console.error('Error updating read status:', updateErr);
-    throw new Error('Failed to update read status');
-  }
+  // Create new (simplified for now to satisfy UI)
+  return { error: 'Conversation creation not fully wired yet from this UI' };
 }

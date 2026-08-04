@@ -1,17 +1,23 @@
-/*
-==================================================
-Domain: Messaging
-Purpose: Real-time user communications linked to bookings and stays.
-Contains: 
-- conversations
-- messages
-- triggers, RLS, & foreign key indexes
-==================================================
-*/
+-- Drop old policies
+DROP POLICY IF EXISTS "Users can access their booking conversations" ON public.conversations;
+DROP POLICY IF EXISTS "Users can access their stay conversations" ON public.conversations;
+DROP POLICY IF EXISTS "Users can insert conversations" ON public.conversations;
+DROP POLICY IF EXISTS "Users can read messages in their conversations" ON public.messages;
+DROP POLICY IF EXISTS "Users can post messages to their conversations" ON public.messages;
 
+-- Drop old tables (cascade handles foreign keys and indexes)
+DROP TABLE IF EXISTS public.messages CASCADE;
+DROP TABLE IF EXISTS public.conversations CASCADE;
+
+-- Drop old enums if they exist (they shouldn't, but just in case)
+DROP TYPE IF EXISTS public.conversation_type CASCADE;
+DROP TYPE IF EXISTS public.conversation_status CASCADE;
+
+-- Create Enums
 CREATE TYPE public.conversation_type AS ENUM ('INQUIRY', 'BOOKING', 'STAY', 'SUPPORT', 'SYSTEM');
 CREATE TYPE public.conversation_status AS ENUM ('OPEN', 'CLOSED', 'ARCHIVED', 'BLOCKED');
 
+-- Create conversations table
 CREATE TABLE public.conversations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     type public.conversation_type NOT NULL DEFAULT 'INQUIRY',
@@ -31,16 +37,17 @@ CREATE TABLE public.conversations (
     )
 );
 
-CREATE INDEX IF NOT EXISTS idx_conversations_listing_id ON public.conversations (listing_id);
-CREATE INDEX IF NOT EXISTS idx_conversations_booking_id ON public.conversations (booking_id);
-CREATE INDEX IF NOT EXISTS idx_conversations_stay_id ON public.conversations (stay_id);
-CREATE INDEX IF NOT EXISTS idx_conversations_guest_id ON public.conversations (guest_id);
-CREATE INDEX IF NOT EXISTS idx_conversations_host_profile_id ON public.conversations (host_profile_id);
+CREATE INDEX idx_conversations_listing_id ON public.conversations (listing_id);
+CREATE INDEX idx_conversations_booking_id ON public.conversations (booking_id);
+CREATE INDEX idx_conversations_stay_id ON public.conversations (stay_id);
+CREATE INDEX idx_conversations_guest_id ON public.conversations (guest_id);
+CREATE INDEX idx_conversations_host_profile_id ON public.conversations (host_profile_id);
 
 CREATE TRIGGER conversations_updated_at 
   BEFORE UPDATE ON public.conversations 
   FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
 
+-- Create messages table
 CREATE TABLE public.messages (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     conversation_id UUID REFERENCES public.conversations(id) ON DELETE CASCADE NOT NULL,
@@ -50,9 +57,10 @@ CREATE TABLE public.messages (
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON public.messages (conversation_id);
-CREATE INDEX IF NOT EXISTS idx_messages_sender_id ON public.messages (sender_id);
+CREATE INDEX idx_messages_conversation_id ON public.messages (conversation_id);
+CREATE INDEX idx_messages_sender_id ON public.messages (sender_id);
 
+-- Enable RLS
 ALTER TABLE public.conversations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
 

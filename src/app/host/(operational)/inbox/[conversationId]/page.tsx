@@ -1,15 +1,16 @@
-import { getGuestConversations } from '@/features/messaging/actions/conversation-actions';
+import { getHostConversations } from '@/features/messaging/actions/conversation-actions';
 import {
   getMessages,
   markMessagesAsRead,
 } from '@/features/messaging/actions/message-actions';
-import { GuestConversationHeader } from '@/features/messaging/components/GuestConversationHeader';
+import { HostConversationHeader } from '@/features/messaging/components/HostConversationHeader';
 import { MessageTimeline } from '@/features/messaging/components/MessageTimeline';
 import { MessageComposer } from '@/features/messaging/components/MessageComposer';
 import { getCurrentUser } from '@/features/auth/server/auth-helpers';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
+import { createClient } from '@/lib/supabase/server';
 
-export default async function ConversationPage({
+export default async function HostConversationPage({
   params,
 }: {
   params: { conversationId: string };
@@ -18,12 +19,23 @@ export default async function ConversationPage({
   const user = await getCurrentUser();
 
   if (!user) {
-    return null; // Or redirect
+    return redirect('/login');
+  }
+
+  const supabase = await createClient();
+  const { data: hostProfile } = await supabase
+    .from('host_profiles')
+    .select('id')
+    .eq('user_id', user.id)
+    .single();
+
+  if (!hostProfile) {
+    return redirect('/host/onboarding');
   }
 
   // Parallel fetching of conversation list and messages
   const [conversations, messages] = await Promise.all([
-    getGuestConversations(),
+    getHostConversations(hostProfile.id),
     getMessages(conversationId),
   ]);
 
@@ -41,11 +53,11 @@ export default async function ConversationPage({
 
   return (
     <div className="flex-1 flex flex-col h-full bg-slate-50/50">
-      <GuestConversationHeader conversation={conversation} />
+      <HostConversationHeader conversation={conversation} />
 
       <MessageTimeline messages={messages} />
 
-      <MessageComposer conversationId={conversationId} senderRole="guest" />
+      <MessageComposer conversationId={conversationId} senderRole="host" />
     </div>
   );
 }
