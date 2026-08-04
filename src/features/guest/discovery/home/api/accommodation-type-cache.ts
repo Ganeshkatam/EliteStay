@@ -4,6 +4,9 @@ import { createStaticClient } from '@/lib/supabase/server';
 interface AccommodationTypeMapping {
   id: string;
   name: string;
+  slug: string;
+  icon: string;
+  display_order: number;
   description: string | null;
 }
 
@@ -18,7 +21,8 @@ export const getAccommodationTypes = unstable_cache(
     const supabase = createStaticClient();
     const { data } = await supabase
       .from('accommodation_types')
-      .select('id, name, description');
+      .select('id, name, slug, description, icon, display_order')
+      .order('display_order');
 
     return (data || []) as AccommodationTypeMapping[];
   },
