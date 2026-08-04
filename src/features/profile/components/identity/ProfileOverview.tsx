@@ -13,6 +13,11 @@ export function ProfileOverview({ profile }: ProfileOverviewProps) {
     profile.phone,
     profile.avatar_storage_path,
     profile.bio,
+    profile.date_of_birth,
+    profile.gender,
+    profile.occupation,
+    profile.username,
+    profile.timezone,
   ];
 
   const completedFields = fields.filter(Boolean).length;
@@ -43,7 +48,7 @@ export function ProfileOverview({ profile }: ProfileOverviewProps) {
 
         {/* Completion Widget */}
         {completionPercentage < 100 && (
-          <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-5 max-w-md">
+          <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-5 max-w-md w-full">
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-semibold text-slate-900">
                 Complete your profile
@@ -61,7 +66,16 @@ export function ProfileOverview({ profile }: ProfileOverviewProps) {
             </div>
 
             <ul className="text-sm text-slate-600 space-y-2">
+              {!profile.avatar_storage_path && (
+                <li>• Upload a profile photo</li>
+              )}
+              {!profile.full_name && <li>• Add your legal name</li>}
+              {!profile.username && <li>• Choose a username</li>}
               {!profile.phone && <li>• Add a verified phone number</li>}
+              {!profile.date_of_birth && <li>• Add your date of birth</li>}
+              {!profile.gender && <li>• Specify your gender</li>}
+              {!profile.occupation && <li>• Add your occupation</li>}
+              {!profile.timezone && <li>• Set your timezone</li>}
               {!profile.bio && <li>• Write a short bio</li>}
             </ul>
           </div>
