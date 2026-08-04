@@ -1,7 +1,4 @@
-import {
-  type NotificationGroup,
-  type NotificationRow as NotificationRowType,
-} from '../types';
+import { type NotificationGroup } from '../types';
 import { NotificationRow } from './NotificationRow';
 
 interface NotificationTimelineProps {
@@ -24,7 +21,7 @@ export function NotificationTimeline({
             {group.items.map((notification, index) => (
               <div key={notification.id} className="relative">
                 <NotificationRow
-                  notification={notification as unknown as NotificationRowType}
+                  notification={notification}
                   onMarkRead={onMarkRead}
                 />
                 {/* Horizontal divider between items, except the last one */}
