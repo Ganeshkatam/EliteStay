@@ -136,6 +136,30 @@ export async function notifyProfileUpdated(userId: string) {
   });
 }
 
+export async function getNotificationById(
+  id: string
+): Promise<NotificationRow | null> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data, error } = await supabase
+    .from('notifications')
+    .select('*')
+    .eq('id', id)
+    .eq('user_id', user.id)
+    .single();
+
+  if (error || !data) {
+    console.error('Error fetching notification:', error);
+    return null;
+  }
+
+  return data as NotificationRow;
+}
+
 export async function getMyNotifications(): Promise<NotificationRow[]> {
   const supabase = await createClient();
   const {

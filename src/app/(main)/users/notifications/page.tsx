@@ -20,8 +20,10 @@ export default async function NotificationsPage() {
 
   return (
     <ContentPanel>
-      <PageCanvas className="max-w-6xl w-full mx-auto p-4 md:p-8 pt-8 md:pt-12">
-        <NotificationWorkspace initialNotifications={notifications} />
+      <PageCanvas>
+        <div className="max-w-6xl w-full mx-auto p-4 md:p-8 pt-8 md:pt-12">
+          <NotificationWorkspace initialNotifications={notifications} />
+        </div>
       </PageCanvas>
     </ContentPanel>
   );

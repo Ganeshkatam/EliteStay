@@ -1,6 +1,15 @@
+'use client';
+
+import { usePathname } from 'next/navigation';
 import { Container } from '@/components/layout/Container';
 
 export function GuestFooter() {
+  const pathname = usePathname();
+
+  if (pathname?.startsWith('/users/notifications')) {
+    return null;
+  }
+
   return (
     <footer className="mt-auto border-t border-border bg-muted/20">
       <Container>

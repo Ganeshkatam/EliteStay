@@ -11,7 +11,11 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
         <SettingsNav />
       </SubPanel>
       <ContentPanel>
-        <PageCanvas className="max-w-[1100px]">{children}</PageCanvas>
+        <PageCanvas>
+          <div className="max-w-[1100px] w-full mx-auto p-4 md:p-8 pt-8 md:pt-12">
+            {children}
+          </div>
+        </PageCanvas>
       </ContentPanel>
     </>
   );

@@ -139,7 +139,11 @@ export function NotificationRow({
     );
   }
 
-  return Content;
+  return (
+    <Link href={`/users/notifications/${notification.id}`} className="block">
+      {Content}
+    </Link>
+  );
 }
 
 function getLinkText(type: string): string {
