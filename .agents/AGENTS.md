@@ -59,9 +59,10 @@ The following structural elements are frozen and may not be changed:
 5. Use clear Conventional Commit messages (`feat:`, `fix:`, `refactor:`, `chore:`, `docs:`, `test:`).
 6. Do not commit known broken code unless explicitly instructed by the user.
 
-# Database & SQL Synchronization Rule
+# Database & SQL Synchronization Rule (MANDATORY)
 
-Whenever modifying database schemas, migrations, functions, or reference data, you MUST always update the local SQL files (`supabase/schema/*.sql` and migrations) and execute the corresponding changes against the remote live Supabase database at the same time using Supabase MCP. Never permit local SQL definitions to drift from the active remote database schema.
+Whenever modifying database schemas, migrations, functions, or reference data, you MUST always update the local SQL files (`supabase/schema/*.sql` and migrations) and **immediately execute** the corresponding changes against the remote live Supabase database using Supabase MCP.
+**Localhost SQL and database changes must take effect immediately. You are never allowed to delay updating the database.** Never permit local SQL definitions to drift from the active remote database schema.
 
 # Resident Experience Rule & Listings Aggregate Freeze
 
