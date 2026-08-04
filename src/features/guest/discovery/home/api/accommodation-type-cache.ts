@@ -1,4 +1,4 @@
-import { cache } from 'react';
+import { unstable_cache } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 
 interface AccommodationTypeMapping {
@@ -8,12 +8,12 @@ interface AccommodationTypeMapping {
 }
 
 /**
- * React `cache()` deduplicates this call across all server components
- * within the same request. The accommodation_types table is small and
+ * Next.js `unstable_cache` deduplicates this call across all server components
+ * and caches it globally across requests. The accommodation_types table is small and
  * static -- fetching it once per request eliminates redundant round-trips
  * from Categories, HomeSection, and getSectionListings.
  */
-export const getAccommodationTypes = cache(
+export const getAccommodationTypes = unstable_cache(
   async (): Promise<AccommodationTypeMapping[]> => {
     const supabase = await createClient();
     const { data } = await supabase
@@ -21,7 +21,9 @@ export const getAccommodationTypes = cache(
       .select('id, name, description');
 
     return (data || []) as AccommodationTypeMapping[];
-  }
+  },
+  ['accommodation-types'],
+  { revalidate: 3600, tags: ['accommodation-types', 'home'] }
 );
 
 /**

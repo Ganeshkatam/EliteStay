@@ -3,6 +3,24 @@ import { NominatimProvider } from '../providers/NominatimProvider';
 import { GeocodingCacheRepository } from '../repositories/GeocodingCacheRepository';
 import { createClient } from '@/lib/supabase/server';
 
+import { unstable_cache } from 'next/cache';
+
+const getCachedFeaturedCities = unstable_cache(
+  async () => {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from('cities')
+      .select('*')
+      .eq('is_featured', true)
+      .eq('is_active', true)
+      .order('sort_order');
+
+    return data || [];
+  },
+  ['featured-cities'],
+  { revalidate: 3600, tags: ['locations', 'home'] }
+);
+
 export class LocationService {
   private static provider: GeocodingProvider = new NominatimProvider();
 
@@ -24,15 +42,7 @@ export class LocationService {
   }
 
   static async getFeaturedCities() {
-    const supabase = await createClient();
-    const { data } = await supabase
-      .from('cities')
-      .select('*')
-      .eq('is_featured', true)
-      .eq('is_active', true)
-      .order('sort_order');
-
-    return data || [];
+    return getCachedFeaturedCities();
   }
 
   static async searchCities(query: string) {

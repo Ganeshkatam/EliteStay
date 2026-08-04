@@ -1,3 +1,4 @@
+import { unstable_cache } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { ListingCardData } from '@/features/listings/types';
 import { HomeSectionConfig } from '../config/sections';
@@ -11,9 +12,9 @@ function resolveImageUrl(path: string | null): string | null {
   return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/listings/${path}`;
 }
 
-export async function getSectionListings(
+const getSectionListingsInternal = async (
   config: HomeSectionConfig
-): Promise<ListingCardData[]> {
+): Promise<ListingCardData[]> => {
   const supabase = await createClient();
   const sort = config.filter?.sort || 'recommended';
 
@@ -94,11 +95,17 @@ export async function getSectionListings(
     },
     imageUrl: resolveImageUrl(row.image_url),
   }));
-}
+};
 
-export async function getCategoryCounts(
+export const getSectionListings = unstable_cache(
+  async (config: HomeSectionConfig) => getSectionListingsInternal(config),
+  ['home-section-listings'],
+  { revalidate: 3600, tags: ['home', 'listings'] }
+);
+
+const getCategoryCountsInternal = async (
   typeIds: string[]
-): Promise<Record<string, number>> {
+): Promise<Record<string, number>> => {
   if (!typeIds.length) return {};
   const supabase = await createClient();
 
@@ -119,11 +126,17 @@ export async function getCategoryCounts(
   );
 
   return counts;
-}
+};
 
-export async function getLocationCounts(
+export const getCategoryCounts = unstable_cache(
+  async (typeIds: string[]) => getCategoryCountsInternal(typeIds),
+  ['home-category-counts'],
+  { revalidate: 3600, tags: ['home', 'categories'] }
+);
+
+const getLocationCountsInternal = async (
   cities: string[]
-): Promise<Record<string, number>> {
+): Promise<Record<string, number>> => {
   if (!cities.length) return {};
   const supabase = await createClient();
 
@@ -142,4 +155,10 @@ export async function getLocationCounts(
   );
 
   return counts;
-}
+};
+
+export const getLocationCounts = unstable_cache(
+  async (cities: string[]) => getLocationCountsInternal(cities),
+  ['home-location-counts'],
+  { revalidate: 3600, tags: ['home', 'locations'] }
+);
