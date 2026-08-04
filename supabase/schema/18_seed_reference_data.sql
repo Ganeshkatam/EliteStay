@@ -8,11 +8,15 @@ NOTE: No demo or fake user/listing data is seeded here.
 
 -- 1. Insert Accommodation Types
 INSERT INTO public.accommodation_types (id, name, slug, description, icon, display_order, is_active) VALUES
-  ('147a6d96-47d0-428a-b541-6d83a82def8c', 'PG', 'pg', 'Shared paying guest accommodation with optional meals and managed services.', 'users', 10, true),
+  ('147a6d96-47d0-428a-b541-6d83a82def8c', 'Paying Guest', 'pg', 'Shared paying guest accommodation with optional meals and managed services.', 'users', 10, true),
   ('24aac50b-0999-49d2-9487-07c1b5068283', 'Hostel', 'hostel', 'Shared hostel accommodation for students and working professionals.', 'building', 20, true),
-  ('21cc18a1-ba31-4ede-89f4-2c8c15a53122', 'Apartment', 'apartment', 'Independent apartments and flats for long-term living.', 'building-2', 30, true),
-  ('2c6e8ec1-7fda-4dee-8583-457ae38e584c', 'Co-living', 'coliving', 'Professionally managed shared living spaces with community amenities.', 'users-round', 40, true),
-  ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a14', 'Individual House', 'house', 'Spacious independent houses and villas for complete privacy.', 'home', 50, true)
+  ('4d4ca1d8-3487-4fc6-b8e7-080c54bbdcbe', 'Studio', 'studio', 'Compact, self-contained single-room apartments.', 'layout', 30, true),
+  ('21cc18a1-ba31-4ede-89f4-2c8c15a53122', 'Apartment', 'apartment', 'Independent apartments and flats for long-term living.', 'building-2', 40, true),
+  ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a18', 'Serviced Apartment', 'serviced-apartment', 'Fully furnished apartments with inclusive management and utilities.', 'hotel', 50, true),
+  ('2c6e8ec1-7fda-4dee-8583-457ae38e584c', 'Co-living', 'coliving', 'Professionally managed shared living spaces with community amenities.', 'users-round', 60, true),
+  ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a14', 'Independent House', 'house', 'Spacious independent houses and villas for complete privacy.', 'home', 70, true),
+  ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a15', 'Villa', 'villa', 'Premium, spacious private estates for luxury long-term living.', 'palmtree', 80, true),
+  ('2a0d0ef7-8d1a-4b51-994f-f9f29a456958', 'Other Residential Property', 'other', 'Specialized residential living facilities and unique accommodations.', 'home', 90, true)
 
 ON CONFLICT (id) DO UPDATE SET 
   name = EXCLUDED.name, 
@@ -153,7 +157,7 @@ BEGIN
         (ka_id, 'IN-BLR', 'Bangalore', '{"Bengaluru"}', 'bangalore', 12.9716, 77.5946, 'Asia/Kolkata', true, true, true, 1, 'The Silicon Valley of India, known for its pleasant weather and tech parks.'),
         (mh_id, 'IN-BOM', 'Mumbai', '{"Bombay"}', 'mumbai', 19.0760, 72.8777, 'Asia/Kolkata', true, true, true, 2, 'The financial capital of India, famous for its bustling lifestyle and Bollywood.'),
         (dl_id, 'IN-DEL', 'New Delhi', '{"Delhi"}', 'new-delhi', 28.6139, 77.2090, 'Asia/Kolkata', true, true, true, 3, 'The capital city, blending historical monuments with vibrant culture.'),
-        (tg_id, 'IN-HYD', 'Hyderabad', '{}', 'hyderabad', 17.3850, 78.4867, 'Asia/Kolkata', true, true, true, 4, 'The City of Pearls, famous for its rich history, IT industry, and biryani.'),
+        (tg_id, 'IN-HYD', 'Hyderabad', '{"hydarabad","Hyd"}', 'hyderabad', 17.3850, 78.4867, 'Asia/Kolkata', true, true, true, 4, 'The City of Pearls, famous for its rich history, IT industry, and biryani.'),
         (mh_id, 'IN-PUN', 'Pune', '{"Poona"}', 'pune', 18.5204, 73.8567, 'Asia/Kolkata', false, true, true, 5, 'The Oxford of the East, a vibrant city known for education and IT hubs.'),
         (tn_id, 'IN-MAA', 'Chennai', '{"Madras"}', 'chennai', 13.0827, 80.2707, 'Asia/Kolkata', true, true, true, 6, 'The cultural capital of South India, known for its temples and beautiful beaches.'),
         (wb_id, 'IN-CCU', 'Kolkata', '{"Calcutta"}', 'kolkata', 22.5726, 88.3639, 'Asia/Kolkata', true, true, true, 7, 'The City of Joy, renowned for its literature, arts, and colonial architecture.'),
@@ -166,14 +170,14 @@ BEGIN
         (kl_id, 'IN-COK', 'Kochi', '{"Cochin"}', 'kochi', 9.9312, 76.2673, 'Asia/Kolkata', false, true, true, 14, 'The Queen of the Arabian Sea, a vibrant port city with a rich history.'),
         (mp_id, 'IN-IDR', 'Indore', '{}', 'indore', 22.7196, 75.8577, 'Asia/Kolkata', false, true, true, 15, 'The cleanest city in India, known for its food culture and heritage.'),
         (ap_id, 'IN-AP-VIZAG', 'Visakhapatnam', '{"Vizag"}', 'visakhapatnam', 17.6868, 83.2185, 'Asia/Kolkata', true, true, true, 16, 'The Jewel of the East Coast, known for its pristine beaches and natural harbor.'),
-        (ap_id, 'IN-AP-VIJA', 'Vijayawada', '{}', 'vijayawada', 16.5062, 80.6480, 'Asia/Kolkata', false, false, true, 17, 'The commercial hub of Andhra Pradesh, situated on the banks of the Krishna River.'),
+        (ap_id, 'IN-AP-VIJA', 'Vijayawada', '{"Bezawada"}', 'vijayawada', 16.5062, 80.6480, 'Asia/Kolkata', false, false, true, 17, 'The commercial hub of Andhra Pradesh, situated on the banks of the Krishna River.'),
         (ap_id, 'IN-AP-GUNT', 'Guntur', '{}', 'guntur', 16.3067, 80.4365, 'Asia/Kolkata', false, false, true, 18, 'A major educational and commercial center, known for its chili exports.'),
         (tg_id, 'IN-TG-WARA', 'Warangal', '{}', 'warangal', 17.9815, 79.5982, 'Asia/Kolkata', false, false, true, 19, 'A historical city known for its ancient temples and monuments.'),
-        (ap_id, 'IN-AP-TIRU', 'Tirupati', '{}', 'tirupati', 13.6288, 79.4192, 'Asia/Kolkata', false, false, true, 20, 'The spiritual capital of Andhra Pradesh, home to the sacred Venkateswara Temple.'),
+        (ap_id, 'IN-AP-TIRU', 'Tirupati', '{"Chittoor"}', 'tirupati', 13.6288, 79.4192, 'Asia/Kolkata', false, false, true, 20, 'The spiritual capital of Andhra Pradesh, home to the sacred Venkateswara Temple.'),
         (ap_id, 'IN-AP-NELL', 'Nellore', '{}', 'nellore', 14.4426, 79.9865, 'Asia/Kolkata', false, false, true, 21, 'A coastal city known for its agriculture, aquaculture, and ancient temples.'),
         (ap_id, 'IN-AP-RAJA', 'Rajahmundry', '{}', 'rajahmundry', 17.0005, 81.8040, 'Asia/Kolkata', false, false, true, 22, 'The cultural capital of Andhra Pradesh, located on the banks of the Godavari River.'),
         (ap_id, 'IN-AP-KAKI', 'Kakinada', '{}', 'kakinada', 16.9891, 82.2475, 'Asia/Kolkata', false, false, true, 23, 'A major port city known for its peaceful environment and local cuisine.')
-    ON CONFLICT (external_code) DO NOTHING;
+    ON CONFLICT (external_code) DO UPDATE SET search_aliases = EXCLUDED.search_aliases;
 END $$;
 
 -- 6. Seed Property Types Reference Data
