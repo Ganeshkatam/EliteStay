@@ -6,7 +6,8 @@ Purpose: Permanent record for host entity business settings, verified facts, and
 */
 
 CREATE TABLE IF NOT EXISTS public.host_profiles (
-    user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
     status public.host_status NOT NULL DEFAULT 'NOT_STARTED'::public.host_status,
     business_type public.host_business_type NOT NULL DEFAULT 'individual'::public.host_business_type,
     primary_accommodation_type_id UUID REFERENCES public.accommodation_types(id) ON DELETE SET NULL,
