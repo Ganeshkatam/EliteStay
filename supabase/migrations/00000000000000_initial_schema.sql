@@ -58,6 +58,8 @@ CREATE TYPE public.gender AS ENUM ('male', 'female');
 CREATE TYPE public.gender_preference AS ENUM ('any', 'male', 'female');
 CREATE TYPE public.furnishing AS ENUM ('unfurnished', 'semi_furnished', 'fully_furnished');
 CREATE TYPE public.sync_direction AS ENUM ('import', 'export', 'both');
+CREATE TYPE public.host_status AS ENUM ('NOT_STARTED', 'ONBOARDING', 'READY', 'ACTIVE', 'PAUSED', 'SUSPENDED');
+CREATE TYPE public.host_business_type AS ENUM ('individual', 'company', 'property_manager');
 
 
 -- SOURCE: 02_shared_functions.sql
@@ -453,6 +455,7 @@ CREATE TABLE public.cities (
     is_featured BOOLEAN DEFAULT false NOT NULL,
     is_active BOOLEAN DEFAULT true NOT NULL,
     sort_order INTEGER DEFAULT 0 NOT NULL,
+    listing_count INTEGER DEFAULT 0 NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
     UNIQUE(state_id, slug)
@@ -692,7 +695,6 @@ Purpose: Core marketplace domain for property listings and host workflows.
 Contains: 
 - listings
 - listing_amenities
-- listing_build_progress
 - is_listing_owner helper function
 - triggers, RLS, & performance indexes
 ==================================================
@@ -767,16 +769,7 @@ CREATE TABLE public.listing_amenities (
 
 CREATE INDEX IF NOT EXISTS listing_amenities_amenity_idx ON public.listing_amenities(amenity_id);
 
-CREATE TABLE public.listing_build_progress (
-    listing_id UUID PRIMARY KEY REFERENCES public.listings(id) ON DELETE CASCADE,
-    step_completed TEXT,
-    last_step TEXT NOT NULL DEFAULT 'accommodation',
-    percent_complete INTEGER NOT NULL DEFAULT 0,
-    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-    updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
-);
-
--- Triggers
+-- Triggers & Host Specialization Enforcement
 CREATE TRIGGER listings_updated_at 
   BEFORE UPDATE ON public.listings 
   FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
@@ -784,6 +777,35 @@ CREATE TRIGGER listings_updated_at
 CREATE TRIGGER listings_set_public_id
   BEFORE INSERT ON public.listings
   FOR EACH ROW EXECUTE PROCEDURE public.trigger_set_public_id();
+
+CREATE OR REPLACE FUNCTION public.enforce_host_accommodation_specialization()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_host_specialization_id UUID;
+BEGIN
+  SELECT primary_accommodation_type_id INTO v_host_specialization_id
+  FROM public.host_profiles
+  WHERE user_id = NEW.host_id;
+
+  IF v_host_specialization_id IS NOT NULL THEN
+    IF NEW.accommodation_type_id IS NULL THEN
+      NEW.accommodation_type_id := v_host_specialization_id;
+    ELSIF NEW.accommodation_type_id <> v_host_specialization_id THEN
+      RAISE EXCEPTION 'Host Specialization Rule Violation: Listing accommodation_type_id (%) does not match Host Profile primary_accommodation_type_id (%). Hosts are strictly limited to one accommodation specialization.', NEW.accommodation_type_id, v_host_specialization_id;
+    END IF;
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER trg_enforce_host_specialization
+  BEFORE INSERT OR UPDATE OF accommodation_type_id ON public.listings
+  FOR EACH ROW EXECUTE FUNCTION public.enforce_host_accommodation_specialization();
 
 CREATE TRIGGER listings_prevent_public_id_update
   BEFORE UPDATE ON public.listings
@@ -793,14 +815,9 @@ CREATE TRIGGER listing_amenities_updated_at
   BEFORE UPDATE ON public.listing_amenities 
   FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
 
-CREATE TRIGGER listing_build_progress_updated_at 
-  BEFORE UPDATE ON public.listing_build_progress 
-  FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
-
 -- RLS
 ALTER TABLE public.listings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.listing_amenities ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.listing_build_progress ENABLE ROW LEVEL SECURITY;
 
 -- Listings Policies
 CREATE POLICY "Public can read published listings" ON public.listings
@@ -828,43 +845,6 @@ CREATE POLICY "Hosts can manage own listing amenities" ON public.listing_ameniti
     EXISTS (
         SELECT 1 FROM public.listings l 
         WHERE l.id = listing_amenities.listing_id 
-        AND (l.host_id = auth.uid() OR public.is_admin())
-    )
-  );
-
--- Listing Build Progress Policies
-CREATE POLICY "Hosts can view own listing progress" ON public.listing_build_progress
-  FOR SELECT USING (
-    EXISTS (
-        SELECT 1 FROM public.listings l 
-        WHERE l.id = listing_build_progress.listing_id 
-        AND (l.host_id = auth.uid() OR public.is_admin())
-    )
-  );
-
-CREATE POLICY "Hosts can insert own listing progress" ON public.listing_build_progress
-  FOR INSERT WITH CHECK (
-    EXISTS (
-        SELECT 1 FROM public.listings l 
-        WHERE l.id = listing_build_progress.listing_id 
-        AND (l.host_id = auth.uid() OR public.is_admin())
-    )
-  );
-
-CREATE POLICY "Hosts can update own listing progress" ON public.listing_build_progress
-  FOR UPDATE USING (
-    EXISTS (
-        SELECT 1 FROM public.listings l 
-        WHERE l.id = listing_build_progress.listing_id 
-        AND (l.host_id = auth.uid() OR public.is_admin())
-    )
-  );
-
-CREATE POLICY "Hosts can delete own listing progress" ON public.listing_build_progress
-  FOR DELETE USING (
-    EXISTS (
-        SELECT 1 FROM public.listings l 
-        WHERE l.id = listing_build_progress.listing_id 
         AND (l.host_id = auth.uid() OR public.is_admin())
     )
   );
@@ -1016,6 +996,70 @@ CREATE POLICY "Allow owners to manage listing rule notes"
 CREATE TRIGGER trigger_listing_rule_notes_updated_at
     BEFORE UPDATE ON public.listing_rule_notes
     FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
+
+-- Trigger to update city listing count in real time
+CREATE OR REPLACE FUNCTION public.update_city_listing_count()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  -- Handle INSERT
+  IF (TG_OP = 'INSERT') THEN
+    IF (NEW.status = 'published' AND NEW.city_id IS NOT NULL) THEN
+      UPDATE public.cities 
+      SET listing_count = COALESCE(listing_count, 0) + 1 
+      WHERE id = NEW.city_id;
+    END IF;
+  
+  -- Handle UPDATE
+  ELSIF (TG_OP = 'UPDATE') THEN
+    -- Case 1: Status changed to published
+    IF (NEW.status = 'published' AND OLD.status <> 'published') THEN
+      IF (NEW.city_id IS NOT NULL) THEN
+        UPDATE public.cities 
+        SET listing_count = COALESCE(listing_count, 0) + 1 
+        WHERE id = NEW.city_id;
+      END IF;
+    -- Case 2: Status changed from published
+    ELSIF (NEW.status <> 'published' AND OLD.status = 'published') THEN
+      IF (OLD.city_id IS NOT NULL) THEN
+        UPDATE public.cities 
+        SET listing_count = GREATEST(0, COALESCE(listing_count, 0) - 1) 
+        WHERE id = OLD.city_id;
+      END IF;
+    -- Case 3: Status remained published but city_id changed
+    ELSIF (NEW.status = 'published' AND OLD.status = 'published' AND NEW.city_id IS DISTINCT FROM OLD.city_id) THEN
+      IF (OLD.city_id IS NOT NULL) THEN
+        UPDATE public.cities 
+        SET listing_count = GREATEST(0, COALESCE(listing_count, 0) - 1) 
+        WHERE id = OLD.city_id;
+      END IF;
+      IF (NEW.city_id IS NOT NULL) THEN
+        UPDATE public.cities 
+        SET listing_count = COALESCE(listing_count, 0) + 1 
+        WHERE id = NEW.city_id;
+      END IF;
+    END IF;
+  
+  -- Handle DELETE
+  ELSIF (TG_OP = 'DELETE') THEN
+    IF (OLD.status = 'published' AND OLD.city_id IS NOT NULL) THEN
+      UPDATE public.cities 
+      SET listing_count = GREATEST(0, COALESCE(listing_count, 0) - 1) 
+      WHERE id = OLD.city_id;
+    END IF;
+  END IF;
+
+  RETURN NULL;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_update_city_listing_count ON public.listings;
+CREATE TRIGGER trg_update_city_listing_count
+AFTER INSERT OR UPDATE OR DELETE ON public.listings
+FOR EACH ROW EXECUTE FUNCTION public.update_city_listing_count();
 
 
 
@@ -2097,63 +2141,68 @@ NOTE: No demo or fake user/listing data is seeded here.
 */
 
 -- 1. Insert Accommodation Types
-INSERT INTO public.accommodation_types (id, name, description) VALUES
-  ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'PG', 'Managed stays with food & cleaning'),
-  ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12', 'Hostel', 'Vibrant student communities'),
-  ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a13', 'Apartment', 'Fully independent private flats'),
-  ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a14', 'Independent House', 'Spacious independent houses'),
-  ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a15', 'Villa', 'Luxe private estate stays'),
-  ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a16', 'Private Room', 'Private room in shared homes'),
-  ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a17', 'Shared Room', 'Affordable shared flatshares'),
-  ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a18', 'Service Apartment', 'Fully-serviced corporate stays'),
-  ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a19', 'Co-living', 'Social hubs for young professionals'),
+INSERT INTO public.accommodation_types (id, name, slug, description, icon, display_order, is_active) VALUES
+  ('147a6d96-47d0-428a-b541-6d83a82def8c', 'Paying Guest', 'pg', 'Shared paying guest accommodation with optional meals and managed services.', 'users', 10, true),
+  ('24aac50b-0999-49d2-9487-07c1b5068283', 'Hostel', 'hostel', 'Shared hostel accommodation for students and working professionals.', 'bed-double', 20, true),
+  ('21cc18a1-ba31-4ede-89f4-2c8c15a53122', 'Apartment', 'apartment', 'Independent apartments and flats for long-term living.', 'building-2', 40, true),
+  ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a18', 'Serviced Apartment', 'serviced-apartment', 'Fully furnished apartments with inclusive management and utilities.', 'hotel', 50, true),
+  ('2c6e8ec1-7fda-4dee-8583-457ae38e584c', 'Co-living', 'coliving', 'Professionally managed shared living spaces with community amenities.', 'users-round', 60, true),
+  ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a14', 'Independent House', 'house', 'Spacious independent houses and villas for complete privacy.', 'home', 70, true),
+  ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a15', 'Villa', 'villa', 'Premium, spacious private estates for luxury long-term living.', 'palmtree', 80, true),
+  ('f827d6f2-65d7-4b4b-b783-8c89668756c3', 'Penthouse', 'penthouse', 'Luxury top-floor apartment with panoramic views', 'building', 90, true)
 
-ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description;
+ON CONFLICT (id) DO UPDATE SET 
+  name = EXCLUDED.name, 
+  slug = EXCLUDED.slug,
+  description = EXCLUDED.description,
+  icon = EXCLUDED.icon,
+  display_order = EXCLUDED.display_order;
 
 -- 2. Insert Amenities
--- Essentials
-INSERT INTO public.amenities (id, name, icon) VALUES
-  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b11', 'Wi-Fi', 'wifi'),
-  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b12', 'Electricity', 'zap'),
-  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b13', 'Water', 'droplets')
-ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, icon = EXCLUDED.icon;
-
--- Comfort
-INSERT INTO public.amenities (id, name, icon) VALUES
-  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b14', 'AC', 'snowflake'),
-  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b15', 'Geyser', 'thermometer'),
-  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b16', 'Refrigerator', 'refrigerator')
-ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, icon = EXCLUDED.icon;
-
--- Services
-INSERT INTO public.amenities (id, name, icon) VALUES
-  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b17', 'Laundry', 'shirt'),
-  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b18', 'Housekeeping', 'broom'),
-  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b19', 'Meals', 'utensils')
-ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, icon = EXCLUDED.icon;
-
--- Security
-INSERT INTO public.amenities (id, name, icon) VALUES
-  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b20', 'CCTV', 'camera'),
-  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b21', 'Security Guard', 'shield'),
-  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b22', 'Biometric Entry', 'fingerprint')
-ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, icon = EXCLUDED.icon;
-
--- Parking
-INSERT INTO public.amenities (id, name, icon) VALUES
-  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b23', 'Bike Parking', 'bike'),
-  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b24', 'Car Parking', 'car')
-ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, icon = EXCLUDED.icon;
-
-
-INSERT INTO public.amenities (id, name, icon) VALUES 
-  ('911cfcae-3f3a-4638-a375-db160ececf88', 'Air Conditioning', 'snowflake'),
-  ('e0b3bf05-9d7e-40c4-8566-e6402681f486', 'Kitchen', 'kitchen'),
-  ('347b67d2-2cbb-4b77-a855-26ad3435fb73', 'Parking', 'parking'),
-  ('ffd25b7b-7ed3-43bf-aea6-2aa8dbcf1326', 'Pool', 'pool'),
-  ('e85bbea1-df7e-47af-986e-52c6f39e2d26', 'Gym', 'dumbbell'),
-  ('c2d5152e-fd3d-4ff7-b7f0-1cdf7af7f22e', 'WiFi', 'wifi')
-ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, icon = EXCLUDED.icon;
+INSERT INTO public.amenities (id, slug, name, icon, description) VALUES
+  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b14', 'ac', 'AC', 'snowflake', 'Individual air conditioning unit for temperature-controlled comfort'),
+  ('911cfcae-3f3a-4638-a375-db160ececf88', 'air-conditioning', 'Air Conditioning', 'snowflake', 'Centralized or individual air conditioning system throughout the living spaces'),
+  ('a7e555fa-4355-42d4-b771-74683e20de69', 'balcony', 'Balcony', 'sun', 'Private open-air balcony offering natural light and outdoor seating'),
+  ('61893515-ae4c-4d5c-816e-a9362637774b', 'bbq-area', 'BBQ Area', 'flame', 'Designated outdoor barbecue cooking area for social gatherings'),
+  ('be6cd78c-da65-48a3-9623-182dfd0cf360', 'bed', 'Bed', 'bed', 'Sturdy bed frame equipped with a comfortable, quality mattress'),
+  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b23', 'bike-parking', 'Bike Parking', 'bike', 'Secure on-site covered two-wheeler parking'),
+  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b22', 'biometric-entry', 'Biometric Entry', 'fingerprint', 'Keyless fingerprint or smart biometric access for enhanced resident security'),
+  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b24', 'car-parking', 'Car Parking', 'car', 'Designated parking slot for cars within the gated premises'),
+  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b20', 'cctv', 'CCTV', 'shield', '24/7 common area video surveillance monitoring for resident safety'),
+  ('5417bf3b-a8af-4b4e-9c25-1c3762a26334', 'common-room', 'Common Room', 'users', 'Shared community lounge for socializing, reading, and relaxing'),
+  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b12', 'electricity', 'Electricity', 'zap', 'Reliable 24-hour grid electrical connection included or sub-metered'),
+  ('dbf2738f-2a14-4195-b23d-62cea709774b', 'fire-alarm', 'Fire Alarm', 'bell', 'Integrated smoke detectors and emergency fire alert system'),
+  ('a4c3cb40-766b-4775-bdd2-01a63408f4ad', 'garden', 'Garden', 'trees', 'Lush landscaped green garden area on the property ground'),
+  ('063a5337-40b4-421e-b48e-3c55435c7b4a', 'gas-stove', 'Gas Stove', 'flame', 'Cooking cooktop with secure gas connection for daily meal prep'),
+  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b15', 'geyser', 'Geyser', 'thermometer', 'Instant electric or solar water heater for warm showers at any time'),
+  ('e85bbea1-df7e-47af-986e-52c6f39e2d26', 'gym', 'Gym', 'dumbbell', 'On-site fitness facility equipped with free weights and workout cardio machines'),
+  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b18', 'housekeeping', 'Housekeeping', 'sparkles', 'Professional room cleaning and common facility housekeeping service'),
+  ('e0b3bf05-9d7e-40c4-8566-e6402681f486', 'kitchen', 'Kitchen', 'kitchen', 'Access to a well-equipped shared or private cooking kitchen'),
+  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b17', 'laundry', 'Laundry', 'shirt', 'Washing machines and drying amenities available on-site for daily laundry'),
+  ('d5316f00-a375-4bb2-8251-1500461bcba5', 'lift', 'Lift', 'arrow-up-down', 'Modern building elevator providing step-free access to all floor levels'),
+  ('ae9c1663-7a71-4e25-939f-5ba836638b3c', 'lockers', 'Lockers', 'lock', 'Personal secure lockable storage compartments for valuables'),
+  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b19', 'meals', 'Meals', 'utensils', 'Nutritious daily breakfast, lunch, and dinner meal service included or optional'),
+  ('dc002ec2-8f06-4394-b23c-299c7ea87cf2', 'mess', 'Mess', 'utensils', 'Dedicated communal dining hall served with prepared home-style food'),
+  ('695b7d1b-50cd-4827-bbc3-a5840b6604a6', 'microwave', 'Microwave', 'microwave', 'Shared or private microwave appliance for quick reheating and cooking'),
+  ('347b67d2-2cbb-4b77-a855-26ad3435fb73', 'parking', 'Parking', 'parking', 'Safe residential vehicular parking available on or directly beside property'),
+  ('c12de6da-5ab8-4de0-b783-e9967c0aa087', 'pet-friendly', 'Pet Friendly', 'heart', 'Accommodates well-behaved companion domestic pets'),
+  ('ffd25b7b-7ed3-43bf-aea6-2aa8dbcf1326', 'pool', 'Pool', 'waves', 'Relaxing recreational swimming pool accessible to community residents'),
+  ('56ea708d-2211-4727-be02-8dd3867c0c16', 'power-backup', 'Power Backup', 'zap', 'Uninterrupted generator or inverter backup power during grid outages'),
+  ('460d474f-4b90-4be8-acf2-7c18be016c76', 'private-parking', 'Private Parking', 'car', 'Dedicated personal parking space reserved exclusively for this listing'),
+  ('651ca3d4-7149-4351-9921-28aa51726114', 'reception', 'Reception', 'user-check', 'On-site help desk or front desk concierge for mail and visitor support'),
+  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b16', 'refrigerator', 'Refrigerator', 'refrigerator', 'Cold storage food preservation refrigerator provided in kitchen or room'),
+  ('457d57b6-8de8-4fe0-bf0c-f40325163c64', 'ro-water', 'RO Water', 'droplets', 'Filtered Reverse Osmosis drinking water purified on location'),
+  ('0baca21b-d280-4fc4-9e90-eab66bbded46', 'security', 'Security', 'shield-check', 'Gated premises featuring rigorous security measures and monitored ingress'),
+  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b21', 'security-guard', 'Security Guard', 'shield', 'Trained physical security personnel patrolling the property around the clock'),
+  ('31482418-e3aa-4fc0-8a31-97a8d4e314b4', 'study-area', 'Study Area', 'book-open', 'Quiet dedicated co-working and study atmosphere with adequate reading lighting'),
+  ('e2da738d-cc56-4fca-b4c9-07480b68c52d', 'study-table', 'Study Table', 'table', 'Private work desk and ergonomic study chair furnished inside the bedroom'),
+  ('6a8f3e6b-ee6c-4c1b-b84b-433f6a34bcfd', 'terrace', 'Terrace', 'sun', 'Open rooftop communal terrace overlooking neighborhood surroundings'),
+  ('84cab1c3-4d43-4aba-bfbe-de3814f2ad22', 'wardrobe', 'Wardrobe', 'archive', 'Spacious storage cupboard or closet with clothes hanging rail and shelving'),
+  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b13', 'water', 'Water', 'droplets', 'Dependable around-the-clock municipal or borewell utility water supply'),
+  ('49fee734-7dfc-45d1-a812-b2c138cfa5ec', 'wheelchair-access', 'Wheelchair Access', 'accessibility', 'Step-free level access ramps and widened doorways for mobility support'),
+  ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b11', 'wi-fi', 'Wi-Fi', 'wifi', 'High-speed wireless internet broadband connectivity for work and entertainment'),
+  ('c2d5152e-fd3d-4ff7-b7f0-1cdf7af7f22e', 'wifi', 'WiFi', 'wifi', 'Fast wireless internet coverage across individual rooms and shared facilities')
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, slug = EXCLUDED.slug, icon = EXCLUDED.icon, description = EXCLUDED.description;
 
 -- 3. Seed Country: India
 INSERT INTO public.countries (external_code, name, iso2, iso3, currency_code, phone_code, timezone_default)
@@ -2241,7 +2290,7 @@ BEGIN
         (ka_id, 'IN-BLR', 'Bangalore', '{"Bengaluru"}', 'bangalore', 12.9716, 77.5946, 'Asia/Kolkata', true, true, true, 1, 'The Silicon Valley of India, known for its pleasant weather and tech parks.'),
         (mh_id, 'IN-BOM', 'Mumbai', '{"Bombay"}', 'mumbai', 19.0760, 72.8777, 'Asia/Kolkata', true, true, true, 2, 'The financial capital of India, famous for its bustling lifestyle and Bollywood.'),
         (dl_id, 'IN-DEL', 'New Delhi', '{"Delhi"}', 'new-delhi', 28.6139, 77.2090, 'Asia/Kolkata', true, true, true, 3, 'The capital city, blending historical monuments with vibrant culture.'),
-        (tg_id, 'IN-HYD', 'Hyderabad', '{}', 'hyderabad', 17.3850, 78.4867, 'Asia/Kolkata', true, true, true, 4, 'The City of Pearls, famous for its rich history, IT industry, and biryani.'),
+        (tg_id, 'IN-HYD', 'Hyderabad', '{"hydarabad","Hyd"}', 'hyderabad', 17.3850, 78.4867, 'Asia/Kolkata', true, true, true, 4, 'The City of Pearls, famous for its rich history, IT industry, and biryani.'),
         (mh_id, 'IN-PUN', 'Pune', '{"Poona"}', 'pune', 18.5204, 73.8567, 'Asia/Kolkata', false, true, true, 5, 'The Oxford of the East, a vibrant city known for education and IT hubs.'),
         (tn_id, 'IN-MAA', 'Chennai', '{"Madras"}', 'chennai', 13.0827, 80.2707, 'Asia/Kolkata', true, true, true, 6, 'The cultural capital of South India, known for its temples and beautiful beaches.'),
         (wb_id, 'IN-CCU', 'Kolkata', '{"Calcutta"}', 'kolkata', 22.5726, 88.3639, 'Asia/Kolkata', true, true, true, 7, 'The City of Joy, renowned for its literature, arts, and colonial architecture.'),
@@ -2254,28 +2303,25 @@ BEGIN
         (kl_id, 'IN-COK', 'Kochi', '{"Cochin"}', 'kochi', 9.9312, 76.2673, 'Asia/Kolkata', false, true, true, 14, 'The Queen of the Arabian Sea, a vibrant port city with a rich history.'),
         (mp_id, 'IN-IDR', 'Indore', '{}', 'indore', 22.7196, 75.8577, 'Asia/Kolkata', false, true, true, 15, 'The cleanest city in India, known for its food culture and heritage.'),
         (ap_id, 'IN-AP-VIZAG', 'Visakhapatnam', '{"Vizag"}', 'visakhapatnam', 17.6868, 83.2185, 'Asia/Kolkata', true, true, true, 16, 'The Jewel of the East Coast, known for its pristine beaches and natural harbor.'),
-        (ap_id, 'IN-AP-VIJA', 'Vijayawada', '{}', 'vijayawada', 16.5062, 80.6480, 'Asia/Kolkata', false, false, true, 17, 'The commercial hub of Andhra Pradesh, situated on the banks of the Krishna River.'),
+        (ap_id, 'IN-AP-VIJA', 'Vijayawada', '{"Bezawada"}', 'vijayawada', 16.5062, 80.6480, 'Asia/Kolkata', false, false, true, 17, 'The commercial hub of Andhra Pradesh, situated on the banks of the Krishna River.'),
         (ap_id, 'IN-AP-GUNT', 'Guntur', '{}', 'guntur', 16.3067, 80.4365, 'Asia/Kolkata', false, false, true, 18, 'A major educational and commercial center, known for its chili exports.'),
         (tg_id, 'IN-TG-WARA', 'Warangal', '{}', 'warangal', 17.9815, 79.5982, 'Asia/Kolkata', false, false, true, 19, 'A historical city known for its ancient temples and monuments.'),
-        (ap_id, 'IN-AP-TIRU', 'Tirupati', '{}', 'tirupati', 13.6288, 79.4192, 'Asia/Kolkata', false, false, true, 20, 'The spiritual capital of Andhra Pradesh, home to the sacred Venkateswara Temple.'),
+        (ap_id, 'IN-AP-TIRU', 'Tirupati', '{"Chittoor"}', 'tirupati', 13.6288, 79.4192, 'Asia/Kolkata', false, false, true, 20, 'The spiritual capital of Andhra Pradesh, home to the sacred Venkateswara Temple.'),
         (ap_id, 'IN-AP-NELL', 'Nellore', '{}', 'nellore', 14.4426, 79.9865, 'Asia/Kolkata', false, false, true, 21, 'A coastal city known for its agriculture, aquaculture, and ancient temples.'),
         (ap_id, 'IN-AP-RAJA', 'Rajahmundry', '{}', 'rajahmundry', 17.0005, 81.8040, 'Asia/Kolkata', false, false, true, 22, 'The cultural capital of Andhra Pradesh, located on the banks of the Godavari River.'),
         (ap_id, 'IN-AP-KAKI', 'Kakinada', '{}', 'kakinada', 16.9891, 82.2475, 'Asia/Kolkata', false, false, true, 23, 'A major port city known for its peaceful environment and local cuisine.')
-    ON CONFLICT (external_code) DO NOTHING;
+    ON CONFLICT (external_code) DO UPDATE SET search_aliases = EXCLUDED.search_aliases;
 END $$;
 
 -- 6. Seed Property Types Reference Data
 INSERT INTO public.property_types (id, name, slug, description, icon, display_order) VALUES
-    (1, 'Apartment', 'apartment', 'Independent residential apartment or flat', 'building', 1),
-    (2, 'Villa', 'villa', 'Private villa or upscale independent residence', 'home', 2),
+    (1, 'Apartment', 'apartment', 'Independent residential apartment or flat', 'building-2', 1),
+    (2, 'Villa', 'villa', 'Private villa or upscale independent residence', 'palmtree', 2),
     (3, 'House', 'house', 'Independent residential house or bungalow', 'home', 3),
     (4, 'PG', 'pg', 'Paying guest accommodation with shared amenities', 'users', 4),
     (5, 'Hostel', 'hostel', 'Student or youth hostel dormitory and living spaces', 'bed-double', 5),
-    (6, 'Hotel', 'hotel', 'Serviced room inside a hospitality establishment', 'building-2', 6),
-    (7, 'Cabin', 'cabin', 'Private cabin or standalone natural retreat', 'tent', 7),
     (8, 'Dormitory', 'dormitory', 'Shared sleeping quarters with common living spaces', 'bed', 8),
-    (9, 'Resort', 'resort', 'Recreational residential resort suite', 'palmtree', 9),
-    (10, 'Farmhouse', 'farmhouse', 'Spacious agricultural estate or weekend farmhouse', 'trees', 10)
+    (11, 'Penthouse', 'penthouse', 'Luxury top-floor apartment with panoramic views', 'building', 11)
 ON CONFLICT (id) DO UPDATE SET slug = EXCLUDED.slug, icon = EXCLUDED.icon;
 
 -- 7. Seed Amenity Categories Reference Data

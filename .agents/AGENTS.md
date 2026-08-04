@@ -62,7 +62,7 @@ The following structural elements are frozen and may not be changed:
 # Database & SQL Synchronization Rule (MANDATORY)
 
 Whenever modifying database schemas, migrations, functions, or reference data, you MUST always update the local SQL files (`supabase/schema/*.sql` and migrations) and **immediately execute** the corresponding changes against the remote live Supabase database using Supabase MCP.
-**Localhost SQL and database changes must take effect immediately. You are never allowed to delay updating the database.** Never permit local SQL definitions to drift from the active remote database schema.
+**Local SQL and database changes must take effect immediately. You are never allowed to delay updating the database.** Never permit local SQL definitions to drift from the active remote database schema.
 
 # Resident Experience Rule & Listings Aggregate Freeze
 
