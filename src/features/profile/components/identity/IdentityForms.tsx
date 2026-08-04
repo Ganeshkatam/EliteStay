@@ -110,9 +110,12 @@ function InlineForm<TSchema extends z.ZodType<FieldValues>>({
               <span className="text-slate-500">Saving...</span>
             </>
           )}
-          {!isPending && isDirty && !error && (
-            <span className="text-green-600">Changes saved</span>
-          )}
+          {!isPending &&
+            isDirty &&
+            !error &&
+            Object.keys(errors).length === 0 && (
+              <span className="text-green-600">Changes saved</span>
+            )}
         </div>
         <Button
           type="button"
@@ -350,129 +353,6 @@ export function BioForm({
   );
 }
 
-export function UsernameForm({
-  profile,
-  close,
-}: {
-  profile: ExtendedProfile;
-  close?: () => void;
-}) {
-  return (
-    <InlineForm
-      schema={z.object({
-        username: z
-          .string()
-          .min(3, 'Username must be at least 3 characters')
-          .max(30, 'Username must be less than 30 characters')
-          .regex(
-            /^[a-z0-9_]+$/,
-            'Username can only contain lowercase letters, numbers, and underscores'
-          )
-          .refine(
-            (val) =>
-              ![
-                'admin',
-                'root',
-                'support',
-                'help',
-                'host',
-                'users',
-                'login',
-                'signup',
-                'settings',
-                'notifications',
-                'messages',
-                'profile',
-                'api',
-              ].includes(val ?? ''),
-            'This username is reserved'
-          )
-          .optional()
-          .nullable(),
-      })}
-      defaultValues={{ username: profile.username || '' }}
-      onSubmitData={(data) =>
-        updateProfile(data as unknown as Parameters<typeof updateProfile>[0])
-      }
-      close={close}
-    >
-      {({ register, errors }) => (
-        <div>
-          <label className="block text-sm font-medium mb-1">Username</label>
-          <div className="flex">
-            <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-input bg-slate-50 text-slate-500 text-sm">
-              elitestay.com/u/
-            </span>
-            <Input
-              {...register('username')}
-              placeholder="john_smith"
-              className="rounded-l-none"
-            />
-          </div>
-          {errors.username && (
-            <p className="mt-1 text-sm text-destructive">
-              {errors.username.message}
-            </p>
-          )}
-        </div>
-      )}
-    </InlineForm>
-  );
-}
-
-export function TimezoneForm({
-  profile,
-  close,
-}: {
-  profile: ExtendedProfile;
-  close?: () => void;
-}) {
-  // A minimal list of major IANA timezones for V1
-  const TIMEZONES = [
-    'UTC',
-    'America/New_York',
-    'America/Chicago',
-    'America/Denver',
-    'America/Los_Angeles',
-    'Europe/London',
-    'Europe/Paris',
-    'Asia/Dubai',
-    'Asia/Kolkata',
-    'Asia/Singapore',
-    'Asia/Tokyo',
-    'Australia/Sydney',
-    'Pacific/Auckland',
-  ];
-
-  return (
-    <InlineForm
-      schema={z.object({ timezone: z.string().optional().nullable() })}
-      defaultValues={{ timezone: profile.timezone || '' }}
-      onSubmitData={(data) =>
-        updateProfile(data as unknown as Parameters<typeof updateProfile>[0])
-      }
-      close={close}
-    >
-      {({ register }) => (
-        <div>
-          <label className="block text-sm font-medium mb-1">Timezone</label>
-          <select
-            {...register('timezone')}
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-          >
-            <option value="">Select Timezone</option>
-            {TIMEZONES.map((tz) => (
-              <option key={tz} value={tz}>
-                {tz}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-    </InlineForm>
-  );
-}
-
 // ---- Contact Forms ---- //
 
 export function PhoneForm({
@@ -485,12 +365,7 @@ export function PhoneForm({
   return (
     <InlineForm
       schema={z.object({
-        phone: z
-          .string()
-          .regex(/^\+91\d{10}$/, 'Phone must be in format +91XXXXXXXXXX')
-          .optional()
-          .nullable()
-          .or(z.literal('')),
+        phone: z.string().regex(/^\d{10}$/, 'Phone must be exactly 10 digits'),
       })}
       defaultValues={{ phone: profile.phone || '' }}
       onSubmitData={(data) =>
@@ -501,7 +376,23 @@ export function PhoneForm({
       {({ register, errors }) => (
         <div>
           <label className="block text-sm font-medium mb-1">Phone Number</label>
-          <Input {...register('phone')} placeholder="+91XXXXXXXXXX" />
+          <div className="flex">
+            <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-input bg-slate-50 text-slate-500 text-sm">
+              +91
+            </span>
+            <Input
+              {...register('phone')}
+              placeholder="9876543210"
+              className="rounded-l-none"
+              maxLength={10}
+              onInput={(e) => {
+                e.currentTarget.value = e.currentTarget.value.replace(
+                  /\D/g,
+                  ''
+                );
+              }}
+            />
+          </div>
           {errors.phone && (
             <p className="mt-1 text-sm text-destructive">
               {errors.phone.message}

@@ -3,12 +3,7 @@ import { z } from 'zod';
 export const profileSchema = z.object({
   full_name: z.string().min(2, 'Name must be at least 2 characters'),
   display_name: z.string().optional().nullable(),
-  phone: z
-    .string()
-    .regex(/^\+91\d{10}$/, 'Phone must be in format +91XXXXXXXXXX')
-    .optional()
-    .nullable()
-    .or(z.literal('')),
+  phone: z.string().regex(/^\d{10}$/, 'Phone must be exactly 10 digits'),
   bio: z
     .string()
     .max(500, 'Bio must be less than 500 characters')
@@ -16,37 +11,7 @@ export const profileSchema = z.object({
     .nullable(),
   date_of_birth: z.string().optional().nullable(),
   gender: z.enum(['male', 'female']).optional().nullable().or(z.literal('')),
-  city: z.string().optional().nullable(),
   occupation: z.string().optional().nullable(),
-  username: z
-    .string()
-    .min(3, 'Username must be at least 3 characters')
-    .max(30, 'Username must be less than 30 characters')
-    .regex(
-      /^[a-z0-9_]+$/,
-      'Username can only contain lowercase letters, numbers, and underscores'
-    )
-    .refine(
-      (val) =>
-        ![
-          'admin',
-          'root',
-          'support',
-          'help',
-          'host',
-          'users',
-          'login',
-          'signup',
-          'settings',
-          'notifications',
-          'messages',
-          'profile',
-          'api',
-        ].includes(val ?? ''),
-      'This username is reserved'
-    )
-    .optional()
-    .nullable(),
   timezone: z.string().optional().nullable(),
 });
 

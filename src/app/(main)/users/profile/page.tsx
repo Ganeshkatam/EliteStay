@@ -11,10 +11,10 @@ import {
   OccupationForm,
   BioForm,
   PhoneForm,
-  UsernameForm,
 } from '@/features/profile/components/identity/IdentityForms';
 import { ContentPanel } from '@/features/dashboard/components/ContentPanel';
 import { PageCanvas } from '@/features/dashboard/components/PageCanvas';
+import { Lock } from 'lucide-react';
 
 export default async function ProfilePage() {
   const supabase = await createClient();
@@ -70,9 +70,20 @@ export default async function ProfilePage() {
                 >
                   <ProfileField
                     label="Username"
-                    value={profile.username ? `@${profile.username}` : ''}
+                    value={
+                      <div>
+                        <div>
+                          {profile.username ? `@${profile.username}` : ''}
+                        </div>
+                        <div className="text-xs text-slate-500 flex items-center gap-1.5 mt-1.5">
+                          <Lock className="w-3.5 h-3.5" /> This username is
+                          automatically assigned and cannot be changed.
+                        </div>
+                      </div>
+                    }
+                    isEditable={false}
                   >
-                    <UsernameForm profile={profile} />
+                    <div />
                   </ProfileField>
                   <ProfileField
                     label="Display Name"
@@ -147,7 +158,10 @@ export default async function ProfilePage() {
                   >
                     <div />
                   </ProfileField>
-                  <ProfileField label="Phone Number" value={profile.phone}>
+                  <ProfileField
+                    label="Phone Number"
+                    value={profile.phone ? `+91 ${profile.phone}` : ''}
+                  >
                     <PhoneForm profile={profile} />
                   </ProfileField>
                 </ProfileSection>

@@ -324,6 +324,7 @@ export type Database = {
           is_featured: boolean;
           is_metro: boolean;
           latitude: number | null;
+          listing_count: number;
           longitude: number | null;
           name: string;
           search_aliases: string[] | null;
@@ -344,6 +345,7 @@ export type Database = {
           is_featured?: boolean;
           is_metro?: boolean;
           latitude?: number | null;
+          listing_count?: number;
           longitude?: number | null;
           name: string;
           search_aliases?: string[] | null;
@@ -364,6 +366,7 @@ export type Database = {
           is_featured?: boolean;
           is_metro?: boolean;
           latitude?: number | null;
+          listing_count?: number;
           longitude?: number | null;
           name?: string;
           search_aliases?: string[] | null;
@@ -386,30 +389,39 @@ export type Database = {
       conversations: {
         Row: {
           booking_id: string | null;
-          closed_at: string | null;
           created_at: string;
-          guest_last_read_at: string | null;
-          host_last_read_at: string | null;
+          guest_id: string;
+          host_profile_id: string;
           id: string;
+          listing_id: string | null;
+          status: Database['public']['Enums']['conversation_status'];
           stay_id: string | null;
+          type: Database['public']['Enums']['conversation_type'];
+          updated_at: string;
         };
         Insert: {
           booking_id?: string | null;
-          closed_at?: string | null;
           created_at?: string;
-          guest_last_read_at?: string | null;
-          host_last_read_at?: string | null;
+          guest_id: string;
+          host_profile_id: string;
           id?: string;
+          listing_id?: string | null;
+          status?: Database['public']['Enums']['conversation_status'];
           stay_id?: string | null;
+          type?: Database['public']['Enums']['conversation_type'];
+          updated_at?: string;
         };
         Update: {
           booking_id?: string | null;
-          closed_at?: string | null;
           created_at?: string;
-          guest_last_read_at?: string | null;
-          host_last_read_at?: string | null;
+          guest_id?: string;
+          host_profile_id?: string;
           id?: string;
+          listing_id?: string | null;
+          status?: Database['public']['Enums']['conversation_status'];
           stay_id?: string | null;
+          type?: Database['public']['Enums']['conversation_type'];
+          updated_at?: string;
         };
         Relationships: [
           {
@@ -417,6 +429,27 @@ export type Database = {
             columns: ['booking_id'];
             isOneToOne: false;
             referencedRelation: 'bookings';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'conversations_guest_id_fkey';
+            columns: ['guest_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'conversations_host_profile_id_fkey';
+            columns: ['host_profile_id'];
+            isOneToOne: false;
+            referencedRelation: 'host_profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'conversations_listing_id_fkey';
+            columns: ['listing_id'];
+            isOneToOne: false;
+            referencedRelation: 'listings';
             referencedColumns: ['id'];
           },
           {
@@ -557,6 +590,154 @@ export type Database = {
         };
         Relationships: [];
       };
+      host_profiles: {
+        Row: {
+          agreed_to_policies_at: string | null;
+          bank_account_id: string | null;
+          bank_account_last4: string | null;
+          bank_name: string | null;
+          business_name: string | null;
+          business_type: Database['public']['Enums']['host_business_type'];
+          created_at: string;
+          id: string;
+          identity_verified_at: string | null;
+          primary_accommodation_type_id: string | null;
+          status: Database['public']['Enums']['host_status'];
+          support_email: string | null;
+          support_phone: string | null;
+          tax_id_last4: string | null;
+          tax_id_type: string | null;
+          tax_profile_id: string | null;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          agreed_to_policies_at?: string | null;
+          bank_account_id?: string | null;
+          bank_account_last4?: string | null;
+          bank_name?: string | null;
+          business_name?: string | null;
+          business_type?: Database['public']['Enums']['host_business_type'];
+          created_at?: string;
+          id?: string;
+          identity_verified_at?: string | null;
+          primary_accommodation_type_id?: string | null;
+          status?: Database['public']['Enums']['host_status'];
+          support_email?: string | null;
+          support_phone?: string | null;
+          tax_id_last4?: string | null;
+          tax_id_type?: string | null;
+          tax_profile_id?: string | null;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          agreed_to_policies_at?: string | null;
+          bank_account_id?: string | null;
+          bank_account_last4?: string | null;
+          bank_name?: string | null;
+          business_name?: string | null;
+          business_type?: Database['public']['Enums']['host_business_type'];
+          created_at?: string;
+          id?: string;
+          identity_verified_at?: string | null;
+          primary_accommodation_type_id?: string | null;
+          status?: Database['public']['Enums']['host_status'];
+          support_email?: string | null;
+          support_phone?: string | null;
+          tax_id_last4?: string | null;
+          tax_id_type?: string | null;
+          tax_profile_id?: string | null;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'host_profiles_primary_accommodation_type_id_fkey';
+            columns: ['primary_accommodation_type_id'];
+            isOneToOne: false;
+            referencedRelation: 'accommodation_types';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      host_settings: {
+        Row: {
+          allow_direct_messages: boolean;
+          auto_accept_booking_requests: boolean;
+          created_at: string;
+          currency: string;
+          host_profile_id: string;
+          language: string;
+          notify_email_bookings: boolean;
+          notify_email_marketing: boolean;
+          notify_email_messages: boolean;
+          notify_email_system: boolean;
+          notify_push_bookings: boolean;
+          notify_push_marketing: boolean;
+          notify_push_messages: boolean;
+          notify_push_system: boolean;
+          notify_sms_bookings: boolean;
+          preferences: Json;
+          show_profile_publicly: boolean;
+          timezone: string;
+          updated_at: string;
+          week_start_day: number;
+        };
+        Insert: {
+          allow_direct_messages?: boolean;
+          auto_accept_booking_requests?: boolean;
+          created_at?: string;
+          currency?: string;
+          host_profile_id: string;
+          language?: string;
+          notify_email_bookings?: boolean;
+          notify_email_marketing?: boolean;
+          notify_email_messages?: boolean;
+          notify_email_system?: boolean;
+          notify_push_bookings?: boolean;
+          notify_push_marketing?: boolean;
+          notify_push_messages?: boolean;
+          notify_push_system?: boolean;
+          notify_sms_bookings?: boolean;
+          preferences?: Json;
+          show_profile_publicly?: boolean;
+          timezone?: string;
+          updated_at?: string;
+          week_start_day?: number;
+        };
+        Update: {
+          allow_direct_messages?: boolean;
+          auto_accept_booking_requests?: boolean;
+          created_at?: string;
+          currency?: string;
+          host_profile_id?: string;
+          language?: string;
+          notify_email_bookings?: boolean;
+          notify_email_marketing?: boolean;
+          notify_email_messages?: boolean;
+          notify_email_system?: boolean;
+          notify_push_bookings?: boolean;
+          notify_push_marketing?: boolean;
+          notify_push_messages?: boolean;
+          notify_push_system?: boolean;
+          notify_sms_bookings?: boolean;
+          preferences?: Json;
+          show_profile_publicly?: boolean;
+          timezone?: string;
+          updated_at?: string;
+          week_start_day?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'host_settings_host_profile_id_fkey';
+            columns: ['host_profile_id'];
+            isOneToOne: true;
+            referencedRelation: 'host_profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       ical_feeds: {
         Row: {
           created_at: string;
@@ -682,41 +863,6 @@ export type Database = {
             foreignKeyName: 'listing_availability_listing_id_fkey';
             columns: ['listing_id'];
             isOneToOne: false;
-            referencedRelation: 'listings';
-            referencedColumns: ['id'];
-          },
-        ];
-      };
-      listing_build_progress: {
-        Row: {
-          created_at: string;
-          last_step: string;
-          listing_id: string;
-          percent_complete: number;
-          step_completed: string | null;
-          updated_at: string;
-        };
-        Insert: {
-          created_at?: string;
-          last_step?: string;
-          listing_id: string;
-          percent_complete?: number;
-          step_completed?: string | null;
-          updated_at?: string;
-        };
-        Update: {
-          created_at?: string;
-          last_step?: string;
-          listing_id?: string;
-          percent_complete?: number;
-          step_completed?: string | null;
-          updated_at?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: 'listing_build_progress_listing_id_fkey';
-            columns: ['listing_id'];
-            isOneToOne: true;
             referencedRelation: 'listings';
             referencedColumns: ['id'];
           },
@@ -1132,7 +1278,6 @@ export type Database = {
           latitude: number | null;
           longitude: number | null;
           name: string;
-          population: number | null;
           search_rank: number;
           slug: string;
           updated_at: string;
@@ -1147,7 +1292,6 @@ export type Database = {
           latitude?: number | null;
           longitude?: number | null;
           name: string;
-          population?: number | null;
           search_rank?: number;
           slug: string;
           updated_at?: string;
@@ -1162,7 +1306,6 @@ export type Database = {
           latitude?: number | null;
           longitude?: number | null;
           name?: string;
-          population?: number | null;
           search_rank?: number;
           slug?: string;
           updated_at?: string;
@@ -1183,6 +1326,7 @@ export type Database = {
           conversation_id: string;
           created_at: string;
           id: string;
+          read_at: string | null;
           sender_id: string | null;
         };
         Insert: {
@@ -1190,6 +1334,7 @@ export type Database = {
           conversation_id: string;
           created_at?: string;
           id?: string;
+          read_at?: string | null;
           sender_id?: string | null;
         };
         Update: {
@@ -1197,6 +1342,7 @@ export type Database = {
           conversation_id?: string;
           created_at?: string;
           id?: string;
+          read_at?: string | null;
           sender_id?: string | null;
         };
         Relationships: [
@@ -1255,9 +1401,8 @@ export type Database = {
           occupation: Database['public']['Enums']['user_occupation'] | null;
           phone: string | null;
           role: Database['public']['Enums']['user_role'];
-          timezone: string | null;
           updated_at: string;
-          username: string | null;
+          username: string;
         };
         Insert: {
           avatar_storage_path?: string | null;
@@ -1271,9 +1416,8 @@ export type Database = {
           occupation?: Database['public']['Enums']['user_occupation'] | null;
           phone?: string | null;
           role?: Database['public']['Enums']['user_role'];
-          timezone?: string | null;
           updated_at?: string;
-          username?: string | null;
+          username: string;
         };
         Update: {
           avatar_storage_path?: string | null;
@@ -1287,9 +1431,8 @@ export type Database = {
           occupation?: Database['public']['Enums']['user_occupation'] | null;
           phone?: string | null;
           role?: Database['public']['Enums']['user_role'];
-          timezone?: string | null;
           updated_at?: string;
-          username?: string | null;
+          username?: string;
         };
         Relationships: [];
       };
@@ -1600,6 +1743,10 @@ export type Database = {
     };
     Functions: {
       delete_user_account: { Args: never; Returns: undefined };
+      generate_unique_username: {
+        Args: { raw_meta_data: Json; user_email: string };
+        Returns: string;
+      };
       get_listing_detail: { Args: { p_public_id: string }; Returns: Json };
       is_admin: { Args: never; Returns: boolean };
       is_host: { Args: never; Returns: boolean };
@@ -1680,9 +1827,19 @@ export type Database = {
       billing_period: 'day' | 'week' | 'month' | 'semester' | 'year';
       booking_status:
         'pending' | 'approved' | 'rejected' | 'cancelled' | 'expired';
+      conversation_status: 'OPEN' | 'CLOSED' | 'ARCHIVED' | 'BLOCKED';
+      conversation_type: 'INQUIRY' | 'BOOKING' | 'STAY' | 'SUPPORT' | 'SYSTEM';
       furnishing: 'unfurnished' | 'semi_furnished' | 'fully_furnished';
       gender: 'male' | 'female';
       gender_preference: 'any' | 'male' | 'female';
+      host_business_type: 'individual' | 'company' | 'property_manager';
+      host_status:
+        | 'NOT_STARTED'
+        | 'ONBOARDING'
+        | 'READY'
+        | 'ACTIVE'
+        | 'PAUSED'
+        | 'SUSPENDED';
       listing_status:
         | 'draft'
         | 'ready'
@@ -1850,9 +2007,20 @@ export const Constants = {
         'cancelled',
         'expired',
       ],
+      conversation_status: ['OPEN', 'CLOSED', 'ARCHIVED', 'BLOCKED'],
+      conversation_type: ['INQUIRY', 'BOOKING', 'STAY', 'SUPPORT', 'SYSTEM'],
       furnishing: ['unfurnished', 'semi_furnished', 'fully_furnished'],
       gender: ['male', 'female'],
       gender_preference: ['any', 'male', 'female'],
+      host_business_type: ['individual', 'company', 'property_manager'],
+      host_status: [
+        'NOT_STARTED',
+        'ONBOARDING',
+        'READY',
+        'ACTIVE',
+        'PAUSED',
+        'SUSPENDED',
+      ],
       listing_status: [
         'draft',
         'ready',

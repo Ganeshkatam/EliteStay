@@ -1,5 +1,5 @@
 import { type ExtendedProfile } from '@/types/profile';
-import { ShieldCheck, Mail, Phone, Building, AlertCircle } from 'lucide-react';
+import { ShieldCheck, Mail, Phone, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface VerificationSectionProps {
@@ -7,7 +7,10 @@ interface VerificationSectionProps {
   email: string | undefined;
 }
 
-export function VerificationSection({ profile, email }: VerificationSectionProps) {
+export function VerificationSection({
+  profile,
+  email,
+}: VerificationSectionProps) {
   const items = [
     {
       id: 'email',
@@ -19,38 +22,38 @@ export function VerificationSection({ profile, email }: VerificationSectionProps
     {
       id: 'phone',
       label: 'Phone number',
-      value: profile.phone,
+      value: profile.phone ? `+91 ${profile.phone}` : undefined,
       isVerified: !!profile.phone, // Simplified check
       icon: Phone,
     },
-
-
-    {
-      id: 'host',
-      label: 'Host Verification',
-      value: profile.role === 'host' ? 'Verified Host' : 'Not applicable',
-      isVerified: profile.role === 'host',
-      icon: Building,
-    }
   ];
 
   return (
     <div className="space-y-4">
       {items.map((item) => (
-        <div key={item.id} className="flex items-center justify-between py-4 border-b border-slate-100 last:border-0">
+        <div
+          key={item.id}
+          className="flex items-center justify-between py-4 border-b border-slate-100 last:border-0"
+        >
           <div className="flex items-center gap-4">
-            <div className={cn(
-              "p-2 rounded-full",
-              item.isVerified ? "bg-green-50 text-green-700" : "bg-slate-50 text-slate-400"
-            )}>
+            <div
+              className={cn(
+                'p-2 rounded-full',
+                item.isVerified
+                  ? 'bg-green-50 text-green-700'
+                  : 'bg-slate-50 text-slate-400'
+              )}
+            >
               <item.icon className="h-5 w-5" />
             </div>
             <div>
               <h4 className="font-medium text-slate-900">{item.label}</h4>
-              <p className="text-sm text-slate-500">{item.value || 'Not provided'}</p>
+              <p className="text-sm text-slate-500">
+                {item.value || 'Not provided'}
+              </p>
             </div>
           </div>
-          
+
           <div>
             {item.isVerified ? (
               <span className="text-sm font-semibold text-green-700 flex items-center gap-1.5">

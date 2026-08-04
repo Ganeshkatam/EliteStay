@@ -389,30 +389,39 @@ export type Database = {
       conversations: {
         Row: {
           booking_id: string | null;
-          closed_at: string | null;
           created_at: string;
-          guest_last_read_at: string | null;
-          host_last_read_at: string | null;
+          guest_id: string;
+          host_profile_id: string;
           id: string;
+          listing_id: string | null;
+          status: Database['public']['Enums']['conversation_status'];
           stay_id: string | null;
+          type: Database['public']['Enums']['conversation_type'];
+          updated_at: string;
         };
         Insert: {
           booking_id?: string | null;
-          closed_at?: string | null;
           created_at?: string;
-          guest_last_read_at?: string | null;
-          host_last_read_at?: string | null;
+          guest_id: string;
+          host_profile_id: string;
           id?: string;
+          listing_id?: string | null;
+          status?: Database['public']['Enums']['conversation_status'];
           stay_id?: string | null;
+          type?: Database['public']['Enums']['conversation_type'];
+          updated_at?: string;
         };
         Update: {
           booking_id?: string | null;
-          closed_at?: string | null;
           created_at?: string;
-          guest_last_read_at?: string | null;
-          host_last_read_at?: string | null;
+          guest_id?: string;
+          host_profile_id?: string;
           id?: string;
+          listing_id?: string | null;
+          status?: Database['public']['Enums']['conversation_status'];
           stay_id?: string | null;
+          type?: Database['public']['Enums']['conversation_type'];
+          updated_at?: string;
         };
         Relationships: [
           {
@@ -420,6 +429,27 @@ export type Database = {
             columns: ['booking_id'];
             isOneToOne: false;
             referencedRelation: 'bookings';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'conversations_guest_id_fkey';
+            columns: ['guest_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'conversations_host_profile_id_fkey';
+            columns: ['host_profile_id'];
+            isOneToOne: false;
+            referencedRelation: 'host_profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'conversations_listing_id_fkey';
+            columns: ['listing_id'];
+            isOneToOne: false;
+            referencedRelation: 'listings';
             referencedColumns: ['id'];
           },
           {
@@ -1296,6 +1326,7 @@ export type Database = {
           conversation_id: string;
           created_at: string;
           id: string;
+          read_at: string | null;
           sender_id: string | null;
         };
         Insert: {
@@ -1303,6 +1334,7 @@ export type Database = {
           conversation_id: string;
           created_at?: string;
           id?: string;
+          read_at?: string | null;
           sender_id?: string | null;
         };
         Update: {
@@ -1310,6 +1342,7 @@ export type Database = {
           conversation_id?: string;
           created_at?: string;
           id?: string;
+          read_at?: string | null;
           sender_id?: string | null;
         };
         Relationships: [
@@ -1368,9 +1401,8 @@ export type Database = {
           occupation: Database['public']['Enums']['user_occupation'] | null;
           phone: string | null;
           role: Database['public']['Enums']['user_role'];
-          timezone: string | null;
           updated_at: string;
-          username: string | null;
+          username: string;
         };
         Insert: {
           avatar_storage_path?: string | null;
@@ -1384,9 +1416,8 @@ export type Database = {
           occupation?: Database['public']['Enums']['user_occupation'] | null;
           phone?: string | null;
           role?: Database['public']['Enums']['user_role'];
-          timezone?: string | null;
           updated_at?: string;
-          username?: string | null;
+          username: string;
         };
         Update: {
           avatar_storage_path?: string | null;
@@ -1400,9 +1431,8 @@ export type Database = {
           occupation?: Database['public']['Enums']['user_occupation'] | null;
           phone?: string | null;
           role?: Database['public']['Enums']['user_role'];
-          timezone?: string | null;
           updated_at?: string;
-          username?: string | null;
+          username?: string;
         };
         Relationships: [];
       };
@@ -1713,6 +1743,10 @@ export type Database = {
     };
     Functions: {
       delete_user_account: { Args: never; Returns: undefined };
+      generate_unique_username: {
+        Args: { raw_meta_data: Json; user_email: string };
+        Returns: string;
+      };
       get_listing_detail: { Args: { p_public_id: string }; Returns: Json };
       is_admin: { Args: never; Returns: boolean };
       is_host: { Args: never; Returns: boolean };
@@ -1793,6 +1827,8 @@ export type Database = {
       billing_period: 'day' | 'week' | 'month' | 'semester' | 'year';
       booking_status:
         'pending' | 'approved' | 'rejected' | 'cancelled' | 'expired';
+      conversation_status: 'OPEN' | 'CLOSED' | 'ARCHIVED' | 'BLOCKED';
+      conversation_type: 'INQUIRY' | 'BOOKING' | 'STAY' | 'SUPPORT' | 'SYSTEM';
       furnishing: 'unfurnished' | 'semi_furnished' | 'fully_furnished';
       gender: 'male' | 'female';
       gender_preference: 'any' | 'male' | 'female';
@@ -1971,6 +2007,8 @@ export const Constants = {
         'cancelled',
         'expired',
       ],
+      conversation_status: ['OPEN', 'CLOSED', 'ARCHIVED', 'BLOCKED'],
+      conversation_type: ['INQUIRY', 'BOOKING', 'STAY', 'SUPPORT', 'SYSTEM'],
       furnishing: ['unfurnished', 'semi_furnished', 'fully_furnished'],
       gender: ['male', 'female'],
       gender_preference: ['any', 'male', 'female'],

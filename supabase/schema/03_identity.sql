@@ -25,8 +25,7 @@ CREATE TABLE public.profiles (
     date_of_birth DATE,
     gender public.gender,
     occupation public.user_occupation,
-    username TEXT CHECK (username IS NULL OR (char_length(username) >= 3 AND char_length(username) <= 30 AND username ~ '^[a-z0-9_]+$'::text)),
-    timezone TEXT
+    username TEXT NOT NULL UNIQUE CHECK (username ~ '^[a-z0-9_]{3,30}$')
 );
 
 CREATE INDEX IF NOT EXISTS profiles_role_idx ON public.profiles(role);
@@ -136,6 +135,11 @@ BEGIN
     NEW.role = OLD.role;
     NEW.created_at = OLD.created_at;
   END IF;
+  
+  IF NEW.username IS DISTINCT FROM OLD.username THEN
+    RAISE EXCEPTION 'Username is immutable and cannot be changed.';
+  END IF;
+
   RETURN NEW;
 END;
 $$;
@@ -144,6 +148,68 @@ CREATE TRIGGER enforce_profile_immutability
   BEFORE UPDATE ON public.profiles
   FOR EACH ROW EXECUTE PROCEDURE public.protect_identity_fields();
 
+-- Username Generator
+CREATE OR REPLACE FUNCTION public.generate_unique_username(raw_meta_data JSONB, user_email TEXT)
+RETURNS TEXT
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+    base_name TEXT;
+    clean_base TEXT;
+    attempt TEXT;
+    is_unique BOOLEAN;
+    counter INTEGER := 1;
+    reserved_words TEXT[] := ARRAY['admin', 'root', 'support', 'help', 'host', 'guest', 'users', 'login', 'signup', 'settings', 'notifications', 'messages', 'profile', 'api', 'system'];
+BEGIN
+    IF raw_meta_data->>'full_name' IS NOT NULL AND raw_meta_data->>'full_name' != '' THEN
+        base_name := raw_meta_data->>'full_name';
+    ELSIF raw_meta_data->>'name' IS NOT NULL AND raw_meta_data->>'name' != '' THEN
+        base_name := raw_meta_data->>'name';
+    ELSIF user_email IS NOT NULL AND user_email != '' THEN
+        base_name := split_part(user_email, '@', 1);
+    ELSE
+        base_name := 'user';
+    END IF;
+
+    clean_base := lower(regexp_replace(base_name, '[^a-zA-Z0-9]', '', 'g'));
+    
+    IF char_length(clean_base) < 3 THEN
+        clean_base := clean_base || 'es';
+    END IF;
+
+    IF char_length(clean_base) > 24 THEN
+        clean_base := left(clean_base, 24);
+    END IF;
+
+    attempt := clean_base;
+
+    IF attempt = ANY(reserved_words) THEN
+        attempt := attempt || 'user';
+        clean_base := attempt;
+    END IF;
+
+    LOOP
+        SELECT NOT EXISTS (
+            SELECT 1 FROM public.profiles WHERE username = attempt
+        ) INTO is_unique;
+
+        IF is_unique THEN
+            RETURN attempt;
+        END IF;
+
+        counter := counter + 1;
+        
+        IF counter > 100 THEN
+            attempt := clean_base || substring(md5(random()::text) from 1 for 6);
+        ELSE
+            attempt := clean_base || counter::text;
+        END IF;
+    END LOOP;
+END;
+$$;
+
 -- 7. Handle New User Signup
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER
@@ -151,12 +217,17 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = ''
 AS $$
+DECLARE
+    generated_username TEXT;
 BEGIN
+  generated_username := public.generate_unique_username(NEW.raw_user_meta_data, NEW.email);
+
   INSERT INTO public.profiles (
     id, 
     full_name, 
     avatar_storage_path, 
     role,
+    username,
     created_at,
     updated_at
   ) VALUES (
@@ -164,6 +235,7 @@ BEGIN
     NEW.raw_user_meta_data->>'full_name', 
     NEW.raw_user_meta_data->>'avatar_url', 
     'guest'::public.user_role,
+    generated_username,
     NOW(),
     NOW()
   );

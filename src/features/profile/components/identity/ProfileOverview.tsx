@@ -16,8 +16,6 @@ export function ProfileOverview({ profile }: ProfileOverviewProps) {
     profile.date_of_birth,
     profile.gender,
     profile.occupation,
-    profile.username,
-    profile.timezone,
   ];
 
   const completedFields = fields.filter(Boolean).length;
@@ -69,13 +67,11 @@ export function ProfileOverview({ profile }: ProfileOverviewProps) {
               {!profile.avatar_storage_path && (
                 <li>• Upload a profile photo</li>
               )}
-              {!profile.full_name && <li>• Add your legal name</li>}
-              {!profile.username && <li>• Choose a username</li>}
-              {!profile.phone && <li>• Add a verified phone number</li>}
+              {!profile.full_name && <li>• Add your full name</li>}
+              {!profile.phone && <li>• Add verified phone number</li>}
               {!profile.date_of_birth && <li>• Add your date of birth</li>}
               {!profile.gender && <li>• Specify your gender</li>}
               {!profile.occupation && <li>• Add your occupation</li>}
-              {!profile.timezone && <li>• Set your timezone</li>}
               {!profile.bio && <li>• Write a short bio</li>}
             </ul>
           </div>
