@@ -16,5 +16,14 @@ export default defineConfig({
       reporter: ['text', 'html'],
       exclude: ['node_modules/', 'src/test/setup.ts'],
     },
+    exclude: [
+      'node_modules',
+      'dist',
+      '.idea',
+      '.git',
+      '.cache',
+      'scripts/**',
+      'tests/**',
+    ],
   },
 });

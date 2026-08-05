@@ -1,8 +1,8 @@
-import { unstable_cache } from 'next/cache';
 import { createStaticClient } from '@/lib/supabase/server';
 import { ListingCardData } from '@/features/listings/types';
 import { HomeSectionConfig } from '../config/sections';
 import { resolveAccommodationTypeId } from './accommodation-type-cache';
+import { fetchWithCache, CacheKeys, TTL } from '@/lib/redis';
 
 function resolveImageUrl(path: string | null): string | null {
   if (!path) return null;
@@ -12,7 +12,7 @@ function resolveImageUrl(path: string | null): string | null {
   return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/listings/${path}`;
 }
 
-const getSectionListingsInternal = async (
+const fetchSectionListings = async (
   config: HomeSectionConfig
 ): Promise<ListingCardData[]> => {
   const supabase = createStaticClient();
@@ -97,20 +97,25 @@ const getSectionListingsInternal = async (
   }));
 };
 
-export const getSectionListings = unstable_cache(
-  async (config: HomeSectionConfig) => getSectionListingsInternal(config),
-  ['home-section-listings'],
-  { revalidate: 3600, tags: ['home', 'listings'] }
-);
+export async function getSectionListings(
+  config: HomeSectionConfig
+): Promise<ListingCardData[]> {
+  const result = await fetchWithCache<ListingCardData[]>({
+    key: CacheKeys.homeSectionListings(config.id),
+    ttl: TTL.HOME_SECTION,
+    negativeTtl: TTL.NEGATIVE_EMPTY,
+    fetcher: () => fetchSectionListings(config),
+  });
 
-const getCategoryCountsInternal = async (
+  return result || [];
+}
+
+const fetchCategoryCountsInternal = async (
   typeIds: string[]
 ): Promise<Record<string, number>> => {
   if (!typeIds.length) return {};
   const supabase = createStaticClient();
 
-  // To avoid N+1 count queries, we can use an RPC, or just do a generic aggregation.
-  // Since this is V1 and we have a small dataset, we can do parallel count requests.
   const counts: Record<string, number> = {};
 
   await Promise.all(
@@ -128,13 +133,20 @@ const getCategoryCountsInternal = async (
   return counts;
 };
 
-export const getCategoryCounts = unstable_cache(
-  async (typeIds: string[]) => getCategoryCountsInternal(typeIds),
-  ['home-category-counts'],
-  { revalidate: 3600, tags: ['home', 'categories'] }
-);
+export async function getCategoryCounts(
+  typeIds: string[]
+): Promise<Record<string, number>> {
+  const result = await fetchWithCache<Record<string, number>>({
+    key: CacheKeys.homeCategories(),
+    ttl: TTL.HOME_CATEGORIES,
+    negativeTtl: TTL.NEGATIVE_EMPTY,
+    fetcher: () => fetchCategoryCountsInternal(typeIds),
+  });
 
-const getLocationCountsInternal = async (
+  return result || {};
+}
+
+const fetchLocationCountsInternal = async (
   cities: string[]
 ): Promise<Record<string, number>> => {
   if (!cities.length) return {};
@@ -157,8 +169,15 @@ const getLocationCountsInternal = async (
   return counts;
 };
 
-export const getLocationCounts = unstable_cache(
-  async (cities: string[]) => getLocationCountsInternal(cities),
-  ['home-location-counts'],
-  { revalidate: 3600, tags: ['home', 'locations'] }
-);
+export async function getLocationCounts(
+  cities: string[]
+): Promise<Record<string, number>> {
+  const result = await fetchWithCache<Record<string, number>>({
+    key: CacheKeys.homeLocationCounts(cities),
+    ttl: TTL.HOME_LOCATIONS,
+    negativeTtl: TTL.NEGATIVE_EMPTY,
+    fetcher: () => fetchLocationCountsInternal(cities),
+  });
+
+  return result || {};
+}

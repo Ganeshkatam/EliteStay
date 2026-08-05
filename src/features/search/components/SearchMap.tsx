@@ -106,6 +106,7 @@ export function SearchMap({ listings }: { listings: ListingCardData[] }) {
         minZoom={mapConfig.minZoom}
         maxZoom={mapConfig.maxZoom}
         onMoveEnd={handleMapMove}
+        style={{ width: '100%', height: '100%' }}
       >
         <NavigationControl position="top-right" />
 

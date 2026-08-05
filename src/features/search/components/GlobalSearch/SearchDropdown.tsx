@@ -108,7 +108,7 @@ export function SearchDropdown({ duration, setDuration }: SearchDropdownProps) {
     async function loadCities() {
       try {
         const cities = await getPopularCitiesAction();
-        setPopularCities(cities.slice(0, 5) as LocationCity[]);
+        setPopularCities((cities ?? []).slice(0, 5) as LocationCity[]);
       } catch (err) {
         console.error('Failed to load popular cities', err);
       }

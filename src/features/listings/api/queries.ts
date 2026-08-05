@@ -237,8 +237,8 @@ export async function searchListings(
 ): Promise<SearchResult> {
   const supabase = await createClient();
 
-  const accommodationTypeId = resolveAccommodationTypeId(
-    filters.accommodationType
+  const accommodationTypeId = await resolveAccommodationTypeId(
+    filters.accommodationType || null
   );
 
   const { data, error } = await supabase.rpc('search_listings', {
