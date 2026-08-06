@@ -22,12 +22,10 @@ async function runNegativeCacheBenchmark() {
 
       // Fire 100 concurrent requests for the missing data
       const promises = Array.from({ length: concurrency }).map(() => {
-        return fetchWithCache({
-          key: TEST_KEY,
-          ttl: 60,
-          negativeTtl: 30, // Important: enabling negative cache
-          fetcher,
-        });
+        return fetchWithCache(
+          { key: TEST_KEY, policy: 'search', tags: [] },
+          fetcher
+        );
       });
 
       const results = await Promise.all(promises);
@@ -35,15 +33,13 @@ async function runNegativeCacheBenchmark() {
 
       // Wait a moment, then fire one more request to prove it's still cached as null
       let secondFetchCount = 0;
-      await fetchWithCache({
-        key: TEST_KEY,
-        ttl: 60,
-        negativeTtl: 30,
-        fetcher: async () => {
+      await fetchWithCache(
+        { key: TEST_KEY, policy: 'search', tags: [] },
+        async () => {
           secondFetchCount++;
           return null;
-        },
-      });
+        }
+      );
 
       return {
         metrics: {

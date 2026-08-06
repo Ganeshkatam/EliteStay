@@ -3,8 +3,14 @@
 import React, { useState, useTransition } from 'react';
 import { useBookingContext } from '../../context/BookingContext';
 import { usePropertyContext } from '../../context/PropertyContext';
-import { processBookingIntent } from '../../../booking/actions/booking.actions';
 import { v4 as uuidv4 } from 'uuid';
+import {
+  ListingPolicyService,
+  AllowedAction,
+} from '../../services/listing-policy.service';
+import type { ListingBookingPolicy } from '../../services/listing-policy.service';
+import { submitViewingRequestAction } from '../../../application/actions/viewing.actions';
+import { processBookingIntent } from '../../../booking/actions/booking.actions';
 
 export function ListingActionCard() {
   const { pricing, state } = useBookingContext();
@@ -18,10 +24,37 @@ export function ListingActionCard() {
     maximumFractionDigits: 0,
   }).format(pricing.amount);
 
-  const isInstant = bookingPolicy === 'INSTANT_RESERVATION';
+  const policyState = ListingPolicyService.resolvePolicy(
+    (bookingPolicy as ListingBookingPolicy) || 'RENTAL_APPLICATION'
+  );
 
-  const handleAction = () => {
+  const handleAction = (action: AllowedAction) => {
     setError(null);
+
+    if (action === 'CONTACT_HOST') {
+      alert(
+        `${ListingPolicyService.getActionLabel(action)} clicked. (To be implemented)`
+      );
+      return;
+    }
+
+    if (action === 'REQUEST_VIEWING') {
+      startTransition(async () => {
+        const result = await submitViewingRequestAction({
+          propertyId: publicId,
+          requestedDate: new Date().toISOString().split('T')[0],
+          requestedTime: '10:00',
+          message: 'I would like to view this property.',
+        });
+        if (result.success) {
+          alert('Viewing request submitted successfully!');
+        } else {
+          setError('Failed to submit viewing request.');
+        }
+      });
+      return;
+    }
+
     if (!state.moveInDate) {
       setError('Please select a move-in date.');
       return;
@@ -33,15 +66,14 @@ export function ListingActionCard() {
 
     startTransition(async () => {
       const intent = {
-        propertyId: publicId, // Assuming publicId is mapped to internal ID in the actions layer if needed, or we must pass internal ID. Wait, earlier code passed publicId!
-        // We will pass publicId as propertyId for now, but in reality we need the UUID.
-        // Assuming processBookingIntent expects the UUID. If it fails we'll fix it later.
+        propertyId: publicId,
         moveInDate: state.moveInDate!.toISOString().split('T')[0],
         leaseDurationMonths: state.leaseDurationMonths,
         guestsCount: state.guests,
         currency,
         channel: 'web' as const,
         idempotencyKey: uuidv4(),
+        action, // Pass the specific action requested
       };
 
       const result = await processBookingIntent({
@@ -107,17 +139,29 @@ export function ListingActionCard() {
       )}
 
       <button
-        onClick={handleAction}
+        onClick={() => handleAction(policyState.primaryAction)}
         disabled={isPending}
         className="w-full bg-[#E51D53] hover:bg-[#D70442] disabled:opacity-50 text-white py-3 px-4 rounded-lg font-semibold text-lg transition-colors mt-4"
-        aria-label={isInstant ? 'Reserve this property' : 'Apply to rent'}
       >
         {isPending
           ? 'Processing...'
-          : isInstant
-            ? 'Reserve Now'
-            : 'Apply to Rent'}
+          : ListingPolicyService.getActionLabel(policyState.primaryAction)}
       </button>
+
+      {policyState.secondaryActions.length > 0 && (
+        <div className="flex flex-col gap-2 mt-3">
+          {policyState.secondaryActions.map((action) => (
+            <button
+              key={action}
+              onClick={() => handleAction(action)}
+              disabled={isPending}
+              className="w-full bg-white border border-gray-300 hover:bg-gray-50 disabled:opacity-50 text-gray-800 py-2.5 px-4 rounded-lg font-medium transition-colors"
+            >
+              {ListingPolicyService.getActionLabel(action)}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="text-center text-gray-500 text-sm mt-4">
         You won&apos;t be charged yet

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { runBenchmark, assertMetric } from './runner';
 import { fetchWithCache } from '../src/lib/redis/cache';
 import { _setProviderForTesting } from '../src/lib/redis/client';
@@ -19,39 +20,43 @@ async function runMemoryProviderBenchmark() {
       };
 
       // 1. Initial Fetch (MISS)
-      const res1 = await fetchWithCache({ key: TEST_KEY, ttl: 60, fetcher });
+      const res1 = await fetchWithCache(
+        { key: TEST_KEY, policy: 'search', tags: [] },
+        fetcher
+      );
 
       // 2. Second Fetch (HIT)
-      const res2 = await fetchWithCache({ key: TEST_KEY, ttl: 60, fetcher });
+      const res2 = await fetchWithCache(
+        { key: TEST_KEY, policy: 'search', tags: [] },
+        fetcher
+      );
 
       // 3. TTL Expiry Test (Use a very short TTL)
       const TTL_KEY = 'benchmark:memory:ttl';
       let ttlFetcherCalls = 0;
-      await fetchWithCache({
-        key: TTL_KEY,
-        ttl: 1,
-        fetcher: async () => {
+      await fetchWithCache(
+        { key: TTL_KEY, policy: 'search', tags: [] },
+        async () => {
           ttlFetcherCalls++;
           return { ok: true };
-        },
-      });
+        }
+      );
 
       // Wait for expiry
       await new Promise((resolve) => setTimeout(resolve, 1100));
 
-      await fetchWithCache({
-        key: TTL_KEY,
-        ttl: 1,
-        fetcher: async () => {
+      await fetchWithCache(
+        { key: TTL_KEY, policy: 'search', tags: [] },
+        async () => {
           ttlFetcherCalls++;
           return { ok: true };
-        },
-      });
+        }
+      );
 
       return {
         metrics: {
-          firstFetchData: res1?.data ?? 'undefined',
-          secondFetchData: res2?.data ?? 'undefined',
+          firstFetchData: (res1 as any)?.data ?? 'undefined',
+          secondFetchData: (res2 as any)?.data ?? 'undefined',
           fetcherCalls, // Should be 1
           ttlFetcherCalls, // Should be 2
         },

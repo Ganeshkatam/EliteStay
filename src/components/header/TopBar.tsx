@@ -1,21 +1,33 @@
-import React from 'react';
+import { cn } from '@/lib/utils';
+
 import { Logo } from '../navigation/Logo';
 import { UserMenu } from '../navigation/UserMenu';
-
-import { GlobalSearch } from '@/features/search/components/GlobalSearch/GlobalSearch';
-import { type HeaderVariant } from './useHeaderState';
-import { type ExtendedProfile } from '@/types/profile';
+import { HostToggle } from '../navigation/HostToggle';
 import { type User } from '@supabase/supabase-js';
-import { cn } from '@/lib/utils';
+import { type HeaderVariant } from './useHeaderState';
+
+import { type ExtendedProfile } from '@/types/profile';
+import { GlobalSearch } from '@/features/search/components/GlobalSearch/GlobalSearch';
+
+import { type LocationCity } from '@/features/location/types';
 
 interface TopBarProps {
   variant: HeaderVariant;
   user?: User | null;
   profile?: ExtendedProfile | null;
   isExpanded?: boolean;
+  isHost?: boolean;
+  popularCities?: LocationCity[];
 }
 
-export function TopBar({ variant, user, profile, isExpanded }: TopBarProps) {
+export function TopBar({
+  variant,
+  user,
+  profile,
+  isExpanded,
+  isHost,
+  popularCities = [],
+}: TopBarProps) {
   if (variant === 'auth') {
     return <Logo />;
   }
@@ -38,16 +50,16 @@ export function TopBar({ variant, user, profile, isExpanded }: TopBarProps) {
             isExpanded ? 'translate-y-[88px]' : 'translate-y-0'
           )}
         >
-          <GlobalSearch variant={isExpanded ? 'hero' : 'compact'} />
+          <GlobalSearch
+            variant={isExpanded ? 'hero' : 'compact'}
+            popularCities={popularCities}
+          />
         </div>
       )}
 
-      <div className="flex flex-none items-center justify-end space-x-4">
-        {user ? (
-          <UserMenu user={user} profile={profile} variant={variant} />
-        ) : (
-          <UserMenu user={user} profile={profile} variant={variant} />
-        )}
+      <div className="flex flex-none items-center justify-end space-x-3">
+        {user && <HostToggle isHost={isHost} />}
+        <UserMenu user={user} profile={profile} variant={variant} />
       </div>
     </>
   );

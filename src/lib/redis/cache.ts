@@ -1,26 +1,4 @@
-/**
- * Core Cache Engine -- `fetchWithCache`.
- *
- * The primary API for caching any data through the Redis distributed state layer.
- *
- * Flow:
- *   1. Circuit breaker check (OPEN? -> skip to DB).
- *   2. In-process request coalescing (same Node? -> share Promise).
- *   3. Redis GET (HIT? -> deserialize, check SWR, return).
- *   4. Distributed lock acquisition with exponential backoff.
- *   5. Execute fetcher (DB call).
- *   6. Serialize (compress if >4KB), SET with jittered TTL.
- *   7. Release lock, return result.
- *
- * Features:
- *   - Stale-while-revalidate with lock-protected background refresh.
- *   - Negative caching for 404/empty results.
- *   - Circuit breaker graceful fallback.
- *   - Request coalescing within same process.
- *   - Stampede protection via distributed locks.
- *   - Full observability instrumentation.
- */
-
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { getProvider } from './client';
 import {
   isCircuitClosed,
@@ -29,9 +7,9 @@ import {
 } from './circuit-breaker';
 import { coalesce } from './request-coalescer';
 import { acquireLockWithBackoff, releaseLock, acquireLock } from './locks';
-import { encode, decode, isStale } from './serializer';
+import { encode, decode } from './serializer';
 import { withJitter } from './ttl';
-import { STALE_WINDOW_FRACTION, DEFAULT_LOCK_TTL_MS } from './config';
+import { DEFAULT_LOCK_TTL_MS } from './config';
 import {
   recordHit,
   recordMiss,
@@ -41,71 +19,126 @@ import {
   dbFallbackCounter,
   cacheStaleServeCounter,
 } from './metrics';
+import { CacheManifestEntry } from './manifest';
+import { CachePolicyRegistry } from './registry';
+import { instrumentExecution } from '@/lib/observability/instrumentation/instrumentation';
+
+// ---------------------------------------------------------------------------
+// Internal Policy Resolution
+// ---------------------------------------------------------------------------
+
+function getPolicy(entry: CacheManifestEntry) {
+  const policy = CachePolicyRegistry[entry.policy];
+  if (!policy) throw new Error(`Unknown cache policy: ${entry.policy}`);
+  return policy;
+}
+
+// ---------------------------------------------------------------------------
+// Set Tags Helper
+// ---------------------------------------------------------------------------
+
+async function applyTags(key: string, tags: string[]) {
+  if (tags.length === 0) return;
+  const provider = getProvider();
+  await Promise.all(tags.map((tag) => provider.sadd(`tag:${tag}`, key)));
+}
 
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
-export interface FetchWithCacheOptions<T> {
-  /** The full cache key (use CacheKeys to build). */
-  key: string;
-
-  /** Base TTL in seconds (jitter will be applied). */
-  ttl: number;
-
-  /** TTL for caching null/empty results. Defaults to 0 (no negative caching). */
-  negativeTtl?: number;
-
-  /** Lock TTL in milliseconds for stampede protection. */
-  lockTtl?: number;
-
-  /** The data-fetching function to call on cache miss. */
-  fetcher: () => Promise<T | null>;
-}
-
-/**
- * Fetch data through the distributed cache layer.
- *
- * Returns the cached value on HIT, or executes the fetcher on MISS,
- * caches the result, and returns it.
- */
 export async function fetchWithCache<T>(
-  options: FetchWithCacheOptions<T>
+  entry: CacheManifestEntry,
+  fetcher: () => Promise<T | null>
 ): Promise<T | null> {
-  const {
-    key,
-    ttl,
-    negativeTtl = 0,
-    lockTtl = DEFAULT_LOCK_TTL_MS,
-    fetcher,
-  } = options;
+  const policy = getPolicy(entry);
 
-  // 1. Circuit breaker -- if OPEN, skip Redis entirely
   if (!isCircuitClosed()) {
     dbFallbackCounter.inc();
-    return executeFetcher(key, fetcher);
+    return executeFetcher(entry.key, fetcher);
   }
 
-  // 2. Request coalescing -- deduplicate within the same process
-  return coalesce(key, () =>
-    fetchOrPopulate(key, ttl, negativeTtl, lockTtl, fetcher)
-  );
+  return coalesce(entry.key, () => fetchOrPopulate(entry, policy, fetcher));
+}
+
+export async function getWithCache<T>(
+  entry: CacheManifestEntry
+): Promise<T | null> {
+  if (!isCircuitClosed()) return null;
+  const provider = getProvider();
+  try {
+    const raw = await provider.get(entry.key);
+    if (!raw) return null;
+    const envelope = await instrumentExecution(
+      'Serializer.decode',
+      'CACHE',
+      () => decode<T>(raw)
+    );
+    return envelope.negative ? null : envelope.payload;
+  } catch {
+    return null;
+  }
+}
+
+export async function setWithCache<T>(
+  entry: CacheManifestEntry,
+  payload: T | null
+): Promise<void> {
+  if (!isCircuitClosed()) return;
+  const provider = getProvider();
+  const policy = getPolicy(entry);
+
+  try {
+    let ttl = policy.jitter ? withJitter(policy.ttl) : policy.ttl;
+
+    if (payload === null || (Array.isArray(payload) && payload.length === 0)) {
+      if (!policy.negativeCache) return;
+      ttl = policy.jitter ? withJitter(policy.negativeTtl) : policy.negativeTtl;
+      const encoded = await instrumentExecution(
+        'Serializer.encode',
+        'CACHE',
+        () => encode(null, ttl, true, !policy.compression)
+      );
+      await provider.set(entry.key, encoded, ttl);
+    } else {
+      const encoded = await instrumentExecution(
+        'Serializer.encode',
+        'CACHE',
+        () => encode(payload, ttl, false, !policy.compression)
+      );
+      await provider.set(entry.key, encoded, ttl);
+    }
+
+    await recordWrite(entry.key, async () => {
+      await applyTags(entry.key, entry.tags);
+    });
+  } catch {
+    // Ignore cache set failures
+  }
+}
+
+export async function deleteKey(key: string): Promise<void> {
+  if (!isCircuitClosed()) return;
+  const provider = getProvider();
+
+  // Clean up set memberships where possible (requires scanning tags, but typically
+  // explicit deletes are handled by invalidateTag. If this is a direct delete,
+  // we just delete the key. Automatic cleanup handles tag pruning).
+  await provider.del(key);
 }
 
 // ---------------------------------------------------------------------------
-// Internal
+// Internal Fetch Logic
 // ---------------------------------------------------------------------------
 
 async function fetchOrPopulate<T>(
-  key: string,
-  ttl: number,
-  negativeTtl: number,
-  lockTtl: number,
+  entry: CacheManifestEntry,
+  policy: ReturnType<typeof getPolicy>,
   fetcher: () => Promise<T | null>
 ): Promise<T | null> {
   const provider = getProvider();
+  const { key } = entry;
 
-  // 3. Redis GET
   try {
     const cacheStart = Date.now();
     const raw = await provider.get(key);
@@ -115,154 +148,204 @@ async function fetchOrPopulate<T>(
     if (raw !== null) {
       const envelope = decode<T>(raw);
 
-      // Negative cache hit
       if (envelope.negative) {
         return recordHit(key, () => null);
       }
 
-      // Check stale-while-revalidate window
-      if (isStale(envelope, STALE_WINDOW_FRACTION)) {
+      // Check SWR (stale window in seconds)
+      const now = Math.floor(Date.now() / 1000);
+      const age = now - envelope.createdAt;
+      const freshThreshold = policy.ttl - policy.staleWindow;
+
+      const isEntryStale =
+        policy.staleWindow > 0 && age >= freshThreshold && age < policy.ttl;
+
+      if (isEntryStale) {
         cacheStaleServeCounter.inc();
-        // Serve stale data immediately
         const staleResult = recordHit(key, () => envelope.payload);
-        // Trigger lock-protected background refresh (fire-and-forget)
-        triggerBackgroundRefresh(key, ttl, negativeTtl, lockTtl, fetcher);
+        triggerBackgroundRefresh(entry, policy, fetcher);
         return staleResult;
       }
 
-      // Fresh hit
       return recordHit(key, () => envelope.payload);
     }
   } catch {
-    // Redis read failed -- fall through to fetcher
     recordFailure();
   }
 
-  // 4. Cache MISS -- acquire lock and fetch
-  return recordMiss(key, () =>
-    fetchAndPopulate(key, ttl, negativeTtl, lockTtl, fetcher)
-  );
+  return recordMiss(key, () => fetchAndPopulate(entry, policy, fetcher));
 }
 
 async function fetchAndPopulate<T>(
-  key: string,
-  ttl: number,
-  negativeTtl: number,
-  lockTtl: number,
+  entry: CacheManifestEntry,
+  policy: ReturnType<typeof getPolicy>,
   fetcher: () => Promise<T | null>
 ): Promise<T | null> {
   const provider = getProvider();
-  const lockKey = `fetch:${key}`;
+  const lockKey = `fetch:${entry.key}`;
 
-  // Attempt to acquire the distributed lock
-  const ownerToken = await acquireLockWithBackoff(lockKey, lockTtl);
+  const ownerToken = await acquireLockWithBackoff(lockKey, DEFAULT_LOCK_TTL_MS);
 
   if (!ownerToken) {
-    // Lock not acquired -- another process is fetching.
-    // Try reading from cache one more time (the winner may have populated it).
     try {
-      const raw = await provider.get(key);
+      const raw = await provider.get(entry.key);
       if (raw !== null) {
         const envelope = decode<T>(raw);
         return envelope.negative ? null : envelope.payload;
       }
     } catch {
-      // Redis still failing -- fall through to direct DB fetch
       recordFailure();
     }
-
-    // Fallback: fetch directly from DB without caching
     dbFallbackCounter.inc();
-    return executeFetcher(key, fetcher);
+    return executeFetcher(entry.key, fetcher);
   }
 
   try {
-    // 5. Execute the fetcher
-    const result = await executeFetcher(key, fetcher);
-
-    // 6. Cache the result
-    try {
-      const jitteredTtl = withJitter(ttl);
-
-      if (result === null || (Array.isArray(result) && result.length === 0)) {
-        // Negative caching
-        if (negativeTtl > 0) {
-          const encoded = encode<T>(null, negativeTtl, true);
-          await recordWrite(key, () =>
-            provider.set(key, encoded, withJitter(negativeTtl))
-          );
-        }
-      } else {
-        // Positive caching
-        const encoded = encode(result, jitteredTtl);
-        await recordWrite(key, () => provider.set(key, encoded, jitteredTtl));
-      }
-      recordSuccess();
-    } catch {
-      // Cache write failed -- not fatal, result still returned
-      recordFailure();
-    }
-
+    const result = await executeFetcher(entry.key, fetcher);
+    await setWithCache(entry, result);
+    recordSuccess();
     return result;
   } finally {
-    // 7. Release lock
-    await releaseLock(lockKey, ownerToken).catch(() => {
-      // Lock release failed -- it will expire via TTL
-    });
+    await releaseLock(lockKey, ownerToken).catch(() => {});
   }
 }
 
-/**
- * Trigger a background refresh for stale cache entries.
- * Lock-protected to prevent refresh stampedes.
- */
 function triggerBackgroundRefresh<T>(
-  key: string,
-  ttl: number,
-  negativeTtl: number,
-  lockTtl: number,
+  entry: CacheManifestEntry,
+  policy: ReturnType<typeof getPolicy>,
   fetcher: () => Promise<T | null>
 ): void {
-  const refreshLockKey = `refresh:${key}`;
+  const refreshLockKey = `refresh:${entry.key}`;
 
-  // Fire-and-forget: attempt to acquire a refresh lock
   void (async () => {
-    const ownerToken = await acquireLock(refreshLockKey, lockTtl);
-    if (!ownerToken) return; // Another process is already refreshing
+    const ownerToken = await acquireLock(refreshLockKey, DEFAULT_LOCK_TTL_MS);
+    if (!ownerToken) return;
 
     try {
-      const provider = getProvider();
-      const result = await executeFetcher(key, fetcher);
-      const jitteredTtl = withJitter(ttl);
-
-      if (result === null || (Array.isArray(result) && result.length === 0)) {
-        if (negativeTtl > 0) {
-          const encoded = encode<T>(null, negativeTtl, true);
-          await provider.set(key, encoded, withJitter(negativeTtl));
-        }
-      } else {
-        const encoded = encode(result, jitteredTtl);
-        await provider.set(key, encoded, jitteredTtl);
-      }
+      const result = await executeFetcher(entry.key, fetcher);
+      await setWithCache(entry, result);
     } catch {
-      // Background refresh failed -- stale entry remains until TTL expires
+      // Ignored
     } finally {
       await releaseLock(refreshLockKey, ownerToken).catch(() => {});
     }
   })();
 }
 
-/**
- * Execute the fetcher function with latency recording.
- */
 async function executeFetcher<T>(
-  _key: string,
+  key: string,
   fetcher: () => Promise<T | null>
 ): Promise<T | null> {
   const start = Date.now();
   try {
-    return await fetcher();
+    return await instrumentExecution(`Fetcher.${key}`, 'DATABASE', async () => {
+      return await fetcher();
+    });
   } finally {
     recordFetcherLatency(Date.now() - start);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Batch Operations
+// ---------------------------------------------------------------------------
+
+export async function getMany(
+  entries: CacheManifestEntry[]
+): Promise<(any | null)[]> {
+  if (entries.length === 0 || !isCircuitClosed())
+    return entries.map(() => null);
+  const provider = getProvider();
+  try {
+    const keys = entries.map((e) => e.key);
+    const rawValues = await provider.mget(keys);
+    return rawValues.map((raw) => {
+      if (!raw) return null;
+      const envelope = decode(raw);
+      return envelope.negative ? null : envelope.payload;
+    });
+  } catch {
+    return entries.map(() => null);
+  }
+}
+
+export async function setMany(
+  entriesWithPayloads: { entry: CacheManifestEntry; payload: any }[]
+): Promise<void> {
+  if (entriesWithPayloads.length === 0 || !isCircuitClosed()) return;
+  // Use parallel setWithCache to ensure TTLs and tags are applied correctly
+  await Promise.all(
+    entriesWithPayloads.map((item) => setWithCache(item.entry, item.payload))
+  );
+}
+
+export async function fetchMany<T>(
+  entries: CacheManifestEntry[],
+  fetchers: (() => Promise<T | null>)[]
+): Promise<(T | null)[]> {
+  if (entries.length === 0) return [];
+  if (!isCircuitClosed()) {
+    dbFallbackCounter.inc(entries.length);
+    return Promise.all(
+      entries.map((entry, i) => executeFetcher(entry.key, fetchers[i]))
+    );
+  }
+
+  const results: (T | null)[] = new Array(entries.length).fill(null);
+  const provider = getProvider();
+
+  try {
+    const keys = entries.map((e) => e.key);
+    const rawValues = await provider.mget(keys);
+    const misses: {
+      index: number;
+      entry: CacheManifestEntry;
+      fetcher: () => Promise<T | null>;
+    }[] = [];
+
+    rawValues.forEach((raw, i) => {
+      const entry = entries[i];
+      if (raw !== null) {
+        const envelope = decode<T>(raw);
+        if (envelope.negative) {
+          results[i] = null;
+        } else {
+          results[i] = envelope.payload;
+
+          // SWR check
+          const policy = getPolicy(entry);
+          const now = Math.floor(Date.now() / 1000);
+          const age = now - envelope.createdAt;
+          const freshThreshold = policy.ttl - policy.staleWindow;
+          if (
+            policy.staleWindow > 0 &&
+            age >= freshThreshold &&
+            age < policy.ttl
+          ) {
+            triggerBackgroundRefresh(entry, policy, fetchers[i]);
+          }
+        }
+      } else {
+        misses.push({ index: i, entry, fetcher: fetchers[i] });
+      }
+    });
+
+    if (misses.length > 0) {
+      // For misses, we use standard fetchWithCache to handle locking and stampede protection properly
+      const fetchedResults = await Promise.all(
+        misses.map((miss) => fetchWithCache(miss.entry, miss.fetcher))
+      );
+
+      misses.forEach((miss, i) => {
+        results[miss.index] = fetchedResults[i];
+      });
+    }
+
+    return results;
+  } catch {
+    // Fallback to fetchWithCache for everything
+    return Promise.all(
+      entries.map((entry, i) => fetchWithCache(entry, fetchers[i]))
+    );
   }
 }

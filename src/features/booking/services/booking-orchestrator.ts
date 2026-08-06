@@ -1,4 +1,3 @@
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import {
   BookingIntent,
   StayReservation,
@@ -13,7 +12,9 @@ import { ReservationService } from './reservation.service';
 import { PaymentService } from './payment.service';
 import { observeService } from '@/lib/observability/decorators/observe-service';
 import { BookingRepository } from '../repositories/booking.repository';
-import { RentalApplicationRepository } from '../repositories/rental-application.repository';
+import { ApplicationService } from '@/features/application/services/application.service';
+import { ApplicantProfileRepository } from '@/features/application/repositories/applicant-profile.repository';
+import { ApplicationRepository } from '@/features/application/repositories/application.repository';
 
 export class BookingOrchestrator {
   /**
@@ -124,14 +125,30 @@ export class BookingOrchestrator {
     guestId: string,
     intent: BookingIntent
   ): Promise<RentalApplication> {
-    // 3. Create the Rental Application (DRAFT)
-    const application = await RentalApplicationRepository.createApplication(
+    // 3. Upsert Applicant Profile
+    const profile = await ApplicantProfileRepository.upsert({
       guestId,
-      intent
-    );
+      employmentStatus: intent.qualifications?.employmentStatus || null,
+      studentStatus: intent.qualifications?.studentStatus || null,
+      incomeRange: intent.qualifications?.incomeRange || null,
+      petInformation: intent.qualifications?.petInformation || null,
+      guarantorInformation: intent.qualifications?.guarantorInformation || null,
+      smokingPreference: intent.qualifications?.smokingPreference || null,
+    });
 
-    // Additional steps like submitting it, notifying the host, or locking the property pending review
-    // can be orchestrated here. For now, we return the created application.
-    return application;
+    // 4. Create the Rental Application (DRAFT)
+    const application = await ApplicationService.createDraft({
+      propertyId: intent.propertyId,
+      guestId,
+      moveInDate: intent.moveInDate,
+      leaseDurationMonths: intent.leaseDurationMonths,
+      applicantProfileId: profile.id,
+    });
+
+    // 5. Submit the application automatically from checkout
+    await ApplicationService.submit(application.id, guestId);
+
+    const submittedApp = await ApplicationRepository.getById(application.id);
+    return submittedApp as unknown as RentalApplication;
   }
 }

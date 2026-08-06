@@ -1,4 +1,4 @@
-import { fetchWithCache, CacheKeys, TTL } from '@/lib/redis';
+import { Cache, CacheManifest } from '@/lib/redis';
 import { PropertyRepository } from '../repositories/property.repository';
 
 export interface PropertyBase {
@@ -26,11 +26,9 @@ export interface PropertyBase {
 
 export class PropertyBaseService {
   static async getBaseDetails(publicId: string): Promise<PropertyBase | null> {
-    const data = await fetchWithCache({
-      key: CacheKeys.propertyBase(publicId),
-      ttl: TTL.PROPERTY_BASE,
-      negativeTtl: TTL.NEGATIVE_404,
-      fetcher: async () => {
+    const data = await Cache.fetch(
+      CacheManifest.propertyBase(publicId),
+      async () => {
         const raw = await PropertyRepository.getBaseDetails(publicId);
         if (!raw) return null;
 
@@ -55,8 +53,8 @@ export class PropertyBaseService {
           },
           bookingPolicy: raw.booking_policy || 'RENTAL_APPLICATION',
         } as PropertyBase;
-      },
-    });
+      }
+    );
 
     return data;
   }

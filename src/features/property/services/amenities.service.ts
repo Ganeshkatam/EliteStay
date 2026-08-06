@@ -1,4 +1,4 @@
-import { fetchWithCache, CacheKeys, TTL } from '@/lib/redis';
+import { Cache, CacheManifest } from '@/lib/redis';
 import { PropertyRepository } from '../repositories/property.repository';
 
 export interface PropertyAmenity {
@@ -11,11 +11,9 @@ export interface PropertyAmenity {
 
 export class AmenitiesService {
   static async getAmenities(publicId: string): Promise<PropertyAmenity[]> {
-    const data = await fetchWithCache({
-      key: CacheKeys.propertyAmenities(publicId),
-      ttl: TTL.PROPERTY_AMENITIES,
-      negativeTtl: TTL.NEGATIVE_404,
-      fetcher: async () => {
+    const data = await Cache.fetch(
+      CacheManifest.propertyAmenities(publicId),
+      async () => {
         const raw = await PropertyRepository.getAmenities(publicId);
         if (!raw) return [];
 
@@ -40,8 +38,8 @@ export class AmenitiesService {
             };
           }
         );
-      },
-    });
+      }
+    );
 
     return data || [];
   }

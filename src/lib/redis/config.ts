@@ -19,62 +19,7 @@ export const REDIS_SCHEMA_VERSION = 'v1';
 export const KEY_PREFIX = `${REDIS_NAMESPACE}:${REDIS_SCHEMA_VERSION}:`;
 
 // ---------------------------------------------------------------------------
-// TTL Defaults (seconds)
-// ---------------------------------------------------------------------------
-
-export const TTL = {
-  /** Search result listings -- 5 min */
-  SEARCH: 300,
-
-  /** Homepage featured cities -- 5 min */
-  HOME_FEATURED: 300,
-
-  /** Homepage section listings -- 5 min */
-  HOME_SECTION: 300,
-
-  /** Homepage category counts -- 5 min */
-  HOME_CATEGORIES: 300,
-
-  /** Homepage location counts -- 5 min */
-  HOME_LOCATIONS: 300,
-
-  /** Property base details -- 5 min */
-  PROPERTY_BASE: 300,
-
-  /** Property media gallery -- 5 min */
-  PROPERTY_MEDIA: 300,
-
-  /** Property host info -- 5 min */
-  PROPERTY_HOST: 300,
-
-  /** Property amenities -- 5 min */
-  PROPERTY_AMENITIES: 300,
-
-  /** Property reviews -- 5 min (changes more often) */
-  PROPERTY_REVIEWS: 300,
-
-  /** Property pricing -- 5 min */
-  PROPERTY_PRICING: 300,
-
-  /** Accommodation types reference data -- 30 minutes */
-  ACCOMMODATION_REF: 1800,
-
-  // -------------------------------------------------------------------------
-  // Negative Cache TTLs
-  // -------------------------------------------------------------------------
-
-  /** Property not found (404) */
-  NEGATIVE_404: 30,
-
-  /** Empty search results */
-  NEGATIVE_EMPTY: 60,
-
-  /** Availability miss */
-  NEGATIVE_AVAILABILITY: 15,
-} as const;
-
-// ---------------------------------------------------------------------------
-// Jitter
+// TTL and Jitter
 // ---------------------------------------------------------------------------
 
 /** Fraction of TTL used as jitter range. 0.15 = +/- 15%. */

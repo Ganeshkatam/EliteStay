@@ -2,24 +2,19 @@ import { GeocodeResult, GeocodingProvider } from '../types';
 import { NominatimProvider } from '../providers/NominatimProvider';
 import { GeocodingCacheRepository } from '../repositories/GeocodingCacheRepository';
 import { createClient, createStaticClient } from '@/lib/supabase/server';
-import { fetchWithCache, CacheKeys, TTL } from '@/lib/redis';
+import { Cache, CacheManifest } from '@/lib/redis';
 
 async function fetchFeaturedCities() {
-  return fetchWithCache({
-    key: CacheKeys.homeFeatured(),
-    ttl: TTL.HOME_FEATURED,
-    negativeTtl: TTL.NEGATIVE_EMPTY,
-    fetcher: async () => {
-      const supabase = createStaticClient();
-      const { data } = await supabase
-        .from('cities')
-        .select('*')
-        .eq('is_featured', true)
-        .eq('is_active', true)
-        .order('sort_order');
+  return Cache.fetch(CacheManifest.homeFeatured(), async () => {
+    const supabase = createStaticClient();
+    const { data } = await supabase
+      .from('cities')
+      .select('*')
+      .eq('is_featured', true)
+      .eq('is_active', true)
+      .order('sort_order');
 
-      return data || [];
-    },
+    return data || [];
   });
 }
 

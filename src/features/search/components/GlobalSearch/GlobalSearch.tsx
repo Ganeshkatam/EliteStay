@@ -14,11 +14,17 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { format, parseISO, isValid } from 'date-fns';
 import { cn } from '@/lib/utils';
 
+import { type LocationCity } from '@/features/location/types';
+
 interface GlobalSearchProps {
   variant: SearchVariant;
+  popularCities?: LocationCity[];
 }
 
-export function GlobalSearch({ variant }: GlobalSearchProps) {
+export function GlobalSearch({
+  variant,
+  popularCities = [],
+}: GlobalSearchProps) {
   const { state, setIsExpanded } = useSearchContext();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -130,7 +136,11 @@ export function GlobalSearch({ variant }: GlobalSearchProps) {
             <SearchType variant={variant} />
           </div>
 
-          <SearchDropdown duration={duration} setDuration={setDuration} />
+          <SearchDropdown
+            duration={duration}
+            setDuration={setDuration}
+            popularCities={popularCities}
+          />
         </div>
         <SearchButton variant={variant} onClick={handleSearch} />
       </SearchShell>

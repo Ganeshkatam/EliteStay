@@ -1,5 +1,5 @@
 import { createStaticClient } from '@/lib/supabase/server';
-import { fetchWithCache, CacheKeys, TTL } from '@/lib/redis';
+import { Cache, CacheManifest } from '@/lib/redis';
 
 interface AccommodationTypeMapping {
   id: string;
@@ -17,11 +17,9 @@ interface AccommodationTypeMapping {
 export async function getAccommodationTypes(): Promise<
   AccommodationTypeMapping[]
 > {
-  const result = await fetchWithCache<AccommodationTypeMapping[]>({
-    key: CacheKeys.accommodationTypes(),
-    ttl: TTL.ACCOMMODATION_REF,
-    negativeTtl: TTL.NEGATIVE_EMPTY,
-    fetcher: async () => {
+  const result = await Cache.fetch<AccommodationTypeMapping[]>(
+    CacheManifest.accommodationTypes(),
+    async () => {
       const supabase = createStaticClient();
       const { data } = await supabase
         .from('accommodation_types')
@@ -29,8 +27,8 @@ export async function getAccommodationTypes(): Promise<
         .order('display_order');
 
       return (data || []) as AccommodationTypeMapping[];
-    },
-  });
+    }
+  );
 
   return result || [];
 }

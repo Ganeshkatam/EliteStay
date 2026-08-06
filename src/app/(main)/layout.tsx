@@ -3,6 +3,8 @@ import { GuestFooter } from '@/features/guest/discovery/shared/components/naviga
 import { SearchProvider } from '@/features/search/components/GlobalSearch/SearchContext';
 import { createClient } from '@/lib/supabase/server';
 import { type ExtendedProfile } from '@/types/profile';
+import { getPopularCitiesAction } from '@/features/location/actions/search-city';
+import { type LocationCity } from '@/features/location/types';
 import { cookies } from 'next/headers';
 import { jwtDecode } from 'jwt-decode';
 
@@ -30,16 +32,25 @@ export default async function GuestLayout({
   }
 
   // 2. Concurrently validate securely via API AND hit the database
-  const [userResponse, profileResponse] = await Promise.all([
-    supabase.auth.getUser(),
-    potentialUserId
-      ? supabase
-          .from('profiles')
-          .select('id, full_name, avatar_storage_path')
-          .eq('id', potentialUserId)
-          .maybeSingle()
-      : Promise.resolve({ data: null }),
-  ]);
+  const [userResponse, profileResponse, hostProfileResponse, popularCities] =
+    await Promise.all([
+      supabase.auth.getUser(),
+      potentialUserId
+        ? supabase
+            .from('profiles')
+            .select('id, full_name, avatar_storage_path')
+            .eq('id', potentialUserId)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
+      potentialUserId
+        ? supabase
+            .from('host_profiles')
+            .select('id')
+            .eq('user_id', potentialUserId)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
+      getPopularCitiesAction(),
+    ]);
 
   const user = userResponse.data.user;
 
@@ -47,6 +58,9 @@ export default async function GuestLayout({
     user && user.id === potentialUserId
       ? (profileResponse.data as ExtendedProfile | null)
       : null;
+
+  const isHost =
+    user && user.id === potentialUserId ? !!hostProfileResponse.data : false;
 
   // 4. Sequential fallback: If the fast cookie parse failed (e.g. cookie name mismatch), fetch now
   if (user && !profile) {
@@ -61,7 +75,12 @@ export default async function GuestLayout({
   return (
     <SearchProvider>
       <div className="flex flex-1 flex-col font-sans min-h-0">
-        <GuestNavigationBar user={user} profile={profile} />
+        <GuestNavigationBar
+          user={user}
+          profile={profile}
+          isHost={isHost}
+          popularCities={popularCities as LocationCity[]}
+        />
         <main className="flex-1 flex flex-col min-h-0">{children}</main>
         <GuestFooter />
       </div>

@@ -78,8 +78,18 @@ export async function instrumentExecution<T>(
       throw error;
     } finally {
       const node = childSpan.finish();
+      if (parentSpan) {
+        parentSpan.addChild(node);
+      } else {
+        existingTrace.rootSpan.addChild(node);
+      }
       existingTrace.registerSpanNode(node, parentSpan?.spanId ?? null);
-      if (category === 'SERVICE' || category === 'DATABASE') {
+      if (
+        category === 'SERVICE' ||
+        category === 'DATABASE' ||
+        category === 'CACHE' ||
+        category === 'RENDER'
+      ) {
         logger
           .category(category)
           .info(

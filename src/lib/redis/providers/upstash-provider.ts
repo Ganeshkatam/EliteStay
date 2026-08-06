@@ -62,4 +62,41 @@ export class UpstashProvider implements CacheProvider {
   async ttl(key: string): Promise<number> {
     return this.client.ttl(key);
   }
+
+  // ---------------------------------------------------------------------------
+  // Batch Operations
+  // ---------------------------------------------------------------------------
+
+  async mget(keys: string[]): Promise<(string | null)[]> {
+    if (keys.length === 0) return [];
+    const values = await this.client.mget<unknown[]>(...keys);
+    return values.map((value) => {
+      if (value === null || value === undefined) return null;
+      if (typeof value === 'object') return JSON.stringify(value);
+      return String(value);
+    });
+  }
+
+  async mset(entries: Record<string, string>): Promise<void> {
+    if (Object.keys(entries).length === 0) return;
+    await this.client.mset(entries);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Set Operations
+  // ---------------------------------------------------------------------------
+
+  async sadd(key: string, ...members: string[]): Promise<number> {
+    if (members.length === 0) return 0;
+    return this.client.sadd(key, members[0], ...members.slice(1));
+  }
+
+  async smembers(key: string): Promise<string[]> {
+    return this.client.smembers(key);
+  }
+
+  async srem(key: string, ...members: string[]): Promise<number> {
+    if (members.length === 0) return 0;
+    return this.client.srem(key, members[0], ...members.slice(1));
+  }
 }

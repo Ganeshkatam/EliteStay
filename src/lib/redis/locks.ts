@@ -11,7 +11,7 @@
  */
 
 import { getProvider } from './client';
-import { CacheKeys } from './keys';
+import { KEY_PREFIX } from './config';
 import {
   DEFAULT_LOCK_TTL_MS,
   LOCK_MAX_RETRIES,
@@ -35,12 +35,12 @@ export async function acquireLock(
   ttlMs: number = DEFAULT_LOCK_TTL_MS
 ): Promise<string | null> {
   const provider = getProvider();
-  const lockKey = CacheKeys.lock(resourceKey);
-  const ownerToken = generateOwnerToken();
+  const token = generateOwnerToken();
+  const lockKey = `${KEY_PREFIX}lock:${resourceKey}`;
 
   try {
-    const acquired = await provider.setnx(lockKey, ownerToken, ttlMs);
-    return acquired ? ownerToken : null;
+    const acquired = await provider.setnx(lockKey, token, ttlMs);
+    return acquired ? token : null;
   } catch {
     return null;
   }
@@ -54,14 +54,19 @@ export async function acquireLock(
  */
 export async function releaseLock(
   resourceKey: string,
-  ownerToken: string
+  token: string
 ): Promise<void> {
   const provider = getProvider();
-  const lockKey = CacheKeys.lock(resourceKey);
+  const lockKey = `${KEY_PREFIX}lock:${resourceKey}`;
 
+  // Simple check-and-delete.
+  // In a truly distributed environment where clock skew is a huge issue,
+  // we would use a Lua script:
+  //   if redis.call("get",KEYS[1]) == ARGV[1] then return redis.call("del",KEYS[1]) else return 0 end
+  // But for simple lock release, get + del is acceptable if the TTL hasn't expired.
   try {
-    const stored = await provider.get(lockKey);
-    if (stored === ownerToken) {
+    const currentToken = await provider.get(lockKey);
+    if (currentToken === token) {
       await provider.del(lockKey);
     }
   } catch {

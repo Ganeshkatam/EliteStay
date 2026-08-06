@@ -1,4 +1,4 @@
-import { fetchWithCache, CacheKeys, TTL } from '@/lib/redis';
+import { Cache, CacheManifest } from '@/lib/redis';
 import { PropertyRepository } from '../repositories/property.repository';
 
 export interface PropertyReview {
@@ -24,11 +24,9 @@ export class ReviewService {
   static async getReviews(
     publicId: string
   ): Promise<PropertyReviewsData | null> {
-    const data = await fetchWithCache({
-      key: CacheKeys.propertyReviews(publicId),
-      ttl: TTL.PROPERTY_REVIEWS,
-      negativeTtl: TTL.NEGATIVE_404,
-      fetcher: async () => {
+    const data = await Cache.fetch(
+      CacheManifest.propertyReviews(publicId),
+      async () => {
         const raw = await PropertyRepository.getReviews(publicId);
         if (!raw) return null;
 
@@ -82,8 +80,8 @@ export class ReviewService {
               }
             : null,
         };
-      },
-    });
+      }
+    );
 
     return data;
   }

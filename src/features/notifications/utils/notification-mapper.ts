@@ -5,7 +5,7 @@ import {
   NotificationType,
 } from '../types';
 import { formatNotificationTime } from '@/lib/formatters/time';
-import { isToday, isYesterday, isThisWeek, isThisMonth } from 'date-fns';
+import { differenceInHours } from 'date-fns';
 
 export function mapToViewModel(row: NotificationRow): NotificationViewModel {
   let iconName = 'Info';
@@ -26,22 +26,36 @@ export function mapToViewModel(row: NotificationRow): NotificationViewModel {
     case NotificationType.BOOKING_REQUEST:
       iconName = 'CalendarClock';
       iconColorClass = 'text-amber-500 bg-amber-50';
-      actionLabel = 'View Booking';
+      actionLabel = 'Review Request';
       break;
     case NotificationType.BOOKING_APPROVED:
-      iconName = 'CalendarCheck';
+      iconName = 'CheckCircle2';
       iconColorClass = 'text-green-500 bg-green-50';
       actionLabel = 'View Booking';
       break;
     case NotificationType.BOOKING_REJECTED:
-      iconName = 'CalendarX';
+      iconName = 'XCircle';
       iconColorClass = 'text-red-500 bg-red-50';
-      actionLabel = 'View Booking';
+      actionLabel = 'View Details';
       break;
     case NotificationType.BOOKING_CANCELLED:
-      iconName = 'CalendarMinus';
+      iconName = 'Ban';
+      iconColorClass = 'text-slate-500 bg-slate-100';
+      actionLabel = 'View Details';
+      break;
+    case NotificationType.STAY_CHECKED_IN:
+      iconName = 'DoorOpen';
+      iconColorClass = 'text-emerald-500 bg-emerald-50';
+      break;
+    case NotificationType.STAY_CHECKED_OUT:
+      iconName = 'DoorClosed';
       iconColorClass = 'text-slate-500 bg-slate-50';
-      actionLabel = 'View Booking';
+      break;
+    case NotificationType.REVIEW_REMINDER:
+    case NotificationType.REVIEW_RECEIVED:
+      iconName = 'Star';
+      iconColorClass = 'text-yellow-500 bg-yellow-50';
+      actionLabel = 'Read Review';
       break;
     case NotificationType.CALENDAR_SYNC_SUCCESS:
       iconName = 'RefreshCcw';
@@ -62,7 +76,8 @@ export function mapToViewModel(row: NotificationRow): NotificationViewModel {
     title: row.title,
     message: row.message,
     timeLabel: formatNotificationTime(row.created_at),
-    isRead: !!row.read_at,
+    isRead:
+      row.read_at !== null && row.read_at !== undefined && row.read_at !== '',
     type: row.type,
     iconName,
     iconColorClass,
@@ -75,31 +90,27 @@ export function groupNotificationsByDate(
   rows: NotificationRow[]
 ): NotificationGroup[] {
   const groups: Record<string, NotificationViewModel[]> = {
-    Today: [],
-    Yesterday: [],
-    'Earlier This Week': [],
-    'Earlier This Month': [],
-    Older: [],
+    New: [],
+    Earlier: [],
   };
+
+  const now = new Date();
 
   rows.forEach((row) => {
     const date = new Date(row.created_at);
-    const vm = mapToViewModel(row);
+    const viewModel = mapToViewModel(row);
 
-    if (isToday(date)) {
-      groups['Today'].push(vm);
-    } else if (isYesterday(date)) {
-      groups['Yesterday'].push(vm);
-    } else if (isThisWeek(date)) {
-      groups['Earlier This Week'].push(vm);
-    } else if (isThisMonth(date)) {
-      groups['Earlier This Month'].push(vm);
+    // If less than 24 hours old, put in New
+    const hours = differenceInHours(now, date);
+
+    if (hours < 24) {
+      groups['New'].push(viewModel);
     } else {
-      groups['Older'].push(vm);
+      groups['Earlier'].push(viewModel);
     }
   });
 
   return Object.entries(groups)
-    .filter(([, items]) => items.length > 0)
+    .filter(([_, items]) => items.length > 0)
     .map(([title, items]) => ({ title, items }));
 }

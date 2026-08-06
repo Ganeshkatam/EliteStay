@@ -27,11 +27,10 @@ async function runStampedeBenchmark() {
       // Fire 500 concurrent requests
       const promises = Array.from({ length: concurrency }).map(async () => {
         const reqStart = performance.now();
-        const res = await fetchWithCache({
-          key: TEST_KEY,
-          ttl: 60,
-          fetcher,
-        });
+        const res = await fetchWithCache(
+          { key: TEST_KEY, policy: 'search', tags: [] },
+          fetcher
+        );
         return {
           latency: performance.now() - reqStart,
           data: res,
@@ -44,7 +43,7 @@ async function runStampedeBenchmark() {
 
       // Verify data correctness
       const invalidResponses = results.filter(
-        (r) => r.data?.data !== 'hello world'
+        (r) => (r.data as any)?.data !== 'hello world'
       );
       if (invalidResponses.length > 0) {
         throw new Error(
@@ -98,11 +97,10 @@ async function runStampedeBenchmark() {
       };
 
       // Populate Cache with 1 second TTL
-      await fetchWithCache({
-        key: TEST_KEY,
-        ttl: 1,
-        fetcher,
-      });
+      await fetchWithCache(
+        { key: TEST_KEY, policy: 'search', tags: [] },
+        fetcher
+      );
 
       // Wait 1.1s for expiration
       await new Promise((resolve) => setTimeout(resolve, 1100));
@@ -113,11 +111,10 @@ async function runStampedeBenchmark() {
       // Fire 500 concurrent requests immediately after expiry
       const promises = Array.from({ length: concurrency }).map(async () => {
         const reqStart = performance.now();
-        const res = await fetchWithCache({
-          key: TEST_KEY,
-          ttl: 60,
-          fetcher,
-        });
+        const res = await fetchWithCache(
+          { key: TEST_KEY, policy: 'search', tags: [] },
+          fetcher
+        );
         return {
           latency: performance.now() - reqStart,
           data: res,

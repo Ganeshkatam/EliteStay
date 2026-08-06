@@ -70,16 +70,20 @@ const accommodationTypes = [
 interface SearchDropdownProps {
   duration: 'weekend' | 'week' | 'month';
   setDuration: (dur: 'weekend' | 'week' | 'month') => void;
+  popularCities: LocationCity[];
 }
 
-export function SearchDropdown({ duration, setDuration }: SearchDropdownProps) {
+export function SearchDropdown({
+  duration,
+  setDuration,
+  popularCities,
+}: SearchDropdownProps) {
   const { state, updateState, activeSection, setActiveSection, setIsExpanded } =
     useSearchContext();
   const router = useRouter();
 
   // Location/Where states
   const [suggestions, setSuggestions] = useState<LocationCity[]>([]);
-  const [popularCities, setPopularCities] = useState<LocationCity[]>([]);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -102,19 +106,6 @@ export function SearchDropdown({ duration, setDuration }: SearchDropdownProps) {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [setActiveSection]);
-
-  // Load popular cities on mount
-  useEffect(() => {
-    async function loadCities() {
-      try {
-        const cities = await getPopularCitiesAction();
-        setPopularCities((cities ?? []).slice(0, 5) as LocationCity[]);
-      } catch (err) {
-        console.error('Failed to load popular cities', err);
-      }
-    }
-    loadCities();
-  }, []);
 
   const today = new Date();
   const months = Array.from({ length: 6 }).map((_, i) => {

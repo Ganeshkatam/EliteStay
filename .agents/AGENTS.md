@@ -168,3 +168,16 @@ The Property Domain (`src/features/property`) is formally **FROZEN** as `v1`.
 1. **Immutable Contracts**: The interfaces returned by `PropertyRepository` and all Domain Services (`PropertyBaseService`, `MediaService`, `HostService`, `AmenitiesService`, `PricingService`, `ReviewService`) are stable.
 2. **Consumer Strictness**: Future domains (including the Booking Domain) are **consumers** of the Property Domain. Booking must **not** modify Property Domain services, repositories, or cache logic to accommodate write-heavy workflows.
 3. **No Leakage**: If a new domain requires property data (e.g., for pricing snapshots or availability checks), it must consume the stable interfaces provided by `PropertyDomain v1`, or build its own dedicated views within its own bounded context. This prevents transactional logic from leaking into read-heavy presentation services.
+
+ 
+ #   R e d i s   P l a t f o r m   A r c h i t e c t u r e   R u l e 
+ 
+ T h e   R e d i s   c a c h e   s u b s y s t e m   ( `�s�r�c�/�l�i�b�/�r�e�d�i�s�` )   i s   f o r m a l l y   * * F R O Z E N * * . 
+ 
+ 1 .   * * N o   M a n u a l   C a c h e   M a n a g e m e n t * * :   F u t u r e   f e a t u r e s   m u s t   N O T   i m p o r t   `�@�u�p�s�t�a�s�h�/�r�e�d�i�s�` ,   d e f i n e   T T L s   m a n u a l l y ,   b u i l d   c a c h e   k e y s ,   c r e a t e   l o c k s ,   o r   m a n u a l l y   i n v a l i d a t e   R e d i s   k e y s   i n s i d e   b u s i n e s s   l o g i c . 
+ 2 .   * * U n i f i e d   F a c a d e * * :   E v e r y   f u t u r e   f e a t u r e   m u s t   e x c l u s i v e l y   c o n s u m e   R e d i s   t h r o u g h   t h e   `�C�a�c�h�e�`   f a c a d e   ( `�C�a�c�h�e�.�f�e�t�c�h�` ) . 
+ 3 .   * * D a t a - D r i v e n   C o n f i g u r a t i o n * * :   C a c h e   c o n f i g u r a t i o n   b e l o n g s   e n t i r e l y   i n   t h e   `�C�a�c�h�e�M�a�n�i�f�e�s�t�` . 
+ 4 .   * * E v e n t - D r i v e n   I n v a l i d a t i o n * * :   A l l   i n v a l i d a t i o n   m u s t   o c c u r   a s y n c h r o n o u s l y   b y   m a p p i n g   `�D�o�m�a�i�n�E�v�e�n�t�s�`   t o   t a g s   i n   t h e   `�C�a�c�h�e�E�v�e�n�t�R�e�g�i�s�t�r�y�` .   D o   n o t   i n v o k e   c a c h e   i n v a l i d a t i o n   d i r e c t l y   f r o m   s e r v i c e s   o r   r e p o s i t o r i e s . 
+ 
+ 
+ 

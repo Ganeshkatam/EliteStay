@@ -2,7 +2,7 @@ import { createStaticClient } from '@/lib/supabase/server';
 import { ListingCardData } from '@/features/listings/types';
 import { HomeSectionConfig } from '../config/sections';
 import { resolveAccommodationTypeId } from './accommodation-type-cache';
-import { fetchWithCache, CacheKeys, TTL } from '@/lib/redis';
+import { Cache, CacheManifest } from '@/lib/redis';
 
 function resolveImageUrl(path: string | null): string | null {
   if (!path) return null;
@@ -108,12 +108,10 @@ const fetchSectionListings = async (
 export async function getSectionListings(
   config: HomeSectionConfig
 ): Promise<ListingCardData[]> {
-  const result = await fetchWithCache<ListingCardData[]>({
-    key: CacheKeys.homeSectionListings(config.id),
-    ttl: TTL.HOME_SECTION,
-    negativeTtl: TTL.NEGATIVE_EMPTY,
-    fetcher: () => fetchSectionListings(config),
-  });
+  const result = await Cache.fetch<ListingCardData[]>(
+    CacheManifest.homeSectionListings(config.id),
+    () => fetchSectionListings(config)
+  );
 
   return result || [];
 }
@@ -144,12 +142,10 @@ const fetchCategoryCountsInternal = async (
 export async function getCategoryCounts(
   typeIds: string[]
 ): Promise<Record<string, number>> {
-  const result = await fetchWithCache<Record<string, number>>({
-    key: CacheKeys.homeCategories(),
-    ttl: TTL.HOME_CATEGORIES,
-    negativeTtl: TTL.NEGATIVE_EMPTY,
-    fetcher: () => fetchCategoryCountsInternal(typeIds),
-  });
+  const result = await Cache.fetch<Record<string, number>>(
+    CacheManifest.homeCategories(),
+    () => fetchCategoryCountsInternal(typeIds)
+  );
 
   return result || {};
 }
@@ -180,12 +176,10 @@ const fetchLocationCountsInternal = async (
 export async function getLocationCounts(
   cities: string[]
 ): Promise<Record<string, number>> {
-  const result = await fetchWithCache<Record<string, number>>({
-    key: CacheKeys.homeLocationCounts(cities),
-    ttl: TTL.HOME_LOCATIONS,
-    negativeTtl: TTL.NEGATIVE_EMPTY,
-    fetcher: () => fetchLocationCountsInternal(cities),
-  });
+  const result = await Cache.fetch<Record<string, number>>(
+    CacheManifest.homeLocationCounts(cities),
+    () => fetchLocationCountsInternal(cities)
+  );
 
   return result || {};
 }

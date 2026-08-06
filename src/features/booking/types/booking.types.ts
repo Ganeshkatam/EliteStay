@@ -46,6 +46,7 @@ export interface BookingIntent {
   source?: string;
   channel: BookingChannel;
   idempotencyKey: string;
+  action?: 'APPLY' | 'RESERVE';
 
   qualifications?: {
     monthlyBudget?: number;

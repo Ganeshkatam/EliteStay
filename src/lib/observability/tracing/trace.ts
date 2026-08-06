@@ -74,19 +74,6 @@ export class Trace implements ActiveTraceContext {
         this.warnings.push(`[${node.name}] ${warn}`);
       }
     }
-
-    // Attach to parent in the tree hierarchy
-    if (parentSpanId && parentSpanId !== this.rootSpan.spanId) {
-      const parentNode = this.nodeMap.get(parentSpanId);
-      if (parentNode) {
-        parentNode.children.push(node);
-      } else {
-        // Fallback: attach directly under root if parent span finished out of order
-        this.rootSpan.addChild(node);
-      }
-    } else {
-      this.rootSpan.addChild(node);
-    }
   }
 
   /**

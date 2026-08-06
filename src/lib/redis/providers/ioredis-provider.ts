@@ -48,4 +48,36 @@ export class IoRedisProvider implements CacheProvider {
   async ttl(key: string): Promise<number> {
     return this.client.ttl(key);
   }
+
+  // ---------------------------------------------------------------------------
+  // Batch Operations
+  // ---------------------------------------------------------------------------
+
+  async mget(keys: string[]): Promise<(string | null)[]> {
+    if (keys.length === 0) return [];
+    return this.client.mget(...keys);
+  }
+
+  async mset(entries: Record<string, string>): Promise<void> {
+    if (Object.keys(entries).length === 0) return;
+    await this.client.mset(entries);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Set Operations
+  // ---------------------------------------------------------------------------
+
+  async sadd(key: string, ...members: string[]): Promise<number> {
+    if (members.length === 0) return 0;
+    return this.client.sadd(key, ...members);
+  }
+
+  async smembers(key: string): Promise<string[]> {
+    return this.client.smembers(key);
+  }
+
+  async srem(key: string, ...members: string[]): Promise<number> {
+    if (members.length === 0) return 0;
+    return this.client.srem(key, ...members);
+  }
 }

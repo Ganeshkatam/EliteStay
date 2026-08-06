@@ -30,8 +30,21 @@ class FailingProvider implements CacheProvider {
   async incr(): Promise<number> {
     throw new Error('Injected Failure');
   }
-  async ttl(): Promise<number> {
-    throw new Error('Injected Failure');
+  async ttl(key: string) {
+    return -2;
+  }
+  async mget(keys: string[]) {
+    return keys.map(() => null);
+  }
+  async mset(entries: Record<string, string>) {}
+  async sadd(key: string, ...members: string[]) {
+    return 0;
+  }
+  async smembers(key: string) {
+    return [];
+  }
+  async srem(key: string, ...members: string[]) {
+    return 0;
   }
 }
 
@@ -56,7 +69,10 @@ async function runCircuitBreakerBenchmark() {
 
         // Trip the circuit by firing requests equal to failure threshold
         for (let i = 0; i < CIRCUIT_FAILURE_THRESHOLD; i++) {
-          await fetchWithCache({ key: TEST_KEY, ttl: 60, fetcher });
+          await fetchWithCache(
+            { key: TEST_KEY, policy: 'search', tags: [] },
+            fetcher
+          );
         }
 
         const circuitClosedAfterFailures = isCircuitClosed(); // Should be false (OPEN)
@@ -70,7 +86,10 @@ async function runCircuitBreakerBenchmark() {
         _setProviderForTesting(originalProvider);
 
         // The first request after cooldown should be HALF-OPEN and succeed, closing the circuit
-        await fetchWithCache({ key: TEST_KEY, ttl: 60, fetcher });
+        await fetchWithCache(
+          { key: TEST_KEY, policy: 'search', tags: [] },
+          fetcher
+        );
 
         const circuitClosedAfterRecovery = isCircuitClosed(); // Should be true (CLOSED)
 

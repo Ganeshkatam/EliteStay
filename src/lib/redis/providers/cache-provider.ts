@@ -36,4 +36,27 @@ export interface CacheProvider {
    * Returns -2 if the key does not exist, -1 if no TTL is set.
    */
   ttl(key: string): Promise<number>;
+
+  // ---------------------------------------------------------------------------
+  // Batch Operations
+  // ---------------------------------------------------------------------------
+
+  /** Retrieve multiple raw string values. Returns array of strings or nulls. */
+  mget(keys: string[]): Promise<(string | null)[]>;
+
+  /** Store multiple raw string values. */
+  mset(entries: Record<string, string>): Promise<void>;
+
+  // ---------------------------------------------------------------------------
+  // Set Operations (for tags)
+  // ---------------------------------------------------------------------------
+
+  /** Add one or more members to a set. */
+  sadd(key: string, ...members: string[]): Promise<number>;
+
+  /** Get all members in a set. */
+  smembers(key: string): Promise<string[]>;
+
+  /** Remove one or more members from a set. */
+  srem(key: string, ...members: string[]): Promise<number>;
 }

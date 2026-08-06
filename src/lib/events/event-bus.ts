@@ -19,14 +19,18 @@ export class EventBus {
     this.globalSubscribers.add(handler);
   }
 
-  public publish<T>(type: DomainEventType, payload: T, actorId?: string): void {
+  public publish<T>(
+    type: DomainEventType,
+    payload: T,
+    options?: { actorId?: string; correlationId?: string; causationId?: string }
+  ): void {
     const event: DomainEvent<T> = {
       id: randomUUID(),
       type,
       timestamp: new Date().toISOString(),
       metadata: {
-        actorId,
-        traceId: RequestContext.getTraceId(),
+        actorId: options?.actorId,
+        traceId: options?.correlationId || RequestContext.getTraceId(),
       },
       payload,
     };

@@ -1,4 +1,4 @@
-import { fetchWithCache, CacheKeys, TTL } from '@/lib/redis';
+import { Cache, CacheManifest } from '@/lib/redis';
 import { PropertyRepository } from '../repositories/property.repository';
 
 export interface PropertyPricing {
@@ -14,11 +14,9 @@ export interface PropertyPricing {
 
 export class PricingService {
   static async getPricing(publicId: string): Promise<PropertyPricing | null> {
-    const data = await fetchWithCache({
-      key: CacheKeys.propertyPricing(publicId),
-      ttl: TTL.PROPERTY_PRICING,
-      negativeTtl: TTL.NEGATIVE_404,
-      fetcher: async () => {
+    const data = await Cache.fetch(
+      CacheManifest.propertyPricing(publicId),
+      async () => {
         const raw = await PropertyRepository.getPricing(publicId);
         if (!raw) return null;
 
@@ -32,8 +30,8 @@ export class PricingService {
           minimumDuration: raw.minimum_duration || 1,
           maximumDuration: raw.maximum_duration,
         };
-      },
-    });
+      }
+    );
 
     return data;
   }

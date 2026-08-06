@@ -62,7 +62,8 @@ export interface CacheEnvelope<T = unknown> {
 export function encode<T>(
   payload: T | null,
   ttl: number,
-  negative: boolean = false
+  negative: boolean = false,
+  disableCompression: boolean = false
 ): string {
   const envelope: CacheEnvelope<T> = {
     version: ENVELOPE_VERSION,
@@ -75,8 +76,8 @@ export function encode<T>(
 
   const serialized = activeSerializer.serialize(envelope);
 
-  // Compress only if payload exceeds threshold
-  if (serialized.length > COMPRESSION_THRESHOLD_BYTES) {
+  // Compress only if payload exceeds threshold and compression is not disabled
+  if (!disableCompression && serialized.length > COMPRESSION_THRESHOLD_BYTES) {
     const compressed = brotliCompressSync(Buffer.from(serialized));
     // Store as base64 with a prefix marker so decode knows it is compressed.
     return `__br__${compressed.toString('base64')}`;

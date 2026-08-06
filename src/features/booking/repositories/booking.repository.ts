@@ -132,6 +132,28 @@ export class BookingRepository {
   }
 
   /**
+   * Retrieves a reservation by its ID.
+   */
+  static async getById(id: string): Promise<StayReservation | null> {
+    return observeRepository(
+      'BookingRepository',
+      'getById',
+      'reservations',
+      async () => {
+        const supabase = await createClient();
+        const { data, error } = await supabase
+          .from('reservations')
+          .select('*')
+          .eq('id', id)
+          .single();
+
+        if (error || !data) return null;
+        return this.mapToDomain(data);
+      }
+    );
+  }
+
+  /**
    * Updates reservation state using optimistic concurrency control.
    */
   static async transitionState(

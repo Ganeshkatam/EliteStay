@@ -8,7 +8,6 @@ import {
   User,
   Bell,
   Settings,
-  Home,
   Menu,
   ChevronLeft,
   MessageSquare,
@@ -36,10 +35,6 @@ const navGroups: NavGroup[] = [
       { name: 'Notifications', href: '/users/notifications', icon: Bell },
       { name: 'Settings', href: '/users/settings', icon: Settings },
     ],
-  },
-  {
-    title: 'Hosting',
-    items: [{ name: 'Host', href: '/host', icon: Home }],
   },
 ];
 

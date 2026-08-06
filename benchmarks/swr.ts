@@ -22,11 +22,10 @@ async function runSwrBenchmark() {
 
       // 1. Initial population (TTL: 5 seconds)
       const ttl = 5;
-      await fetchWithCache({
-        key: TEST_KEY,
-        ttl,
-        fetcher,
-      });
+      await fetchWithCache(
+        { key: TEST_KEY, policy: 'search', tags: [] },
+        fetcher
+      );
 
       // 2. Advance into the stale window.
       // freshThreshold = 5 * 0.8 = 4s.
@@ -39,11 +38,10 @@ async function runSwrBenchmark() {
       // 3. Fire 100 concurrent requests during the stale window
       const promises = Array.from({ length: concurrency }).map(async () => {
         const reqStart = performance.now();
-        const res = await fetchWithCache({
-          key: TEST_KEY,
-          ttl,
-          fetcher,
-        });
+        const res = await fetchWithCache(
+          { key: TEST_KEY, policy: 'search', tags: [] },
+          fetcher
+        );
         return {
           latency: performance.now() - reqStart,
           data: res,
@@ -52,17 +50,20 @@ async function runSwrBenchmark() {
 
       const results = await Promise.all(promises);
       const staleResponses = results.filter(
-        (r) => r.data?.data === 'version-1'
+        (r) => (r.data as any)?.data === 'version-1'
       );
       const freshResponses = results.filter(
-        (r) => r.data?.data === 'version-2'
+        (r) => (r.data as any)?.data === 'version-2'
       );
 
       // 4. Wait for background refresh to finish (should take ~100ms)
       await new Promise((resolve) => setTimeout(resolve, 300));
 
       // 5. Verify the cache was updated by the background refresh
-      const finalRes = await fetchWithCache({ key: TEST_KEY, ttl, fetcher });
+      const finalRes = await fetchWithCache(
+        { key: TEST_KEY, policy: 'search', tags: [] },
+        fetcher
+      );
 
       return {
         metrics: {
@@ -70,7 +71,7 @@ async function runSwrBenchmark() {
           staleResponses: staleResponses.length,
           freshResponses: freshResponses.length,
           backgroundRefreshes: fetcherCalls - initialFetcherCalls,
-          finalVersion: finalRes?.data ?? 'undefined',
+          finalVersion: (finalRes as any)?.data ?? 'undefined',
         },
       };
     },

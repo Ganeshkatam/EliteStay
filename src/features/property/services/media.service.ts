@@ -1,4 +1,4 @@
-import { fetchWithCache, CacheKeys, TTL } from '@/lib/redis';
+import { Cache, CacheManifest } from '@/lib/redis';
 import { PropertyRepository } from '../repositories/property.repository';
 
 export interface PropertyMedia {
@@ -10,11 +10,9 @@ export interface PropertyMedia {
 
 export class PropertyMediaService {
   static async getMedia(publicId: string): Promise<PropertyMedia[]> {
-    const data = await fetchWithCache({
-      key: CacheKeys.propertyMedia(publicId),
-      ttl: TTL.PROPERTY_MEDIA,
-      negativeTtl: TTL.NEGATIVE_404,
-      fetcher: async () => {
+    const data = await Cache.fetch(
+      CacheManifest.propertyMedia(publicId),
+      async () => {
         const raw = await PropertyRepository.getMedia(publicId);
         if (!raw || raw.length === 0) return [];
 
@@ -24,8 +22,8 @@ export class PropertyMediaService {
           isCover: img.is_cover,
           displayOrder: img.display_order,
         }));
-      },
-    });
+      }
+    );
 
     return data || [];
   }

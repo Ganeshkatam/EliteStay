@@ -15,12 +15,21 @@ import { SearchProvider } from '@/features/search/context/SearchProvider';
 import { ToolbarRenderer } from '@/features/search/components/toolbar/ToolbarRenderer';
 import { type SearchWorkspaceViewModel } from '@/features/search/types';
 
+import { type LocationCity } from '@/features/location/types';
+
 interface GuestNavigationBarProps {
   user?: User | null;
   profile?: ExtendedProfile | null;
+  isHost?: boolean;
+  popularCities?: LocationCity[];
 }
 
-export function GuestNavigationBar({ user, profile }: GuestNavigationBarProps) {
+export function GuestNavigationBar({
+  user,
+  profile,
+  isHost,
+  popularCities = [],
+}: GuestNavigationBarProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const isSearchRoute = pathname === '/s';
@@ -179,6 +188,8 @@ export function GuestNavigationBar({ user, profile }: GuestNavigationBarProps) {
               user={user}
               profile={profile}
               isExpanded={isExpanded}
+              isHost={isHost}
+              popularCities={popularCities}
             />
           </Container>
 

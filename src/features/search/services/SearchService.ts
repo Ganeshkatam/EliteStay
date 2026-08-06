@@ -1,7 +1,7 @@
 import { searchListings } from '@/features/listings/api/queries';
 import { SearchFilters } from '../lib/search-params';
 import { ListingCardData } from '@/features/listings/types';
-import { fetchWithCache, CacheKeys, TTL, CacheInvalidation } from '@/lib/redis';
+import { Cache, CacheManifest } from '@/lib/redis';
 
 export interface SearchResult {
   listings: ListingCardData[];
@@ -12,8 +12,7 @@ export interface SearchResult {
 
 export class SearchService {
   static async search(filters: SearchFilters): Promise<SearchResult> {
-    // Get the current search namespace version for cache key
-    const searchVersion = await CacheInvalidation.getSearchVersion();
+    const searchVersion = await Cache.getSearchVersion();
 
     // Build canonical search params for cache key (exclude pagination for cache sharing)
     const cacheParams: Record<string, unknown> = {
@@ -33,11 +32,9 @@ export class SearchService {
       pageSize: filters.pageSize,
     };
 
-    const result = await fetchWithCache<SearchResult>({
-      key: CacheKeys.searchListings(searchVersion, cacheParams),
-      ttl: TTL.SEARCH,
-      negativeTtl: TTL.NEGATIVE_EMPTY,
-      fetcher: async () => {
+    const result = await Cache.fetch<SearchResult>(
+      CacheManifest.searchListings(searchVersion, cacheParams),
+      async () => {
         const {
           data: listings,
           total,
@@ -45,8 +42,8 @@ export class SearchService {
           totalPages,
         } = await searchListings(filters);
         return { listings, total, page, totalPages };
-      },
-    });
+      }
+    );
 
     return result || { listings: [], total: 0, page: 1, totalPages: 0 };
   }

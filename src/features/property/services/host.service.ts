@@ -1,4 +1,4 @@
-import { fetchWithCache, CacheKeys, TTL } from '@/lib/redis';
+import { Cache, CacheManifest } from '@/lib/redis';
 import { PropertyRepository } from '../repositories/property.repository';
 
 export interface PropertyHost {
@@ -11,11 +11,9 @@ export interface PropertyHost {
 
 export class HostService {
   static async getHost(publicId: string): Promise<PropertyHost | null> {
-    const data = await fetchWithCache({
-      key: CacheKeys.propertyHost(publicId),
-      ttl: TTL.PROPERTY_HOST,
-      negativeTtl: TTL.NEGATIVE_404,
-      fetcher: async () => {
+    const data = await Cache.fetch(
+      CacheManifest.propertyHost(publicId),
+      async () => {
         const raw = await PropertyRepository.getHost(publicId);
         if (!raw || !raw.profiles) return null;
 
@@ -33,8 +31,8 @@ export class HostService {
           joinedAt: profile?.created_at,
           isVerified: !!hostProfile?.identity_verified_at,
         };
-      },
-    });
+      }
+    );
 
     return data;
   }
