@@ -94,6 +94,40 @@ export class TimelineService {
         if (p.moveInId) return { entityType: 'MOVE_IN', entityId: p.moveInId };
         break;
 
+      case DomainEventType.MAINTENANCE_REQUEST_CREATED:
+      case DomainEventType.MAINTENANCE_ASSIGNED:
+      case DomainEventType.MAINTENANCE_STARTED:
+      case DomainEventType.MAINTENANCE_WAITING:
+      case DomainEventType.MAINTENANCE_RESOLVED:
+      case DomainEventType.MAINTENANCE_CLOSED:
+        if (p.requestId)
+          return { entityType: 'MAINTENANCE', entityId: p.requestId };
+        break;
+
+      case DomainEventType.INVOICE_CREATED:
+      case DomainEventType.CHARGE_POSTED:
+      case DomainEventType.PAYMENT_RECEIVED:
+      case DomainEventType.PAYMENT_ALLOCATED:
+      case DomainEventType.PAYMENT_REVERSED:
+        if (p.invoiceId)
+          return { entityType: 'INVOICE', entityId: p.invoiceId };
+        if (p.ledgerEntryId)
+          return { entityType: 'LEDGER_ENTRY', entityId: p.ledgerEntryId };
+        break;
+
+      case DomainEventType.DOCUMENT_UPLOADED:
+      case DomainEventType.DOCUMENT_REPLACED:
+      case DomainEventType.DOCUMENT_DELETED:
+        if (p.documentId)
+          return { entityType: 'DOCUMENT', entityId: p.documentId };
+        break;
+
+      case DomainEventType.NOTICE_CREATED:
+      case DomainEventType.NOTICE_DELIVERED:
+      case DomainEventType.NOTICE_READ:
+        if (p.noticeId) return { entityType: 'NOTICE', entityId: p.noticeId };
+        break;
+
       default:
         // By default, if the payload specifies an entityType and entityId explicitly
         if (p.entityType && p.entityId) {

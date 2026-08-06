@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -101,6 +101,38 @@ export type Database = {
         };
         Relationships: [];
       };
+      accounts: {
+        Row: {
+          created_at: string | null;
+          id: string;
+          lease_id: string;
+          tenant_id: string;
+          type: Database['public']['Enums']['account_type'];
+        };
+        Insert: {
+          created_at?: string | null;
+          id?: string;
+          lease_id: string;
+          tenant_id: string;
+          type?: Database['public']['Enums']['account_type'];
+        };
+        Update: {
+          created_at?: string | null;
+          id?: string;
+          lease_id?: string;
+          tenant_id?: string;
+          type?: Database['public']['Enums']['account_type'];
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'accounts_lease_id_fkey';
+            columns: ['lease_id'];
+            isOneToOne: false;
+            referencedRelation: 'leases';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       amenities: {
         Row: {
           category_id: number | null;
@@ -189,6 +221,45 @@ export type Database = {
           is_active?: boolean;
           name?: string;
           slug?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      applicant_profiles: {
+        Row: {
+          created_at: string;
+          employment_status: string | null;
+          guarantor_information: string | null;
+          guest_id: string;
+          id: string;
+          income_range: string | null;
+          pet_information: string | null;
+          smoking_preference: string | null;
+          student_status: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          employment_status?: string | null;
+          guarantor_information?: string | null;
+          guest_id: string;
+          id?: string;
+          income_range?: string | null;
+          pet_information?: string | null;
+          smoking_preference?: string | null;
+          student_status?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          employment_status?: string | null;
+          guarantor_information?: string | null;
+          guest_id?: string;
+          id?: string;
+          income_range?: string | null;
+          pet_information?: string | null;
+          smoking_preference?: string | null;
+          student_status?: string | null;
           updated_at?: string;
         };
         Relationships: [];
@@ -308,6 +379,50 @@ export type Database = {
             columns: ['listing_id'];
             isOneToOne: false;
             referencedRelation: 'listings';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      charge_schedules: {
+        Row: {
+          active: boolean | null;
+          amount: number;
+          charge_type: string;
+          created_at: string | null;
+          frequency: string;
+          id: string;
+          lease_id: string;
+          next_charge_date: string;
+          updated_at: string | null;
+        };
+        Insert: {
+          active?: boolean | null;
+          amount: number;
+          charge_type: string;
+          created_at?: string | null;
+          frequency?: string;
+          id?: string;
+          lease_id: string;
+          next_charge_date: string;
+          updated_at?: string | null;
+        };
+        Update: {
+          active?: boolean | null;
+          amount?: number;
+          charge_type?: string;
+          created_at?: string | null;
+          frequency?: string;
+          id?: string;
+          lease_id?: string;
+          next_charge_date?: string;
+          updated_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'charge_schedules_lease_id_fkey';
+            columns: ['lease_id'];
+            isOneToOne: false;
+            referencedRelation: 'leases';
             referencedColumns: ['id'];
           },
         ];
@@ -497,6 +612,87 @@ export type Database = {
           phone_code?: string | null;
           timezone_default?: string | null;
           updated_at?: string;
+        };
+        Relationships: [];
+      };
+      documents: {
+        Row: {
+          bucket: string;
+          checksum: string | null;
+          created_at: string | null;
+          id: string;
+          mime_type: string | null;
+          owner_id: string;
+          owner_type: string;
+          size_bytes: number | null;
+          storage_path: string;
+          type: Database['public']['Enums']['document_type'];
+          uploaded_by: string;
+          version: number | null;
+        };
+        Insert: {
+          bucket: string;
+          checksum?: string | null;
+          created_at?: string | null;
+          id?: string;
+          mime_type?: string | null;
+          owner_id: string;
+          owner_type: string;
+          size_bytes?: number | null;
+          storage_path: string;
+          type: Database['public']['Enums']['document_type'];
+          uploaded_by: string;
+          version?: number | null;
+        };
+        Update: {
+          bucket?: string;
+          checksum?: string | null;
+          created_at?: string | null;
+          id?: string;
+          mime_type?: string | null;
+          owner_id?: string;
+          owner_type?: string;
+          size_bytes?: number | null;
+          storage_path?: string;
+          type?: Database['public']['Enums']['document_type'];
+          uploaded_by?: string;
+          version?: number | null;
+        };
+        Relationships: [];
+      };
+      domain_timeline: {
+        Row: {
+          actor_id: string | null;
+          causation_id: string | null;
+          correlation_id: string | null;
+          created_at: string;
+          entity_id: string;
+          entity_type: string;
+          event_type: string;
+          id: string;
+          metadata: Json | null;
+        };
+        Insert: {
+          actor_id?: string | null;
+          causation_id?: string | null;
+          correlation_id?: string | null;
+          created_at?: string;
+          entity_id: string;
+          entity_type: string;
+          event_type: string;
+          id?: string;
+          metadata?: Json | null;
+        };
+        Update: {
+          actor_id?: string | null;
+          causation_id?: string | null;
+          correlation_id?: string | null;
+          created_at?: string;
+          entity_id?: string;
+          entity_type?: string;
+          event_type?: string;
+          id?: string;
+          metadata?: Json | null;
         };
         Relationships: [];
       };
@@ -784,6 +980,201 @@ export type Database = {
             columns: ['listing_id'];
             isOneToOne: false;
             referencedRelation: 'listings';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      invoices: {
+        Row: {
+          amount_due: number;
+          created_at: string | null;
+          due_date: string;
+          id: string;
+          lease_id: string;
+          status: Database['public']['Enums']['invoice_status'] | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          amount_due: number;
+          created_at?: string | null;
+          due_date: string;
+          id?: string;
+          lease_id: string;
+          status?: Database['public']['Enums']['invoice_status'] | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          amount_due?: number;
+          created_at?: string | null;
+          due_date?: string;
+          id?: string;
+          lease_id?: string;
+          status?: Database['public']['Enums']['invoice_status'] | null;
+          updated_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'invoices_lease_id_fkey';
+            columns: ['lease_id'];
+            isOneToOne: false;
+            referencedRelation: 'leases';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      lease_versions: {
+        Row: {
+          change_reason: string | null;
+          created_at: string;
+          created_by: string | null;
+          end_date: string;
+          id: string;
+          lease_id: string;
+          monthly_rent_amount: number;
+          security_deposit_amount: number;
+          start_date: string;
+          structured_data: Json;
+          version_number: number;
+        };
+        Insert: {
+          change_reason?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          end_date: string;
+          id?: string;
+          lease_id: string;
+          monthly_rent_amount: number;
+          security_deposit_amount: number;
+          start_date: string;
+          structured_data?: Json;
+          version_number?: number;
+        };
+        Update: {
+          change_reason?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          end_date?: string;
+          id?: string;
+          lease_id?: string;
+          monthly_rent_amount?: number;
+          security_deposit_amount?: number;
+          start_date?: string;
+          structured_data?: Json;
+          version_number?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'lease_versions_lease_id_fkey';
+            columns: ['lease_id'];
+            isOneToOne: false;
+            referencedRelation: 'leases';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      leases: {
+        Row: {
+          created_at: string;
+          current_version_id: string | null;
+          document_url: string | null;
+          end_date: string;
+          id: string;
+          monthly_rent_amount: number;
+          occupancy_status: Database['public']['Enums']['tenancy_occupancy_status'];
+          reservation_id: string;
+          security_deposit_amount: number;
+          start_date: string;
+          status: Database['public']['Enums']['lease_status'];
+          structured_data: Json;
+          tenant_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          current_version_id?: string | null;
+          document_url?: string | null;
+          end_date: string;
+          id?: string;
+          monthly_rent_amount: number;
+          occupancy_status?: Database['public']['Enums']['tenancy_occupancy_status'];
+          reservation_id: string;
+          security_deposit_amount: number;
+          start_date: string;
+          status?: Database['public']['Enums']['lease_status'];
+          structured_data?: Json;
+          tenant_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          current_version_id?: string | null;
+          document_url?: string | null;
+          end_date?: string;
+          id?: string;
+          monthly_rent_amount?: number;
+          occupancy_status?: Database['public']['Enums']['tenancy_occupancy_status'];
+          reservation_id?: string;
+          security_deposit_amount?: number;
+          start_date?: string;
+          status?: Database['public']['Enums']['lease_status'];
+          structured_data?: Json;
+          tenant_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'leases_current_version_id_fkey';
+            columns: ['current_version_id'];
+            isOneToOne: false;
+            referencedRelation: 'lease_versions';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'leases_reservation_id_fkey';
+            columns: ['reservation_id'];
+            isOneToOne: true;
+            referencedRelation: 'bookings';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      ledger_entries: {
+        Row: {
+          account_id: string;
+          amount: number;
+          created_at: string | null;
+          description: string;
+          id: string;
+          source_id: string;
+          source_type: string;
+          type: Database['public']['Enums']['ledger_entry_type'];
+        };
+        Insert: {
+          account_id: string;
+          amount: number;
+          created_at?: string | null;
+          description: string;
+          id?: string;
+          source_id: string;
+          source_type: string;
+          type: Database['public']['Enums']['ledger_entry_type'];
+        };
+        Update: {
+          account_id?: string;
+          amount?: number;
+          created_at?: string | null;
+          description?: string;
+          id?: string;
+          source_id?: string;
+          source_type?: string;
+          type?: Database['public']['Enums']['ledger_entry_type'];
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'ledger_entries_account_id_fkey';
+            columns: ['account_id'];
+            isOneToOne: false;
+            referencedRelation: 'accounts';
             referencedColumns: ['id'];
           },
         ];
@@ -1150,7 +1541,9 @@ export type Database = {
       listings: {
         Row: {
           accommodation_type_id: string;
-          available_date: string;
+          available_from: string;
+          booking_policy:
+            Database['public']['Enums']['listing_booking_policy'] | null;
           city: string | null;
           city_id: number | null;
           created_at: string;
@@ -1165,6 +1558,9 @@ export type Database = {
           locality_id: number | null;
           longitude: number | null;
           max_occupants: number;
+          maximum_lease_months: number | null;
+          minimum_lease_months: number | null;
+          notice_period_days: number | null;
           occupancy_type: Database['public']['Enums']['occupancy_type'];
           postal_code: string | null;
           property_type: string;
@@ -1177,7 +1573,9 @@ export type Database = {
         };
         Insert: {
           accommodation_type_id: string;
-          available_date?: string;
+          available_from?: string;
+          booking_policy?:
+            Database['public']['Enums']['listing_booking_policy'] | null;
           city?: string | null;
           city_id?: number | null;
           created_at?: string;
@@ -1192,6 +1590,9 @@ export type Database = {
           locality_id?: number | null;
           longitude?: number | null;
           max_occupants?: number;
+          maximum_lease_months?: number | null;
+          minimum_lease_months?: number | null;
+          notice_period_days?: number | null;
           occupancy_type?: Database['public']['Enums']['occupancy_type'];
           postal_code?: string | null;
           property_type?: string;
@@ -1204,7 +1605,9 @@ export type Database = {
         };
         Update: {
           accommodation_type_id?: string;
-          available_date?: string;
+          available_from?: string;
+          booking_policy?:
+            Database['public']['Enums']['listing_booking_policy'] | null;
           city?: string | null;
           city_id?: number | null;
           created_at?: string;
@@ -1219,6 +1622,9 @@ export type Database = {
           locality_id?: number | null;
           longitude?: number | null;
           max_occupants?: number;
+          maximum_lease_months?: number | null;
+          minimum_lease_months?: number | null;
+          notice_period_days?: number | null;
           occupancy_type?: Database['public']['Enums']['occupancy_type'];
           postal_code?: string | null;
           property_type?: string;
@@ -1320,6 +1726,184 @@ export type Database = {
           },
         ];
       };
+      maintenance_assignments: {
+        Row: {
+          assignee_id: string;
+          assignee_type: Database['public']['Enums']['maintenance_assignee_type'];
+          created_at: string | null;
+          id: string;
+          request_id: string;
+          scheduled_date: string | null;
+        };
+        Insert: {
+          assignee_id: string;
+          assignee_type: Database['public']['Enums']['maintenance_assignee_type'];
+          created_at?: string | null;
+          id?: string;
+          request_id: string;
+          scheduled_date?: string | null;
+        };
+        Update: {
+          assignee_id?: string;
+          assignee_type?: Database['public']['Enums']['maintenance_assignee_type'];
+          created_at?: string | null;
+          id?: string;
+          request_id?: string;
+          scheduled_date?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'maintenance_assignments_request_id_fkey';
+            columns: ['request_id'];
+            isOneToOne: false;
+            referencedRelation: 'maintenance_requests';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      maintenance_attachments: {
+        Row: {
+          created_at: string | null;
+          document_id: string;
+          id: string;
+          request_id: string;
+        };
+        Insert: {
+          created_at?: string | null;
+          document_id: string;
+          id?: string;
+          request_id: string;
+        };
+        Update: {
+          created_at?: string | null;
+          document_id?: string;
+          id?: string;
+          request_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'maintenance_attachments_request_id_fkey';
+            columns: ['request_id'];
+            isOneToOne: false;
+            referencedRelation: 'maintenance_requests';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      maintenance_comments: {
+        Row: {
+          author_id: string;
+          comment_text: string;
+          created_at: string | null;
+          id: string;
+          request_id: string;
+        };
+        Insert: {
+          author_id: string;
+          comment_text: string;
+          created_at?: string | null;
+          id?: string;
+          request_id: string;
+        };
+        Update: {
+          author_id?: string;
+          comment_text?: string;
+          created_at?: string | null;
+          id?: string;
+          request_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'maintenance_comments_request_id_fkey';
+            columns: ['request_id'];
+            isOneToOne: false;
+            referencedRelation: 'maintenance_requests';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      maintenance_requests: {
+        Row: {
+          created_at: string | null;
+          description: string | null;
+          id: string;
+          lease_id: string;
+          priority: string | null;
+          resident_id: string;
+          resolved_at: string | null;
+          status:
+            Database['public']['Enums']['maintenance_request_status'] | null;
+          title: string;
+          updated_at: string | null;
+        };
+        Insert: {
+          created_at?: string | null;
+          description?: string | null;
+          id?: string;
+          lease_id: string;
+          priority?: string | null;
+          resident_id: string;
+          resolved_at?: string | null;
+          status?:
+            Database['public']['Enums']['maintenance_request_status'] | null;
+          title: string;
+          updated_at?: string | null;
+        };
+        Update: {
+          created_at?: string | null;
+          description?: string | null;
+          id?: string;
+          lease_id?: string;
+          priority?: string | null;
+          resident_id?: string;
+          resolved_at?: string | null;
+          status?:
+            Database['public']['Enums']['maintenance_request_status'] | null;
+          title?: string;
+          updated_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'maintenance_requests_lease_id_fkey';
+            columns: ['lease_id'];
+            isOneToOne: false;
+            referencedRelation: 'leases';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      maintenance_status_history: {
+        Row: {
+          changed_by: string;
+          created_at: string | null;
+          id: string;
+          request_id: string;
+          status: Database['public']['Enums']['maintenance_request_status'];
+        };
+        Insert: {
+          changed_by: string;
+          created_at?: string | null;
+          id?: string;
+          request_id: string;
+          status: Database['public']['Enums']['maintenance_request_status'];
+        };
+        Update: {
+          changed_by?: string;
+          created_at?: string | null;
+          id?: string;
+          request_id?: string;
+          status?: Database['public']['Enums']['maintenance_request_status'];
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'maintenance_status_history_request_id_fkey';
+            columns: ['request_id'];
+            isOneToOne: false;
+            referencedRelation: 'maintenance_requests';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       messages: {
         Row: {
           content: string;
@@ -1351,6 +1935,65 @@ export type Database = {
             columns: ['conversation_id'];
             isOneToOne: false;
             referencedRelation: 'conversations';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      move_ins: {
+        Row: {
+          completed_at: string | null;
+          condition_report_signed: boolean;
+          created_at: string;
+          deposit_verified: boolean;
+          emergency_contacts_confirmed: boolean;
+          id: string;
+          identity_verified: boolean;
+          inventory_completed: boolean;
+          keys_issued: boolean;
+          lease_id: string;
+          scheduled_date: string | null;
+          status: Database['public']['Enums']['move_in_status'];
+          updated_at: string;
+          utility_information_shared: boolean;
+        };
+        Insert: {
+          completed_at?: string | null;
+          condition_report_signed?: boolean;
+          created_at?: string;
+          deposit_verified?: boolean;
+          emergency_contacts_confirmed?: boolean;
+          id?: string;
+          identity_verified?: boolean;
+          inventory_completed?: boolean;
+          keys_issued?: boolean;
+          lease_id: string;
+          scheduled_date?: string | null;
+          status?: Database['public']['Enums']['move_in_status'];
+          updated_at?: string;
+          utility_information_shared?: boolean;
+        };
+        Update: {
+          completed_at?: string | null;
+          condition_report_signed?: boolean;
+          created_at?: string;
+          deposit_verified?: boolean;
+          emergency_contacts_confirmed?: boolean;
+          id?: string;
+          identity_verified?: boolean;
+          inventory_completed?: boolean;
+          keys_issued?: boolean;
+          lease_id?: string;
+          scheduled_date?: string | null;
+          status?: Database['public']['Enums']['move_in_status'];
+          updated_at?: string;
+          utility_information_shared?: boolean;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'move_ins_lease_id_fkey';
+            columns: ['lease_id'];
+            isOneToOne: true;
+            referencedRelation: 'leases';
             referencedColumns: ['id'];
           },
         ];
@@ -1387,6 +2030,87 @@ export type Database = {
           user_id?: string;
         };
         Relationships: [];
+      };
+      outbox_events: {
+        Row: {
+          aggregate_id: string;
+          aggregate_type: string;
+          causation_id: string | null;
+          correlation_id: string | null;
+          created_at: string;
+          error: string | null;
+          id: string;
+          payload: Json;
+          processed_at: string | null;
+          status: Database['public']['Enums']['outbox_status'];
+          type: string;
+        };
+        Insert: {
+          aggregate_id: string;
+          aggregate_type: string;
+          causation_id?: string | null;
+          correlation_id?: string | null;
+          created_at?: string;
+          error?: string | null;
+          id?: string;
+          payload: Json;
+          processed_at?: string | null;
+          status?: Database['public']['Enums']['outbox_status'];
+          type: string;
+        };
+        Update: {
+          aggregate_id?: string;
+          aggregate_type?: string;
+          causation_id?: string | null;
+          correlation_id?: string | null;
+          created_at?: string;
+          error?: string | null;
+          id?: string;
+          payload?: Json;
+          processed_at?: string | null;
+          status?: Database['public']['Enums']['outbox_status'];
+          type?: string;
+        };
+        Relationships: [];
+      };
+      payment_allocations: {
+        Row: {
+          amount_allocated: number;
+          created_at: string | null;
+          id: string;
+          invoice_id: string;
+          payment_entry_id: string;
+        };
+        Insert: {
+          amount_allocated: number;
+          created_at?: string | null;
+          id?: string;
+          invoice_id: string;
+          payment_entry_id: string;
+        };
+        Update: {
+          amount_allocated?: number;
+          created_at?: string | null;
+          id?: string;
+          invoice_id?: string;
+          payment_entry_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'payment_allocations_invoice_id_fkey';
+            columns: ['invoice_id'];
+            isOneToOne: false;
+            referencedRelation: 'invoices';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'payment_allocations_payment_entry_id_fkey';
+            columns: ['payment_entry_id'];
+            isOneToOne: false;
+            referencedRelation: 'ledger_entries';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       profiles: {
         Row: {
@@ -1472,6 +2196,226 @@ export type Database = {
         };
         Relationships: [];
       };
+      rental_applications: {
+        Row: {
+          applicant_profile_id: string | null;
+          created_at: string;
+          guest_id: string;
+          id: string;
+          lease_duration_months: number;
+          monthly_budget: number | null;
+          move_in_date: string;
+          property_id: string;
+          status: Database['public']['Enums']['rental_application_status'];
+          updated_at: string;
+        };
+        Insert: {
+          applicant_profile_id?: string | null;
+          created_at?: string;
+          guest_id: string;
+          id?: string;
+          lease_duration_months: number;
+          monthly_budget?: number | null;
+          move_in_date: string;
+          property_id: string;
+          status?: Database['public']['Enums']['rental_application_status'];
+          updated_at?: string;
+        };
+        Update: {
+          applicant_profile_id?: string | null;
+          created_at?: string;
+          guest_id?: string;
+          id?: string;
+          lease_duration_months?: number;
+          monthly_budget?: number | null;
+          move_in_date?: string;
+          property_id?: string;
+          status?: Database['public']['Enums']['rental_application_status'];
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'rental_applications_applicant_profile_id_fkey';
+            columns: ['applicant_profile_id'];
+            isOneToOne: false;
+            referencedRelation: 'applicant_profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'rental_applications_property_id_fkey';
+            columns: ['property_id'];
+            isOneToOne: false;
+            referencedRelation: 'listings';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      reservations: {
+        Row: {
+          base_price: number;
+          brokerage_fee_amount: number | null;
+          check_in: string;
+          check_out: string;
+          cleaning_fee: number;
+          created_at: string;
+          currency: string;
+          guest_id: string;
+          guests_count: number;
+          id: string;
+          idempotency_key: string | null;
+          lease_duration_months: number | null;
+          maintenance_fee_amount: number | null;
+          move_in_date: string | null;
+          payment_intent_id: string | null;
+          property_id: string;
+          security_deposit_amount: number | null;
+          service_fee: number;
+          snapshot_json: Json;
+          status: Database['public']['Enums']['reservation_status'];
+          tax_amount: number;
+          total_amount: number;
+          updated_at: string;
+          utilities_amount: number | null;
+          version: number;
+        };
+        Insert: {
+          base_price: number;
+          brokerage_fee_amount?: number | null;
+          check_in: string;
+          check_out: string;
+          cleaning_fee?: number;
+          created_at?: string;
+          currency: string;
+          guest_id: string;
+          guests_count: number;
+          id?: string;
+          idempotency_key?: string | null;
+          lease_duration_months?: number | null;
+          maintenance_fee_amount?: number | null;
+          move_in_date?: string | null;
+          payment_intent_id?: string | null;
+          property_id: string;
+          security_deposit_amount?: number | null;
+          service_fee?: number;
+          snapshot_json: Json;
+          status?: Database['public']['Enums']['reservation_status'];
+          tax_amount?: number;
+          total_amount: number;
+          updated_at?: string;
+          utilities_amount?: number | null;
+          version?: number;
+        };
+        Update: {
+          base_price?: number;
+          brokerage_fee_amount?: number | null;
+          check_in?: string;
+          check_out?: string;
+          cleaning_fee?: number;
+          created_at?: string;
+          currency?: string;
+          guest_id?: string;
+          guests_count?: number;
+          id?: string;
+          idempotency_key?: string | null;
+          lease_duration_months?: number | null;
+          maintenance_fee_amount?: number | null;
+          move_in_date?: string | null;
+          payment_intent_id?: string | null;
+          property_id?: string;
+          security_deposit_amount?: number | null;
+          service_fee?: number;
+          snapshot_json?: Json;
+          status?: Database['public']['Enums']['reservation_status'];
+          tax_amount?: number;
+          total_amount?: number;
+          updated_at?: string;
+          utilities_amount?: number | null;
+          version?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'reservations_property_id_fkey';
+            columns: ['property_id'];
+            isOneToOne: false;
+            referencedRelation: 'listings';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      resident_notices: {
+        Row: {
+          content: string;
+          created_at: string | null;
+          delivered_at: string | null;
+          id: string;
+          is_read: boolean | null;
+          lease_id: string | null;
+          read_at: string | null;
+          resident_id: string;
+          type: Database['public']['Enums']['resident_notice_type'];
+        };
+        Insert: {
+          content: string;
+          created_at?: string | null;
+          delivered_at?: string | null;
+          id?: string;
+          is_read?: boolean | null;
+          lease_id?: string | null;
+          read_at?: string | null;
+          resident_id: string;
+          type: Database['public']['Enums']['resident_notice_type'];
+        };
+        Update: {
+          content?: string;
+          created_at?: string | null;
+          delivered_at?: string | null;
+          id?: string;
+          is_read?: boolean | null;
+          lease_id?: string | null;
+          read_at?: string | null;
+          resident_id?: string;
+          type?: Database['public']['Enums']['resident_notice_type'];
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'resident_notices_lease_id_fkey';
+            columns: ['lease_id'];
+            isOneToOne: false;
+            referencedRelation: 'leases';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      resident_profiles: {
+        Row: {
+          created_at: string | null;
+          emergency_contacts: Json | null;
+          employment_status: string | null;
+          id: string;
+          preferred_communication: string | null;
+          updated_at: string | null;
+          vehicle_registration: Json | null;
+        };
+        Insert: {
+          created_at?: string | null;
+          emergency_contacts?: Json | null;
+          employment_status?: string | null;
+          id: string;
+          preferred_communication?: string | null;
+          updated_at?: string | null;
+          vehicle_registration?: Json | null;
+        };
+        Update: {
+          created_at?: string | null;
+          emergency_contacts?: Json | null;
+          employment_status?: string | null;
+          id?: string;
+          preferred_communication?: string | null;
+          updated_at?: string | null;
+          vehicle_registration?: Json | null;
+        };
+        Relationships: [];
+      };
       reviews: {
         Row: {
           comment: string | null;
@@ -1523,6 +2467,50 @@ export type Database = {
             columns: ['stay_id'];
             isOneToOne: false;
             referencedRelation: 'stays';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      security_deposits: {
+        Row: {
+          amount: number;
+          collected_at: string | null;
+          created_at: string;
+          id: string;
+          lease_id: string;
+          release_reason: string | null;
+          released_at: string | null;
+          status: Database['public']['Enums']['security_deposit_status'];
+          updated_at: string;
+        };
+        Insert: {
+          amount: number;
+          collected_at?: string | null;
+          created_at?: string;
+          id?: string;
+          lease_id: string;
+          release_reason?: string | null;
+          released_at?: string | null;
+          status?: Database['public']['Enums']['security_deposit_status'];
+          updated_at?: string;
+        };
+        Update: {
+          amount?: number;
+          collected_at?: string | null;
+          created_at?: string;
+          id?: string;
+          lease_id?: string;
+          release_reason?: string | null;
+          released_at?: string | null;
+          status?: Database['public']['Enums']['security_deposit_status'];
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'security_deposits_lease_id_fkey';
+            columns: ['lease_id'];
+            isOneToOne: true;
+            referencedRelation: 'leases';
             referencedColumns: ['id'];
           },
         ];
@@ -1737,20 +2725,209 @@ export type Database = {
         };
         Relationships: [];
       };
+      viewing_requests: {
+        Row: {
+          created_at: string;
+          guest_id: string;
+          id: string;
+          message: string | null;
+          property_id: string;
+          requested_date: string;
+          requested_time: string;
+          status: Database['public']['Enums']['viewing_request_status'];
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          guest_id: string;
+          id?: string;
+          message?: string | null;
+          property_id: string;
+          requested_date: string;
+          requested_time: string;
+          status?: Database['public']['Enums']['viewing_request_status'];
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          guest_id?: string;
+          id?: string;
+          message?: string | null;
+          property_id?: string;
+          requested_date?: string;
+          requested_time?: string;
+          status?: Database['public']['Enums']['viewing_request_status'];
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'viewing_requests_property_id_fkey';
+            columns: ['property_id'];
+            isOneToOne: false;
+            referencedRelation: 'listings';
+            referencedColumns: ['public_id'];
+          },
+        ];
+      };
     };
     Views: {
       [_ in never]: never;
     };
     Functions: {
+      check_availability: {
+        Args: {
+          p_check_in: string;
+          p_check_out: string;
+          p_property_id: string;
+        };
+        Returns: boolean;
+      };
+      create_reservation_safe:
+        | {
+            Args: {
+              p_base_price: number;
+              p_check_in: string;
+              p_check_out: string;
+              p_cleaning_fee: number;
+              p_currency: string;
+              p_guest_id: string;
+              p_guests_count: number;
+              p_idempotency_key: string;
+              p_property_id: string;
+              p_service_fee: number;
+              p_snapshot_json: Json;
+              p_tax_amount: number;
+              p_total_amount: number;
+            };
+            Returns: {
+              base_price: number;
+              brokerage_fee_amount: number | null;
+              check_in: string;
+              check_out: string;
+              cleaning_fee: number;
+              created_at: string;
+              currency: string;
+              guest_id: string;
+              guests_count: number;
+              id: string;
+              idempotency_key: string | null;
+              lease_duration_months: number | null;
+              maintenance_fee_amount: number | null;
+              move_in_date: string | null;
+              payment_intent_id: string | null;
+              property_id: string;
+              security_deposit_amount: number | null;
+              service_fee: number;
+              snapshot_json: Json;
+              status: Database['public']['Enums']['reservation_status'];
+              tax_amount: number;
+              total_amount: number;
+              updated_at: string;
+              utilities_amount: number | null;
+              version: number;
+            };
+            SetofOptions: {
+              from: '*';
+              to: 'reservations';
+              isOneToOne: true;
+              isSetofReturn: false;
+            };
+          }
+        | {
+            Args: {
+              p_base_price: number;
+              p_brokerage_fee_amount?: number;
+              p_check_in: string;
+              p_check_out: string;
+              p_cleaning_fee: number;
+              p_currency: string;
+              p_guest_id: string;
+              p_guests_count: number;
+              p_idempotency_key: string;
+              p_lease_duration_months?: number;
+              p_maintenance_fee_amount?: number;
+              p_move_in_date?: string;
+              p_property_id: string;
+              p_security_deposit_amount?: number;
+              p_service_fee: number;
+              p_snapshot_json: Json;
+              p_tax_amount: number;
+              p_total_amount: number;
+              p_utilities_amount?: number;
+            };
+            Returns: {
+              base_price: number;
+              brokerage_fee_amount: number | null;
+              check_in: string;
+              check_out: string;
+              cleaning_fee: number;
+              created_at: string;
+              currency: string;
+              guest_id: string;
+              guests_count: number;
+              id: string;
+              idempotency_key: string | null;
+              lease_duration_months: number | null;
+              maintenance_fee_amount: number | null;
+              move_in_date: string | null;
+              payment_intent_id: string | null;
+              property_id: string;
+              security_deposit_amount: number | null;
+              service_fee: number;
+              snapshot_json: Json;
+              status: Database['public']['Enums']['reservation_status'];
+              tax_amount: number;
+              total_amount: number;
+              updated_at: string;
+              utilities_amount: number | null;
+              version: number;
+            };
+            SetofOptions: {
+              from: '*';
+              to: 'reservations';
+              isOneToOne: true;
+              isSetofReturn: false;
+            };
+          };
       delete_user_account: { Args: never; Returns: undefined };
       generate_unique_username: {
         Args: { raw_meta_data: Json; user_email: string };
         Returns: string;
       };
       get_listing_detail: { Args: { p_public_id: string }; Returns: Json };
+      get_pending_outbox_events: {
+        Args: { batch_size?: number };
+        Returns: {
+          aggregate_id: string;
+          aggregate_type: string;
+          causation_id: string | null;
+          correlation_id: string | null;
+          created_at: string;
+          error: string | null;
+          id: string;
+          payload: Json;
+          processed_at: string | null;
+          status: Database['public']['Enums']['outbox_status'];
+          type: string;
+        }[];
+        SetofOptions: {
+          from: '*';
+          to: 'outbox_events';
+          isOneToOne: false;
+          isSetofReturn: true;
+        };
+      };
       is_admin: { Args: never; Returns: boolean };
       is_host: { Args: never; Returns: boolean };
       is_listing_owner: { Args: { listing_id: string }; Returns: boolean };
+      mark_outbox_event_failed: {
+        Args: { error_msg: string; event_id: string };
+        Returns: undefined;
+      };
+      mark_outbox_event_processed: {
+        Args: { event_id: string };
+        Returns: undefined;
+      };
       search_listings: {
         Args: {
           p_accommodation_type_id?: string;
@@ -1821,14 +2998,17 @@ export type Database = {
       uuid_to_public_id: { Args: { input_uuid: string }; Returns: string };
     };
     Enums: {
+      account_type: 'RECEIVABLE' | 'LIABILITY';
       availability_source:
         'booking' | 'manual_block' | 'external_calendar' | 'maintenance';
-      availability_status: 'available' | 'occupied' | 'unavailable';
+      availability_status: 'available' | 'reserved' | 'unavailable';
       billing_period: 'day' | 'week' | 'month' | 'semester' | 'year';
       booking_status:
         'pending' | 'approved' | 'rejected' | 'cancelled' | 'expired';
       conversation_status: 'OPEN' | 'CLOSED' | 'ARCHIVED' | 'BLOCKED';
       conversation_type: 'INQUIRY' | 'BOOKING' | 'STAY' | 'SUPPORT' | 'SYSTEM';
+      document_type:
+        'LEASE' | 'ID' | 'INVOICE' | 'MOVE_IN_REPORT' | 'MAINTENANCE_PHOTO';
       furnishing: 'unfurnished' | 'semi_furnished' | 'fully_furnished';
       gender: 'male' | 'female';
       gender_preference: 'any' | 'male' | 'female';
@@ -1840,6 +3020,23 @@ export type Database = {
         | 'ACTIVE'
         | 'PAUSED'
         | 'SUSPENDED';
+      invoice_status:
+        'DRAFT' | 'ISSUED' | 'PARTIAL' | 'PAID' | 'OVERDUE' | 'CANCELLED';
+      lease_status:
+        | 'DRAFT'
+        | 'GENERATED'
+        | 'ISSUED'
+        | 'SIGNED'
+        | 'ACTIVE'
+        | 'RENEWED'
+        | 'EXPIRED'
+        | 'TERMINATED';
+      ledger_entry_type: 'CHARGE' | 'PAYMENT' | 'ADJUSTMENT' | 'REFUND';
+      listing_booking_policy:
+        | 'INSTANT_RESERVATION'
+        | 'RENTAL_APPLICATION'
+        | 'VIEWING_REQUEST'
+        | 'CONTACT_HOST';
       listing_status:
         | 'draft'
         | 'ready'
@@ -1847,7 +3044,51 @@ export type Database = {
         | 'published'
         | 'paused'
         | 'archived';
+      maintenance_assignee_type: 'HOST' | 'VENDOR' | 'STAFF';
+      maintenance_request_status:
+        | 'OPEN'
+        | 'ASSIGNED'
+        | 'IN_PROGRESS'
+        | 'WAITING_ON_RESIDENT'
+        | 'RESOLVED'
+        | 'CLOSED';
+      move_in_status:
+        'PENDING' | 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
       occupancy_type: 'private' | 'shared' | 'mixed';
+      outbox_status: 'PENDING' | 'PROCESSED' | 'FAILED';
+      rental_application_status:
+        | 'DRAFT'
+        | 'SUBMITTED'
+        | 'UNDER_REVIEW'
+        | 'APPROVED'
+        | 'REJECTED'
+        | 'WITHDRAWN'
+        | 'EXPIRED';
+      reservation_status:
+        | 'DRAFT'
+        | 'VALIDATING'
+        | 'VALIDATED'
+        | 'LOCKED'
+        | 'PENDING_PAYMENT'
+        | 'PAYMENT_AUTHORIZED'
+        | 'CONFIRMED'
+        | 'FAILED'
+        | 'VALIDATION_FAILED'
+        | 'PAYMENT_FAILED'
+        | 'LOCK_EXPIRED'
+        | 'BOOKING_EXPIRED'
+        | 'SYSTEM_ERROR'
+        | 'CANCELLED'
+        | 'REFUNDED';
+      resident_notice_type:
+        'RENT_REMINDER' | 'MAINTENANCE' | 'INSPECTION' | 'RENEWAL';
+      security_deposit_status:
+        | 'PENDING'
+        | 'COLLECTED'
+        | 'HELD'
+        | 'REFUNDED'
+        | 'PARTIALLY_REFUNDED'
+        | 'FORFEITED';
       stay_status:
         | 'upcoming'
         | 'active'
@@ -1856,6 +3097,8 @@ export type Database = {
         | 'completed'
         | 'terminated';
       sync_direction: 'import' | 'export' | 'both';
+      tenancy_occupancy_status:
+        'PENDING_MOVE_IN' | 'OCCUPIED' | 'NOTICE_GIVEN' | 'VACATED';
       user_occupation:
         | 'student'
         | 'working_professional'
@@ -1865,6 +3108,8 @@ export type Database = {
         | 'retired'
         | 'other';
       user_role: 'guest' | 'host' | 'admin';
+      viewing_request_status:
+        'REQUESTED' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED';
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -1992,13 +3237,14 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      account_type: ['RECEIVABLE', 'LIABILITY'],
       availability_source: [
         'booking',
         'manual_block',
         'external_calendar',
         'maintenance',
       ],
-      availability_status: ['available', 'occupied', 'unavailable'],
+      availability_status: ['available', 'reserved', 'unavailable'],
       billing_period: ['day', 'week', 'month', 'semester', 'year'],
       booking_status: [
         'pending',
@@ -2009,6 +3255,13 @@ export const Constants = {
       ],
       conversation_status: ['OPEN', 'CLOSED', 'ARCHIVED', 'BLOCKED'],
       conversation_type: ['INQUIRY', 'BOOKING', 'STAY', 'SUPPORT', 'SYSTEM'],
+      document_type: [
+        'LEASE',
+        'ID',
+        'INVOICE',
+        'MOVE_IN_REPORT',
+        'MAINTENANCE_PHOTO',
+      ],
       furnishing: ['unfurnished', 'semi_furnished', 'fully_furnished'],
       gender: ['male', 'female'],
       gender_preference: ['any', 'male', 'female'],
@@ -2021,6 +3274,31 @@ export const Constants = {
         'PAUSED',
         'SUSPENDED',
       ],
+      invoice_status: [
+        'DRAFT',
+        'ISSUED',
+        'PARTIAL',
+        'PAID',
+        'OVERDUE',
+        'CANCELLED',
+      ],
+      lease_status: [
+        'DRAFT',
+        'GENERATED',
+        'ISSUED',
+        'SIGNED',
+        'ACTIVE',
+        'RENEWED',
+        'EXPIRED',
+        'TERMINATED',
+      ],
+      ledger_entry_type: ['CHARGE', 'PAYMENT', 'ADJUSTMENT', 'REFUND'],
+      listing_booking_policy: [
+        'INSTANT_RESERVATION',
+        'RENTAL_APPLICATION',
+        'VIEWING_REQUEST',
+        'CONTACT_HOST',
+      ],
       listing_status: [
         'draft',
         'ready',
@@ -2029,7 +3307,64 @@ export const Constants = {
         'paused',
         'archived',
       ],
+      maintenance_assignee_type: ['HOST', 'VENDOR', 'STAFF'],
+      maintenance_request_status: [
+        'OPEN',
+        'ASSIGNED',
+        'IN_PROGRESS',
+        'WAITING_ON_RESIDENT',
+        'RESOLVED',
+        'CLOSED',
+      ],
+      move_in_status: [
+        'PENDING',
+        'SCHEDULED',
+        'IN_PROGRESS',
+        'COMPLETED',
+        'CANCELLED',
+      ],
       occupancy_type: ['private', 'shared', 'mixed'],
+      outbox_status: ['PENDING', 'PROCESSED', 'FAILED'],
+      rental_application_status: [
+        'DRAFT',
+        'SUBMITTED',
+        'UNDER_REVIEW',
+        'APPROVED',
+        'REJECTED',
+        'WITHDRAWN',
+        'EXPIRED',
+      ],
+      reservation_status: [
+        'DRAFT',
+        'VALIDATING',
+        'VALIDATED',
+        'LOCKED',
+        'PENDING_PAYMENT',
+        'PAYMENT_AUTHORIZED',
+        'CONFIRMED',
+        'FAILED',
+        'VALIDATION_FAILED',
+        'PAYMENT_FAILED',
+        'LOCK_EXPIRED',
+        'BOOKING_EXPIRED',
+        'SYSTEM_ERROR',
+        'CANCELLED',
+        'REFUNDED',
+      ],
+      resident_notice_type: [
+        'RENT_REMINDER',
+        'MAINTENANCE',
+        'INSPECTION',
+        'RENEWAL',
+      ],
+      security_deposit_status: [
+        'PENDING',
+        'COLLECTED',
+        'HELD',
+        'REFUNDED',
+        'PARTIALLY_REFUNDED',
+        'FORFEITED',
+      ],
       stay_status: [
         'upcoming',
         'active',
@@ -2039,6 +3374,12 @@ export const Constants = {
         'terminated',
       ],
       sync_direction: ['import', 'export', 'both'],
+      tenancy_occupancy_status: [
+        'PENDING_MOVE_IN',
+        'OCCUPIED',
+        'NOTICE_GIVEN',
+        'VACATED',
+      ],
       user_occupation: [
         'student',
         'working_professional',
@@ -2049,6 +3390,12 @@ export const Constants = {
         'other',
       ],
       user_role: ['guest', 'host', 'admin'],
+      viewing_request_status: [
+        'REQUESTED',
+        'CONFIRMED',
+        'COMPLETED',
+        'CANCELLED',
+      ],
     },
   },
 } as const;

@@ -6,6 +6,10 @@ import { CurrentLeaseWidget } from './widgets/CurrentLeaseWidget';
 import { DepositStatusWidget } from './widgets/DepositStatusWidget';
 import { MoveInProgressWidget } from './widgets/MoveInProgressWidget';
 import { PropertyInformationWidget } from './widgets/PropertyInformationWidget';
+import { MaintenanceWidget } from './widgets/MaintenanceWidget';
+import { RentLedgerWidget } from './widgets/RentLedgerWidget';
+import { NoticesWidget } from './widgets/NoticesWidget';
+import { ResidentTimelineWidget } from './widgets/ResidentTimelineWidget';
 import { Home, Key } from 'lucide-react';
 import Link from 'next/link';
 
@@ -62,12 +66,16 @@ export function ResidentDashboard({ viewModel }: Props) {
           {viewModel.property && (
             <PropertyInformationWidget property={viewModel.property} />
           )}
+          <ResidentTimelineWidget />
         </div>
 
         {/* Sidebar - Move-In & Deposit */}
         <div className="space-y-6">
           <MoveInProgressWidget moveIn={viewModel.moveIn} />
           <DepositStatusWidget deposit={viewModel.deposit} />
+          <RentLedgerWidget />
+          <MaintenanceWidget />
+          <NoticesWidget />
         </div>
       </div>
     </div>
