@@ -90,13 +90,6 @@ export function UserMenu({ user, profile }: UserMenuProps) {
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
-          asChild
-          className="cursor-pointer font-medium text-blue-600 focus:text-blue-600 focus:bg-blue-50"
-        >
-          <Link href="/host">Switch to hosting</Link>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
           className="cursor-pointer"
           onClick={async () => {
             await signOut();

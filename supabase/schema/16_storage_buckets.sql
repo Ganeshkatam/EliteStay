@@ -34,10 +34,8 @@ USING (bucket_id = 'avatars');
 CREATE POLICY "Auth Upload Listings" ON storage.objects FOR INSERT 
 WITH CHECK (bucket_id = 'listings' AND auth.role() = 'authenticated');
 
-
-
 -- Allow authenticated users to update/delete their uploaded objects
-CREATE POLICY "Users can upload their own avatar" 
+CREATE POLICY "Users can modify own avatars" 
 ON storage.objects FOR INSERT 
 WITH CHECK (
   bucket_id = 'avatars' 
