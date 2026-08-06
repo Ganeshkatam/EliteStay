@@ -1,7 +1,7 @@
 import React from 'react';
 import { Logo } from '../navigation/Logo';
 import { UserMenu } from '../navigation/UserMenu';
-import { NotificationBell } from '@/features/notifications/components/NotificationBell';
+
 import { GlobalSearch } from '@/features/search/components/GlobalSearch/GlobalSearch';
 import { type HeaderVariant } from './useHeaderState';
 import { type ExtendedProfile } from '@/types/profile';
@@ -44,10 +44,7 @@ export function TopBar({ variant, user, profile, isExpanded }: TopBarProps) {
 
       <div className="flex flex-none items-center justify-end space-x-4">
         {user ? (
-          <>
-            <NotificationBell />
-            <UserMenu user={user} profile={profile} variant={variant} />
-          </>
+          <UserMenu user={user} profile={profile} variant={variant} />
         ) : (
           <UserMenu user={user} profile={profile} variant={variant} />
         )}
