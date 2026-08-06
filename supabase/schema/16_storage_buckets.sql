@@ -34,12 +34,42 @@ USING (bucket_id = 'avatars');
 CREATE POLICY "Auth Upload Listings" ON storage.objects FOR INSERT 
 WITH CHECK (bucket_id = 'listings' AND auth.role() = 'authenticated');
 
-CREATE POLICY "Auth Upload Avatars" ON storage.objects FOR INSERT 
-WITH CHECK (bucket_id = 'avatars' AND auth.role() = 'authenticated');
+
 
 -- Allow authenticated users to update/delete their uploaded objects
-CREATE POLICY "Users modify own avatars" ON storage.objects FOR ALL
-USING (bucket_id = 'avatars' AND auth.uid() = owner);
+CREATE POLICY "Users can upload their own avatar" 
+ON storage.objects FOR INSERT 
+WITH CHECK (
+  bucket_id = 'avatars' 
+  AND auth.uid()::text = (storage.foldername(name))[1]
+  AND name = auth.uid()::text || '/avatar.webp'
+);
+
+CREATE POLICY "Users can update their own avatar"
+ON storage.objects FOR UPDATE
+USING (
+  bucket_id = 'avatars' 
+  AND auth.uid()::text = (storage.foldername(name))[1]
+)
+WITH CHECK (
+  bucket_id = 'avatars' 
+  AND auth.uid()::text = (storage.foldername(name))[1]
+  AND name = auth.uid()::text || '/avatar.webp'
+);
+
+CREATE POLICY "Users can delete their own avatar"
+ON storage.objects FOR DELETE
+USING (
+  bucket_id = 'avatars' 
+  AND auth.uid()::text = (storage.foldername(name))[1]
+);
+
+CREATE POLICY "Users can select their own avatar"
+ON storage.objects FOR SELECT
+USING (
+  bucket_id = 'avatars' 
+  AND auth.uid()::text = (storage.foldername(name))[1]
+);
 
 CREATE POLICY "Users modify own listing photos" ON storage.objects FOR ALL
 USING (bucket_id = 'listings' AND auth.uid() = owner);
