@@ -1,0 +1,11 @@
+{
+  "name": "Negative Caching Effectiveness",
+  "passed": true,
+  "durationMs": 243.65869999999995,
+  "metrics": {
+    "concurrency": 100,
+    "nullResponses": 100,
+    "fetcherCalls": 1,
+    "secondFetchCount": 0
+  }
+}

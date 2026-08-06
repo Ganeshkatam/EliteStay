@@ -1,0 +1,10 @@
+{
+  "name": "Circuit Breaker Transitions",
+  "passed": true,
+  "durationMs": 44019.0957,
+  "metrics": {
+    "circuitClosedAfterFailures": 0,
+    "circuitClosedAfterRecovery": 1,
+    "fetcherCalls": 6
+  }
+}

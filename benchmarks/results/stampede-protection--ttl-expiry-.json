@@ -1,0 +1,10 @@
+{
+  "name": "Stampede Protection (TTL Expiry)",
+  "passed": true,
+  "durationMs": 1574.6578,
+  "metrics": {
+    "concurrency": 500,
+    "fetcherCalls": 1,
+    "p95Ms": 229.04
+  }
+}

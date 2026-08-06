@@ -38,8 +38,12 @@ export async function acquireLock(
   const lockKey = CacheKeys.lock(resourceKey);
   const ownerToken = generateOwnerToken();
 
-  const acquired = await provider.setnx(lockKey, ownerToken, ttlMs);
-  return acquired ? ownerToken : null;
+  try {
+    const acquired = await provider.setnx(lockKey, ownerToken, ttlMs);
+    return acquired ? ownerToken : null;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -55,11 +59,14 @@ export async function releaseLock(
   const provider = getProvider();
   const lockKey = CacheKeys.lock(resourceKey);
 
-  const stored = await provider.get(lockKey);
-  if (stored === ownerToken) {
-    await provider.del(lockKey);
+  try {
+    const stored = await provider.get(lockKey);
+    if (stored === ownerToken) {
+      await provider.del(lockKey);
+    }
+  } catch {
+    // Another process took over or Redis is offline -- do nothing.
   }
-  // If stored !== ownerToken, another process took over -- do nothing.
 }
 
 /**

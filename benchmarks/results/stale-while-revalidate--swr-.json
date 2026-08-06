@@ -1,0 +1,12 @@
+{
+  "name": "Stale-While-Revalidate (SWR)",
+  "passed": true,
+  "durationMs": 4603.251499999999,
+  "metrics": {
+    "concurrency": 100,
+    "staleResponses": 100,
+    "freshResponses": 0,
+    "backgroundRefreshes": 1,
+    "finalVersion": "version-2"
+  }
+}

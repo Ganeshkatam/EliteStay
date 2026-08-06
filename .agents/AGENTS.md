@@ -159,4 +159,12 @@ Every domain concept has one canonical icon. The same concept must reuse the sam
 
 # Rule 13 - Canonical Taxonomy Rule
 
-ccommodation_types is the single source of truth for EliteStay's accommodation taxonomy. New categories require an explicit product decision and corresponding database migration. Avoid introducing synonymous or overlapping categories.
+ccommodation_types is the single source of truth for EliteStay's accommodation taxonomy. New categories require an explicit product decision and corresponding database migration. Avoid introducing synonymous or overlapping categories.
+
+# Property Domain v1 Architectural Freeze
+
+The Property Domain (`src/features/property`) is formally **FROZEN** as `v1`.
+
+1. **Immutable Contracts**: The interfaces returned by `PropertyRepository` and all Domain Services (`PropertyBaseService`, `MediaService`, `HostService`, `AmenitiesService`, `PricingService`, `ReviewService`) are stable.
+2. **Consumer Strictness**: Future domains (including the Booking Domain) are **consumers** of the Property Domain. Booking must **not** modify Property Domain services, repositories, or cache logic to accommodate write-heavy workflows.
+3. **No Leakage**: If a new domain requires property data (e.g., for pricing snapshots or availability checks), it must consume the stable interfaces provided by `PropertyDomain v1`, or build its own dedicated views within its own bounded context. This prevents transactional logic from leaking into read-heavy presentation services.

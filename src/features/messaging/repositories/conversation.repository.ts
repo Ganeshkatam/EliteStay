@@ -71,17 +71,50 @@ export class ConversationRepository {
       .select(
         `
         *,
-        listing:listings (id, title, images),
-        host:host_profiles!conversations_host_profile_id_fkey (id, business_name, user:profiles!host_profiles_user_id_fkey(id, full_name, avatar_storage_path))
+        listing:listings (id, title, images:listing_images(storage_path)),
+        host:host_profiles!conversations_host_profile_id_fkey (id, business_name, user_id)
       `
       )
       .eq('guest_id', guestId)
       .order('updated_at', { ascending: false });
 
     if (error) {
-      console.error('Error fetching guest conversations:', error);
+      console.error(
+        'Error fetching guest conversations:',
+        error.message,
+        error.details,
+        error.hint
+      );
       throw new Error('Failed to fetch guest conversations');
     }
+
+    if (!data || data.length === 0) return data;
+
+    const userIds = data
+      .map((row) => (row.host as { user_id?: string })?.user_id)
+      .filter((id) => !!id);
+
+    if (userIds.length > 0) {
+      const { data: profiles } = await this.supabase
+        .from('profiles')
+        .select('id, full_name, avatar_storage_path')
+        .in('id', userIds);
+
+      const profileMap = new Map();
+      if (profiles) {
+        for (const p of profiles) {
+          profileMap.set(p.id, p);
+        }
+      }
+
+      for (const row of data) {
+        const host = row.host as { user_id?: string; user?: unknown };
+        if (host && host.user_id) {
+          host.user = profileMap.get(host.user_id) || null;
+        }
+      }
+    }
+
     return data;
   }
 
@@ -91,7 +124,7 @@ export class ConversationRepository {
       .select(
         `
         *,
-        listing:listings (id, title, images),
+        listing:listings (id, title, images:listing_images(storage_path)),
         guest:profiles!conversations_guest_id_fkey (id, full_name, avatar_storage_path)
       `
       )

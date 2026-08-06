@@ -1,0 +1,13 @@
+{
+  "name": "Stampede Protection (Cold Cache)",
+  "passed": true,
+  "durationMs": 319.7454,
+  "metrics": {
+    "concurrency": 500,
+    "totalDurationMs": 252.02,
+    "fetcherCalls": 1,
+    "p50Ms": 249.2,
+    "p95Ms": 249.78,
+    "p99Ms": 250
+  }
+}

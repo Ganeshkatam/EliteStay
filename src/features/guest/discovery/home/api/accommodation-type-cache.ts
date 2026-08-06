@@ -12,7 +12,7 @@ interface AccommodationTypeMapping {
 
 /**
  * Fetches accommodation types through the Redis distributed cache layer.
- * The accommodation_types table is small and static -- cached for 1 hour.
+ * The accommodation_types table is small and static -- cached for 3 minutes.
  */
 export async function getAccommodationTypes(): Promise<
   AccommodationTypeMapping[]
@@ -40,10 +40,10 @@ export async function getAccommodationTypes(): Promise<
  * Uses the cached full list to avoid a per-section database round-trip.
  */
 export async function resolveAccommodationTypeId(
-  name: string | null
+  slug: string | null
 ): Promise<string | null> {
-  if (!name) return null;
+  if (!slug) return null;
   const types = await getAccommodationTypes();
-  const match = types.find((t) => t.name.toLowerCase() === name.toLowerCase());
+  const match = types.find((t) => t.slug === slug);
   return match?.id ?? null;
 }

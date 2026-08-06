@@ -47,8 +47,16 @@ const fetchSectionListings = async (
 
   const { data, error } = await supabase.rpc('search_listings', rpcParams);
 
-  if (error) {
-    console.error('Error fetching homepage section listings:', error);
+  if (error && error.message) {
+    console.error(
+      `Error fetching homepage section listings [${config.id}]:`,
+      JSON.stringify({
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+      })
+    );
     return [];
   }
 

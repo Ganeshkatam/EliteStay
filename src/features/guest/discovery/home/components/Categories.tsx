@@ -24,7 +24,7 @@ export async function Categories() {
           return (
             <div
               key={type.slug}
-              className="flex-shrink-0 w-[140px] sm:w-[150px] lg:w-[160px] snap-start"
+              className="flex-shrink-0 w-[140px] sm:w-[160px] lg:w-[220px] snap-start"
             >
               <Link
                 href={`/s?accommodationType=${type.slug}`}

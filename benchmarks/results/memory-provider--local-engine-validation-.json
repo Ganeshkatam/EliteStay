@@ -1,0 +1,11 @@
+{
+  "name": "Memory Provider (Local Engine Validation)",
+  "passed": true,
+  "durationMs": 1119.7667999999999,
+  "metrics": {
+    "firstFetchData": "memory-test",
+    "secondFetchData": "memory-test",
+    "fetcherCalls": 1,
+    "ttlFetcherCalls": 2
+  }
+}

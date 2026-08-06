@@ -1,0 +1,13 @@
+{
+  "name": "Brotli Compression Efficiency",
+  "passed": true,
+  "durationMs": 176.7269,
+  "metrics": {
+    "rawSizeBytes": 514781,
+    "encodedSizeBytes": 3062,
+    "compressionRatio": 168.12,
+    "encodeDurationMs": 168.46,
+    "decodeDurationMs": 3.68,
+    "dataPreserved": 1
+  }
+}

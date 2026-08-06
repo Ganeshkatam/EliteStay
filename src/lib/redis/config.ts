@@ -26,29 +26,29 @@ export const TTL = {
   /** Search result listings -- 5 min */
   SEARCH: 300,
 
-  /** Homepage featured cities -- 10 min */
-  HOME_FEATURED: 600,
+  /** Homepage featured cities -- 5 min */
+  HOME_FEATURED: 300,
 
-  /** Homepage section listings -- 10 min */
-  HOME_SECTION: 600,
+  /** Homepage section listings -- 5 min */
+  HOME_SECTION: 300,
 
-  /** Homepage category counts -- 10 min */
-  HOME_CATEGORIES: 600,
+  /** Homepage category counts -- 5 min */
+  HOME_CATEGORIES: 300,
 
-  /** Homepage location counts -- 10 min */
-  HOME_LOCATIONS: 600,
+  /** Homepage location counts -- 5 min */
+  HOME_LOCATIONS: 300,
 
-  /** Property base details -- 15 min */
-  PROPERTY_BASE: 900,
+  /** Property base details -- 5 min */
+  PROPERTY_BASE: 300,
 
-  /** Property media gallery -- 15 min */
-  PROPERTY_MEDIA: 900,
+  /** Property media gallery -- 5 min */
+  PROPERTY_MEDIA: 300,
 
-  /** Property host info -- 15 min */
-  PROPERTY_HOST: 900,
+  /** Property host info -- 5 min */
+  PROPERTY_HOST: 300,
 
-  /** Property amenities -- 15 min */
-  PROPERTY_AMENITIES: 900,
+  /** Property amenities -- 5 min */
+  PROPERTY_AMENITIES: 300,
 
   /** Property reviews -- 5 min (changes more often) */
   PROPERTY_REVIEWS: 300,
@@ -56,8 +56,8 @@ export const TTL = {
   /** Property pricing -- 5 min */
   PROPERTY_PRICING: 300,
 
-  /** Accommodation types reference data -- 1 hour */
-  ACCOMMODATION_REF: 3600,
+  /** Accommodation types reference data -- 30 minutes */
+  ACCOMMODATION_REF: 1800,
 
   // -------------------------------------------------------------------------
   // Negative Cache TTLs

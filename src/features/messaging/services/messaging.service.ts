@@ -152,7 +152,7 @@ export class MessagingService {
         ? {
             id: r.listing.id,
             title: r.listing.title,
-            imageUrl: r.listing.images?.[0] || null,
+            imageUrl: r.listing.images?.[0]?.storage_path || null,
           }
         : null,
       host: {
@@ -179,7 +179,7 @@ export class MessagingService {
         ? {
             id: r.listing.id,
             title: r.listing.title,
-            imageUrl: r.listing.images?.[0] || null,
+            imageUrl: r.listing.images?.[0]?.storage_path || null,
           }
         : null,
       guest: {
