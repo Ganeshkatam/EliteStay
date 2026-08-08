@@ -1,10 +1,23 @@
 import Link from 'next/link';
+import { type HeaderVariant } from './useHeaderState';
 
 interface HostToggleProps {
   isHost?: boolean;
+  variant?: HeaderVariant;
 }
 
-export function HostToggle({ isHost }: HostToggleProps) {
+export function HostToggle({ isHost, variant }: HostToggleProps) {
+  if (variant === 'host' || variant === 'dashboard') {
+    return (
+      <Link
+        href="/"
+        className="hidden sm:inline-flex items-center text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors whitespace-nowrap"
+      >
+        Find a home
+      </Link>
+    );
+  }
+
   if (isHost) {
     return (
       <Link

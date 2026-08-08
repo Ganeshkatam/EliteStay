@@ -29,8 +29,8 @@ export async function startHostingAction() {
   const user = await getAuthenticatedUser();
   await hostingService.initializeOnboarding(user.id);
 
-  revalidatePath('/host/onboarding');
-  redirect('/host/onboarding');
+  revalidatePath('/host/onboarding', 'layout');
+  redirect('/host/onboarding/identity');
 }
 
 /**
@@ -46,8 +46,8 @@ export async function submitIdentityStepAction(formData: FormData) {
   }
 
   await hostingService.submitIdentityStep(user.id, fullName, phone);
-  revalidatePath('/host/onboarding');
-  redirect('/host/onboarding?step=bank');
+  revalidatePath('/host/onboarding', 'layout');
+  redirect('/host/onboarding/bank');
 }
 
 /**
@@ -63,8 +63,8 @@ export async function submitBankStepAction(formData: FormData) {
   }
 
   await hostingService.submitBankStep(user.id, bankName, accountNumber);
-  revalidatePath('/host/onboarding');
-  redirect('/host/onboarding?step=business');
+  revalidatePath('/host/onboarding', 'layout');
+  redirect('/host/onboarding/business');
 }
 
 /**
@@ -101,8 +101,8 @@ export async function submitBusinessStepAction(formData: FormData) {
     supportEmail
   );
 
-  revalidatePath('/host/onboarding');
-  redirect('/host/onboarding?step=policies');
+  revalidatePath('/host/onboarding', 'layout');
+  redirect('/host/onboarding/policies');
 }
 
 /**
@@ -113,8 +113,8 @@ export async function submitPoliciesStepAction() {
   await hostingService.submitPoliciesStep(user.id);
   await hostingService.confirmReadyToHost(user.id);
 
-  revalidatePath('/host/onboarding');
-  redirect('/host/onboarding?step=ready');
+  revalidatePath('/host/onboarding', 'layout');
+  redirect('/host/onboarding/ready');
 }
 
 /**

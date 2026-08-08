@@ -24,7 +24,7 @@ interface UserMenuProps {
   variant?: HeaderVariant;
 }
 
-export function UserMenu({ user, profile }: UserMenuProps) {
+export function UserMenu({ user, profile, variant }: UserMenuProps) {
   // If no user, render the logged out menu
   if (!user) {
     return (
@@ -76,8 +76,19 @@ export function UserMenu({ user, profile }: UserMenuProps) {
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
+        {variant === 'host' && (
+          <>
+            <DropdownMenuItem
+              asChild
+              className="cursor-pointer font-medium text-rose-600"
+            >
+              <Link href="/host/profile">Host Settings</Link>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </>
+        )}
         <DropdownMenuItem asChild className="cursor-pointer font-medium">
-          <Link href="/users/profile">Profile</Link>
+          <Link href="/users/profile">Guest Profile</Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild className="cursor-pointer font-medium">
           <Link href="/users/inbox">Inbox</Link>

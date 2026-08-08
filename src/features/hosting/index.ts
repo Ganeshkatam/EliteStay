@@ -5,6 +5,5 @@ export * from './repositories/hosting.repository';
 export * from './view-models/hosting.viewmodels';
 export * from './services/hosting.service';
 export * from './services/host-profile.service';
-export * from './components/HostOnboardingWizard';
 export * from './components/HostProfileWorkspace';
 export * from './actions/hosting.actions';
