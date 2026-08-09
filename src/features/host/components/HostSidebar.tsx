@@ -16,10 +16,9 @@ import { Plus } from 'lucide-react';
 
 const navigation = [
   { name: 'Dashboard', href: '/host', icon: LayoutDashboard },
-  { name: 'Listings', href: '/host/listings', icon: List },
-  { name: 'Calendar', href: '/host/calendar', icon: CalendarDays },
-  { name: 'Bookings', href: '/host/bookings', icon: Inbox },
-  { name: 'Stays', href: '/host/stays', icon: Users },
+  { name: 'Properties', href: '/host/listings', icon: List },
+  { name: 'Applications', href: '/host/applications', icon: Inbox },
+  { name: 'Residents', href: '/host/residents', icon: Users },
   { name: 'Settings', href: '/host/profile', icon: Settings },
 ];
 
