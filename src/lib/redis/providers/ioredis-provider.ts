@@ -5,7 +5,12 @@ export class IoRedisProvider implements CacheProvider {
   private readonly client: Redis;
 
   constructor(url: string) {
-    this.client = new Redis(url);
+    this.client = new Redis(url, {
+      maxRetriesPerRequest: 1, // Prevent long blocking retries on missing local redis
+    });
+    this.client.on('error', (err) => {
+      console.warn('[Redis] IoRedis connection error:', err.message);
+    });
   }
 
   async get(key: string): Promise<string | null> {
