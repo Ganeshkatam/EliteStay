@@ -139,7 +139,7 @@ export function PrivacySettings({
   return (
     <FormSection
       title="Privacy"
-      description="Manage what information is visible to others."
+      description="Manage what information is visible to hosts and other members."
       category="privacy"
       defaultValues={data}
     >
@@ -154,27 +154,19 @@ export function PrivacySettings({
             }
           />
           <ToggleRow
-            label="Show Profile Photo Publicly"
-            description="Allow anyone to see your profile photo."
+            label="Show Profile Photo"
+            description="Show your profile avatar to hosts during reservations."
             checked={form.watch('show_profile_photo')}
             onChange={(val) =>
               form.setValue('show_profile_photo', val, { shouldDirty: true })
             }
           />
           <ToggleRow
-            label="Show Reviews Publicly"
-            description="Allow your reviews to be visible on public listing pages."
+            label="Show Reviews"
+            description="Allow your reviews to be visible to verified hosts and guests."
             checked={form.watch('show_reviews')}
             onChange={(val) =>
               form.setValue('show_reviews', val, { shouldDirty: true })
-            }
-          />
-          <ToggleRow
-            label="Allow Search Indexing"
-            description="Let search engines (like Google) index your public profile."
-            checked={form.watch('allow_search_indexing')}
-            onChange={(val) =>
-              form.setValue('allow_search_indexing', val, { shouldDirty: true })
             }
           />
         </div>

@@ -84,9 +84,8 @@ export default async function ProfilePage() {
                           {profile.username ? `@${profile.username}` : ''}
                         </div>
                         <div className="text-xs text-slate-500 flex items-center gap-1.5 mt-1.5">
-                          <Lock className="w-3.5 h-3.5" /> Use this unique
-                          handle to share your profile and connect across
-                          EliteStay.
+                          <Lock className="w-3.5 h-3.5" /> Your unique private
+                          identifier on EliteStay.
                         </div>
                       </div>
                     }

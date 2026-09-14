@@ -8,7 +8,15 @@ export const metadata: Metadata = {
   description: 'Manage your EliteStay account',
 };
 
-export default function ProfileLayout({ children }: { children: ReactNode }) {
+import { requireUser } from '@/features/auth/server/auth-helpers';
+
+export default async function ProfileLayout({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  await requireUser();
+
   return (
     <DashboardShell>
       <MainPanel />
