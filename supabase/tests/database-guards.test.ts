@@ -153,4 +153,48 @@ describe('Database Retention & Cascading Guards (T01 - T17)', () => {
       }
     }
   );
+
+  it.skipIf(!hasSupabase)(
+    'T08 - Multi-session concurrency test: opposing lock requests (B,A) vs (A,B) execute without deadlock (40P01)',
+    async () => {
+      // Setup two isolated client sessions with distinct memory storage
+      const client1 = createClient(supabaseUrl, supabaseAnonKey, {
+        auth: { persistSession: false },
+      });
+      const client2 = createClient(supabaseUrl, supabaseAnonKey, {
+        auth: { persistSession: false },
+      });
+
+      const idA = '10000000-0000-0000-0000-000000000001';
+      const idB = '20000000-0000-0000-0000-000000000002';
+
+      // Launch both opposing-order lock attempts concurrently
+      const [res1, res2] = await Promise.all([
+        client1.rpc('test_concurrent_reassignment_lock', {
+          p_listing_a: idB,
+          p_listing_b: idA,
+          p_hold_seconds: 0.2,
+        }),
+        client2.rpc('test_concurrent_reassignment_lock', {
+          p_listing_a: idA,
+          p_listing_b: idB,
+          p_hold_seconds: 0.2,
+        }),
+      ]);
+
+      // Neither session must fail with deadlock 40P01
+      if (res1.error) {
+        expect(res1.error.code).not.toBe('40P01');
+      }
+      if (res2.error) {
+        expect(res2.error.code).not.toBe('40P01');
+      }
+
+      // If both completed without error, verify success payload
+      if (!res1.error && !res2.error) {
+        expect(res1.data).toMatchObject({ success: true });
+        expect(res2.data).toMatchObject({ success: true });
+      }
+    }
+  );
 });

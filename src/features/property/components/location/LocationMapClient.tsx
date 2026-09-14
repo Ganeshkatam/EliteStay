@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import { getMapConfig } from '@/lib/maps';
 
 interface LocationMapProps {
   latitude: number;
@@ -36,12 +37,13 @@ export function LocationMap({ latitude, longitude, city }: LocationMapProps) {
     if (!isVisible || !mapContainer.current) return;
 
     let map: import('maplibre-gl').Map | null = null;
+    const mapConfig = getMapConfig();
 
     // Dynamically import MapLibre to avoid heavy bundle upfront
     import('maplibre-gl').then((maplibregl) => {
       map = new maplibregl.Map({
         container: mapContainer.current!,
-        style: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
+        style: mapConfig.styleUrl as string,
         center: [longitude, latitude],
         zoom: 14,
         interactive: false, // Prevent scrolling from hijacking the page
