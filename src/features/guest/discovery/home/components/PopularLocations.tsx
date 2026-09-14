@@ -84,7 +84,7 @@ export async function PopularLocations() {
                 >
                   <Image
                     src={imageUrl}
-                    alt={city.name}
+                    alt=""
                     fill
                     sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 20vw"
                     className="object-cover transition-transform duration-500 group-hover:scale-105"

@@ -16,12 +16,18 @@ export function SearchButton({ variant, onClick }: SearchButtonProps) {
       <button
         type="button"
         onClick={onClick}
+        aria-label="Search"
         className={cn(
-          "bg-slate-900 hover:bg-slate-800 text-white rounded-full flex items-center justify-center shadow-md transition-all duration-180 ease-in-out focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2",
-          isCompact ? "h-10 w-10" : "h-14 w-14"
+          'bg-slate-900 hover:bg-slate-800 text-white rounded-full flex items-center justify-center shadow-md transition-all duration-180 ease-in-out focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2',
+          isCompact ? 'h-10 w-10' : 'h-14 w-14'
         )}
       >
-        <Search className={cn("transition-all duration-180", isCompact ? "h-4 w-4" : "h-6 w-6")} />
+        <Search
+          className={cn(
+            'transition-all duration-180',
+            isCompact ? 'h-4 w-4' : 'h-6 w-6'
+          )}
+        />
       </button>
     </div>
   );

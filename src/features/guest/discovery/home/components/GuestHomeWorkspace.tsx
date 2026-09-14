@@ -70,6 +70,7 @@ function LocationsSkeleton() {
 export function GuestHomeWorkspace({}: GuestHomeWorkspaceProps) {
   return (
     <div className="flex flex-col pb-16 pt-0 gap-6 w-full">
+      <h1 className="sr-only">EliteStay - Premium Accommodation & Living</h1>
       <Suspense fallback={<CategoriesSkeleton />}>
         <Categories />
       </Suspense>

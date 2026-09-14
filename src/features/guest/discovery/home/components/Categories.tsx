@@ -40,7 +40,7 @@ export async function Categories() {
                     <span className="block text-sm font-bold text-gray-900 leading-tight">
                       {type.name}
                     </span>
-                    <span className="block text-[11px] text-gray-400 mt-1 line-clamp-2 leading-snug">
+                    <span className="block text-[11px] text-gray-600 mt-1 line-clamp-2 leading-snug">
                       {type.description}
                     </span>
                   </div>

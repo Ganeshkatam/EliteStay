@@ -7,9 +7,9 @@ export default async function HomePage() {
     const viewModel = await GuestService.getHomeData();
 
     return (
-      <main className="flex min-h-screen flex-col">
+      <div className="flex min-h-screen flex-col">
         <GuestHomeWorkspace viewModel={viewModel} />
-      </main>
+      </div>
     );
   });
 }
