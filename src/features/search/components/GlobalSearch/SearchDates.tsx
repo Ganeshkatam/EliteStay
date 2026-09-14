@@ -6,10 +6,11 @@ import { SearchSection } from './SearchSection';
 import { type SearchVariant } from './types';
 import { cn } from '@/lib/utils';
 import { format, parseISO, isValid } from 'date-fns';
+import { type StayDuration } from './SearchDropdown';
 
 interface SearchDatesProps {
   variant: SearchVariant;
-  duration?: 'weekend' | 'week' | 'month';
+  duration?: StayDuration;
 }
 
 export function SearchDates({ variant }: SearchDatesProps) {

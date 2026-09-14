@@ -8,7 +8,7 @@ import { SearchWhere } from './SearchWhere';
 import { SearchDates } from './SearchDates';
 import { SearchType } from './SearchType';
 import { SearchButton } from './SearchButton';
-import { SearchDropdown } from './SearchDropdown';
+import { SearchDropdown, type StayDuration } from './SearchDropdown';
 import { type SearchVariant } from './types';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { format, parseISO, isValid } from 'date-fns';
@@ -29,9 +29,7 @@ export function GlobalSearch({
   const router = useRouter();
   const searchParams = useSearchParams();
   const isCompact = variant === 'compact';
-  const [duration, setDuration] = useState<'weekend' | 'week' | 'month'>(
-    'weekend'
-  );
+  const [duration, setDuration] = useState<StayDuration>('1 month');
 
   const handleSearch = (e: React.MouseEvent) => {
     e.stopPropagation();
