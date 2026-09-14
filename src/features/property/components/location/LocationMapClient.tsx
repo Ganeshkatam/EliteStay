@@ -41,6 +41,9 @@ export function LocationMap({ latitude, longitude, city }: LocationMapProps) {
 
     // Dynamically import MapLibre to avoid heavy bundle upfront
     import('maplibre-gl').then((maplibregl) => {
+      if (typeof maplibregl.setWorkerUrl === 'function') {
+        maplibregl.setWorkerUrl('/maplibre/maplibre-gl-worker.mjs');
+      }
       map = new maplibregl.Map({
         container: mapContainer.current!,
         style: mapConfig.styleUrl as string,

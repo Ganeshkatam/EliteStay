@@ -4,9 +4,9 @@ export const MAP_CONFIG: MapConfig = {
   provider: 'openfreemap',
   styleUrl:
     process.env.NEXT_PUBLIC_MAP_STYLE_URL ||
-    'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
+    'https://tiles.openfreemap.org/styles/liberty',
   attribution:
-    '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    '&copy; <a href="https://openfreemap.org" target="_blank">OpenFreeMap</a> &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors',
   minZoom: 4,
   maxZoom: 20,
   worldCopies: false,

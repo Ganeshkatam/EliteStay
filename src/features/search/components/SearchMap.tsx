@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import Map, { Marker, NavigationControl } from 'react-map-gl/maplibre';
+import * as maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { ListingCardData } from '@/features/listings/types';
 import Link from 'next/link';
@@ -12,6 +13,13 @@ import {
   SearchFilters,
 } from '@/features/search/lib/search-params';
 import { getMapConfig } from '@/lib/maps';
+
+if (
+  typeof window !== 'undefined' &&
+  typeof maplibregl.setWorkerUrl === 'function'
+) {
+  maplibregl.setWorkerUrl('/maplibre/maplibre-gl-worker.mjs');
+}
 
 interface MapMoveEvent {
   target: {
@@ -97,6 +105,7 @@ export function SearchMap({ listings }: { listings: ListingCardData[] }) {
   return (
     <div className="w-full h-full relative">
       <Map
+        mapLib={maplibregl}
         initialViewState={{
           longitude: initialLng,
           latitude: initialLat,

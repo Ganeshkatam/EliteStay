@@ -5,9 +5,18 @@ import Map, {
   NavigationControl,
   ViewStateChangeEvent,
 } from 'react-map-gl/maplibre';
+import * as maplibregl from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
 import { useSearchData } from '../../context/SearchProvider';
 import { getMapConfig } from '@/lib/maps';
 import { MapViewport } from '../../hooks/useMapSearch';
+
+if (
+  typeof window !== 'undefined' &&
+  typeof maplibregl.setWorkerUrl === 'function'
+) {
+  maplibregl.setWorkerUrl('/maplibre/maplibre-gl-worker.mjs');
+}
 
 interface MapCanvasProps {
   children: React.ReactNode;
@@ -48,6 +57,7 @@ export function MapCanvas({ children, onViewportChange }: MapCanvasProps) {
 
   return (
     <Map
+      mapLib={maplibregl}
       initialViewState={{
         longitude: initialLng,
         latitude: initialLat,
