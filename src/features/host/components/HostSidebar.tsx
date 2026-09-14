@@ -14,8 +14,6 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 
-export { navigation as HOST_NAVIGATION };
-
 const navigation = [
   { name: 'Dashboard', href: '/host', icon: LayoutDashboard },
   { name: 'Properties', href: '/host/listings', icon: List },
@@ -23,6 +21,8 @@ const navigation = [
   { name: 'Residents', href: '/host/residents', icon: Users },
   { name: 'Settings', href: '/host/profile', icon: Settings },
 ];
+
+export { navigation as HOST_NAVIGATION };
 
 export function HostSidebar() {
   const pathname = usePathname();
