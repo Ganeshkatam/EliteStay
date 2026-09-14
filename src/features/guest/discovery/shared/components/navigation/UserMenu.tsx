@@ -36,6 +36,10 @@ interface UserMenuProps {
 }
 
 export function UserMenu({ user, profile, variant }: UserMenuProps) {
+  const [imageLoading, setImageLoading] = React.useState(
+    Boolean(profile?.avatar_storage_path)
+  );
+
   // If no user, render the logged out navigation options
   if (!user) {
     return (
@@ -87,11 +91,19 @@ export function UserMenu({ user, profile, variant }: UserMenuProps) {
         aria-label="User profile"
         className="relative flex items-center justify-center rounded-full outline-none focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 transition-transform active:scale-95 group"
       >
-        <Avatar className="h-10 w-10 rounded-full ring-2 ring-slate-200/90 group-hover:ring-slate-300 shadow-xs transition-all">
+        <Avatar className="h-10 w-10 rounded-full ring-2 ring-slate-200/90 group-hover:ring-slate-300 shadow-xs transition-all relative overflow-hidden">
+          {avatarUrl && imageLoading && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center bg-slate-200/80 animate-pulse">
+              <div className="h-full w-full bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 animate-[shimmer_1.5s_infinite]" />
+            </div>
+          )}
           <AvatarImage
             src={avatarUrl}
             alt={displayName}
-            className="object-cover"
+            className="object-cover transition-opacity duration-200"
+            onLoadingStatusChange={(status) => {
+              setImageLoading(status === 'loading');
+            }}
           />
           <AvatarFallback className="rounded-full bg-gradient-to-br from-slate-800 to-slate-950 text-white text-xs font-semibold">
             {initials}
