@@ -27,6 +27,7 @@ import {
   type PreferenceFormMap,
 } from '../types/preferences';
 import { updateUserPreferences } from '../actions/preferences-actions';
+import { TwoFactorAuthCard } from './TwoFactorAuthCard';
 
 // Helper component for rendering a single toggle row
 function ToggleRow({
@@ -231,43 +232,40 @@ export function SecuritySettings({
   data: UserPreferences['security'];
 }) {
   return (
-    <FormSection
-      title="Security"
-      description="Keep your account secure."
-      category="security"
-      defaultValues={data}
-    >
-      {(form) => (
-        <div className="space-y-4">
-          <ToggleRow
-            label="Two-Factor Authentication"
-            description="Require an extra code when logging in."
-            checked={form.watch('two_factor_auth')}
-            onChange={(val) =>
-              form.setValue('two_factor_auth', val, { shouldDirty: true })
-            }
-          />
-          <ToggleRow
-            label="Allow New Device Login"
-            description="Allow logins from new devices and browsers."
-            checked={form.watch('allow_new_device_login')}
-            onChange={(val) =>
-              form.setValue('allow_new_device_login', val, {
-                shouldDirty: true,
-              })
-            }
-          />
-          <ToggleRow
-            label="Remember this Device"
-            description="Keep me logged in on this device."
-            checked={form.watch('remember_device')}
-            onChange={(val) =>
-              form.setValue('remember_device', val, { shouldDirty: true })
-            }
-          />
-        </div>
-      )}
-    </FormSection>
+    <div className="space-y-6">
+      {/* Interactive Two-Factor Authentication Setup Card */}
+      <TwoFactorAuthCard initialEnabled={Boolean(data?.two_factor_auth)} />
+
+      <FormSection
+        title="Session & Device Security"
+        description="Manage how and where your account stays signed in."
+        category="security"
+        defaultValues={data}
+      >
+        {(form) => (
+          <div className="space-y-4">
+            <ToggleRow
+              label="Allow New Device Login"
+              description="Allow logins from new devices and browsers without explicit pre-authorization."
+              checked={form.watch('allow_new_device_login')}
+              onChange={(val) =>
+                form.setValue('allow_new_device_login', val, {
+                  shouldDirty: true,
+                })
+              }
+            />
+            <ToggleRow
+              label="Remember this Device"
+              description="Keep me securely logged in on this browser across sessions."
+              checked={form.watch('remember_device')}
+              onChange={(val) =>
+                form.setValue('remember_device', val, { shouldDirty: true })
+              }
+            />
+          </div>
+        )}
+      </FormSection>
+    </div>
   );
 }
 
