@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { CacheProvider } from '@/lib/redis/providers/cache-provider';
 import { MemoryProvider } from '@/lib/redis/providers/memory-provider';
 import { _setProviderForTesting } from '@/lib/redis/client';
@@ -9,6 +9,13 @@ import { setWithCache, fetchWithCache } from '@/lib/redis/cache';
 import { SearchService } from '@/features/search/services/SearchService';
 import { HomeService } from '@/features/guest/discovery/home/services/HomeService';
 import { coalesce } from '@/lib/redis/request-coalescer';
+
+vi.mock('@/config/env', () => ({
+  env: {
+    NEXT_PUBLIC_SUPABASE_URL: 'https://example.supabase.co',
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'test-publishable-key',
+  },
+}));
 
 class InstrumentedProvider implements CacheProvider {
   private base = new MemoryProvider();
