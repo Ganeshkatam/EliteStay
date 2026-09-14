@@ -1,5 +1,11 @@
 import { type ExtendedProfile } from '@/types/profile';
-import { ShieldCheck, Mail, Phone, AlertCircle } from 'lucide-react';
+import {
+  ShieldCheck,
+  Mail,
+  Phone,
+  CheckCircle2,
+  CircleDashed,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface VerificationSectionProps {
@@ -16,14 +22,14 @@ export function VerificationSection({
       id: 'email',
       label: 'Email',
       value: email,
-      isVerified: true, // Assuming email is verified from Auth
+      isVerified: true,
       icon: Mail,
     },
     {
       id: 'phone',
       label: 'Phone number',
       value: profile.phone ? `+91 ${profile.phone}` : undefined,
-      isVerified: !!profile.phone, // Simplified check
+      isVerified: Boolean(profile.phone),
       icon: Phone,
     },
   ];
@@ -40,7 +46,7 @@ export function VerificationSection({
               className={cn(
                 'p-2 rounded-full',
                 item.isVerified
-                  ? 'bg-green-50 text-green-700'
+                  ? 'bg-emerald-50 text-emerald-700'
                   : 'bg-slate-50 text-slate-400'
               )}
             >
@@ -55,15 +61,20 @@ export function VerificationSection({
           </div>
 
           <div>
-            {item.isVerified ? (
-              <span className="text-sm font-semibold text-green-700 flex items-center gap-1.5">
+            {item.id === 'email' ? (
+              <span className="text-sm font-semibold text-emerald-700 flex items-center gap-1.5">
                 <ShieldCheck className="h-4 w-4" />
                 Verified
               </span>
+            ) : item.value ? (
+              <span className="text-sm font-medium text-slate-700 flex items-center gap-1.5">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                Added
+              </span>
             ) : (
-              <span className="text-sm font-semibold text-slate-400 flex items-center gap-1.5">
-                <AlertCircle className="h-4 w-4" />
-                Action required
+              <span className="text-sm text-slate-400 flex items-center gap-1.5">
+                <CircleDashed className="h-4 w-4" />
+                Optional
               </span>
             )}
           </div>
