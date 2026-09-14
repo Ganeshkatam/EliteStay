@@ -102,19 +102,21 @@ export function GlobalSearch({
                 : 'opacity-0 scale-95 pointer-events-none'
             )}
           >
-            <div className="flex items-center gap-2 sm:gap-4 text-xs sm:text-sm font-semibold text-gray-800 truncate">
+            <div className="flex items-center gap-1.5 sm:gap-3 text-xs sm:text-sm font-medium text-gray-800 truncate">
               {/* Location (always visible) */}
-              <span className="text-gray-900">{citySummary}</span>
+              <span className="text-gray-900 font-semibold truncate">
+                {citySummary}
+              </span>
 
-              {/* Date (hidden on mobile, visible on sm and up) */}
-              <span className="text-gray-300 sm:inline hidden">•</span>
-              <span className="text-gray-500 sm:inline hidden">
+              {/* Date (visible on all screens) */}
+              <span className="text-gray-300 inline">•</span>
+              <span className="text-gray-500 font-normal truncate">
                 {dateSummary}
               </span>
 
-              {/* Type (hidden on mobile and tablet, visible on md and up) */}
-              <span className="text-gray-300 md:inline hidden">•</span>
-              <span className="text-gray-500 md:inline hidden">
+              {/* Type (visible on sm and up) */}
+              <span className="text-gray-300 sm:inline hidden">•</span>
+              <span className="text-gray-500 font-normal sm:inline hidden truncate">
                 {typeSummary}
               </span>
             </div>

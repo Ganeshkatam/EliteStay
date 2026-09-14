@@ -142,7 +142,7 @@ export function GuestNavigationBar({
       ? 'md:h-[240px] h-[156px]'
       : 'h-[156px] md:h-[140px]'
     : isExpanded
-      ? 'md:h-[176px] h-[88px]'
+      ? 'h-[160px] md:h-[176px]'
       : 'h-[88px] md:h-[76px]';
 
   return (
@@ -154,7 +154,7 @@ export function GuestNavigationBar({
             ? 'h-[156px] md:h-[140px]'
             : variant === 'public-home'
               ? isExpanded
-                ? 'md:h-[176px] h-[88px]'
+                ? 'h-[160px] md:h-[176px]'
                 : 'h-[88px] md:h-[76px]'
               : 'h-[88px] md:h-[76px]'
         )}

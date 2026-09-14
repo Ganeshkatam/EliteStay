@@ -47,11 +47,18 @@ export function TopBar({
         <div
           className={cn(
             'flex flex-1 items-center justify-center w-full min-w-0 mx-1.5 sm:mx-2 motion-layout ease-premium',
-            isExpanded ? 'md:translate-y-[88px] translate-y-0' : 'translate-y-0'
+            isExpanded
+              ? 'absolute inset-x-0 bottom-2.5 px-3 sm:px-6 md:px-0 md:relative md:bottom-auto md:translate-y-[88px]'
+              : 'relative translate-y-0'
           )}
         >
+          {/* On mobile (<md), render search in hero position when expanded or top row when collapsed */}
           <div className="w-full flex justify-center md:hidden">
-            <GlobalSearch variant="compact" popularCities={popularCities} />
+            {isExpanded ? (
+              <GlobalSearch variant="hero" popularCities={popularCities} />
+            ) : (
+              <GlobalSearch variant="compact" popularCities={popularCities} />
+            )}
           </div>
           <div className="w-full hidden md:flex justify-center">
             <GlobalSearch
