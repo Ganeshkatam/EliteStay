@@ -64,9 +64,9 @@ a {
     --muted: oklch(0.96 0.01 90);
     --muted-foreground: oklch(0.55 0.01 270);
     
-    /* Accent (Soft Trust Blue) */
-    --accent: oklch(0.6 0.15 250);
-    --accent-foreground: oklch(0.985 0 0);
+    /* Accent (Subtle surface hover and focus highlight) */
+    --accent: oklch(0.96 0.01 90);
+    --accent-foreground: oklch(0.2 0.01 270);
     
     /* Utility States */
     --destructive: oklch(0.6 0.2 20);

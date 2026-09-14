@@ -122,7 +122,7 @@ export function UserMenu({ user, profile, variant }: UserMenuProps) {
         <div className="space-y-0.5">
           <DropdownMenuItem
             asChild
-            className="cursor-pointer rounded-xl px-3 py-2 text-slate-700 hover:text-slate-900 hover:bg-slate-100/80 focus:bg-slate-100/80 transition-colors"
+            className="cursor-pointer rounded-xl px-3 py-2 text-slate-700 hover:text-slate-900 focus:text-slate-900 hover:bg-slate-100/80 focus:bg-slate-100/80 transition-colors"
           >
             <Link
               href="/users/inbox"
@@ -135,7 +135,7 @@ export function UserMenu({ user, profile, variant }: UserMenuProps) {
 
           <DropdownMenuItem
             asChild
-            className="cursor-pointer rounded-xl px-3 py-2 text-slate-700 hover:text-slate-900 hover:bg-slate-100/80 focus:bg-slate-100/80 transition-colors"
+            className="cursor-pointer rounded-xl px-3 py-2 text-slate-700 hover:text-slate-900 focus:text-slate-900 hover:bg-slate-100/80 focus:bg-slate-100/80 transition-colors"
           >
             <Link
               href="/users/notifications"
@@ -148,7 +148,7 @@ export function UserMenu({ user, profile, variant }: UserMenuProps) {
 
           <DropdownMenuItem
             asChild
-            className="cursor-pointer rounded-xl px-3 py-2 text-slate-700 hover:text-slate-900 hover:bg-slate-100/80 focus:bg-slate-100/80 transition-colors"
+            className="cursor-pointer rounded-xl px-3 py-2 text-slate-700 hover:text-slate-900 focus:text-slate-900 hover:bg-slate-100/80 focus:bg-slate-100/80 transition-colors"
           >
             <Link
               href="/resident"
@@ -161,7 +161,7 @@ export function UserMenu({ user, profile, variant }: UserMenuProps) {
 
           <DropdownMenuItem
             asChild
-            className="cursor-pointer rounded-xl px-3 py-2 text-slate-700 hover:text-slate-900 hover:bg-slate-100/80 focus:bg-slate-100/80 transition-colors"
+            className="cursor-pointer rounded-xl px-3 py-2 text-slate-700 hover:text-slate-900 focus:text-slate-900 hover:bg-slate-100/80 focus:bg-slate-100/80 transition-colors"
           >
             <Link
               href="/users/profile"
@@ -181,7 +181,7 @@ export function UserMenu({ user, profile, variant }: UserMenuProps) {
             <>
               <DropdownMenuItem
                 asChild
-                className="cursor-pointer rounded-xl px-3 py-2 text-slate-700 hover:text-slate-900 hover:bg-slate-100/80 focus:bg-slate-100/80 transition-colors"
+                className="cursor-pointer rounded-xl px-3 py-2 text-slate-700 hover:text-slate-900 focus:text-slate-900 hover:bg-slate-100/80 focus:bg-slate-100/80 transition-colors"
               >
                 <Link
                   href="/"
@@ -194,7 +194,7 @@ export function UserMenu({ user, profile, variant }: UserMenuProps) {
 
               <DropdownMenuItem
                 asChild
-                className="cursor-pointer rounded-xl px-3 py-2 text-slate-700 hover:text-slate-900 hover:bg-slate-100/80 focus:bg-slate-100/80 transition-colors"
+                className="cursor-pointer rounded-xl px-3 py-2 text-slate-700 hover:text-slate-900 focus:text-slate-900 hover:bg-slate-100/80 focus:bg-slate-100/80 transition-colors"
               >
                 <Link
                   href="/host/profile"
@@ -208,7 +208,7 @@ export function UserMenu({ user, profile, variant }: UserMenuProps) {
           ) : isHostRole ? (
             <DropdownMenuItem
               asChild
-              className="cursor-pointer rounded-xl px-3 py-2 text-slate-700 hover:text-slate-900 hover:bg-slate-100/80 focus:bg-slate-100/80 transition-colors"
+              className="cursor-pointer rounded-xl px-3 py-2 text-slate-700 hover:text-slate-900 focus:text-slate-900 hover:bg-slate-100/80 focus:bg-slate-100/80 transition-colors"
             >
               <Link
                 href="/host"
@@ -221,7 +221,7 @@ export function UserMenu({ user, profile, variant }: UserMenuProps) {
           ) : (
             <DropdownMenuItem
               asChild
-              className="cursor-pointer rounded-xl px-3 py-2 text-slate-700 hover:text-slate-900 hover:bg-slate-100/80 focus:bg-slate-100/80 transition-colors"
+              className="cursor-pointer rounded-xl px-3 py-2 text-slate-700 hover:text-slate-900 focus:text-slate-900 hover:bg-slate-100/80 focus:bg-slate-100/80 transition-colors"
             >
               <Link
                 href="/host/start"
@@ -235,7 +235,7 @@ export function UserMenu({ user, profile, variant }: UserMenuProps) {
 
           <DropdownMenuItem
             asChild
-            className="cursor-pointer rounded-xl px-3 py-2 text-slate-700 hover:text-slate-900 hover:bg-slate-100/80 focus:bg-slate-100/80 transition-colors"
+            className="cursor-pointer rounded-xl px-3 py-2 text-slate-700 hover:text-slate-900 focus:text-slate-900 hover:bg-slate-100/80 focus:bg-slate-100/80 transition-colors"
           >
             <Link
               href="/users/settings"
