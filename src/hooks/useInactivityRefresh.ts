@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 export interface UseInactivityRefreshOptions {
   /**
-   * Inactivity threshold in minutes before triggering a refresh.
+   * Inactivity threshold in minutes before prompting the user to refresh.
    * Default: 30 minutes.
    */
   timeoutMinutes?: number;
@@ -20,17 +20,27 @@ export interface UseInactivityRefreshOptions {
   onRefresh?: () => void;
 }
 
+export interface UseInactivityRefreshReturn {
+  needsRefresh: boolean;
+  isRefreshing: boolean;
+  refresh: () => void;
+  dismiss: () => void;
+}
+
 const DEFAULT_TIMEOUT_MINUTES = 30;
 const DEFAULT_COOLDOWN_MS = 60_000;
 const ACTIVITY_THROTTLE_MS = 10_000; // Only update last-active timestamp every 10 seconds
 
 /**
- * Hook to automatically refresh Next.js server components when the user
- * returns or resumes activity after an extended period of inactivity.
+ * Hook to detect prolonged user inactivity and notify when the page needs a refresh.
+ *
+ * This hook NEVER auto-refreshes the page underneath an active or viewing user.
+ * Instead, it tracks idle time and sets `needsRefresh` to true so the UI can present
+ * a non-intrusive refresh prompt.
  */
 export function useInactivityRefresh(
   options: UseInactivityRefreshOptions = {}
-) {
+): UseInactivityRefreshReturn {
   const {
     timeoutMinutes = DEFAULT_TIMEOUT_MINUTES,
     cooldownMs = DEFAULT_COOLDOWN_MS,
@@ -40,38 +50,47 @@ export function useInactivityRefresh(
   const router = useRouter();
   const timeoutMs = timeoutMinutes * 60 * 1000;
 
+  const [needsRefresh, setNeedsRefresh] = useState<boolean>(false);
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+
   const lastActiveRef = useRef<number>(0);
   const lastRefreshRef = useRef<number>(0);
   const lastThrottleRef = useRef<number>(0);
 
-  const triggerRefresh = useCallback(() => {
+  const refresh = useCallback(() => {
     const now = Date.now();
 
-    // Respect cooldown to prevent spamming refreshes
     if (now - lastRefreshRef.current < cooldownMs) {
+      setNeedsRefresh(false);
       return;
     }
 
-    // Do not disrupt active text input or typing
-    const activeEl = document.activeElement;
-    if (
-      activeEl &&
-      (activeEl.tagName === 'INPUT' ||
-        activeEl.tagName === 'TEXTAREA' ||
-        activeEl.getAttribute('contenteditable') === 'true')
-    ) {
-      return;
-    }
-
+    setIsRefreshing(true);
     lastRefreshRef.current = now;
     lastActiveRef.current = now;
+    lastThrottleRef.current = now;
 
     if (onRefresh) {
       onRefresh();
     }
 
-    router.refresh();
+    try {
+      router.refresh();
+    } finally {
+      // Allow brief visual feedback before dismissing prompt
+      setTimeout(() => {
+        setIsRefreshing(false);
+        setNeedsRefresh(false);
+      }, 500);
+    }
   }, [cooldownMs, onRefresh, router]);
+
+  const dismiss = useCallback(() => {
+    const now = Date.now();
+    lastActiveRef.current = now;
+    lastThrottleRef.current = now;
+    setNeedsRefresh(false);
+  }, []);
 
   const recordActivity = useCallback(() => {
     const now = Date.now();
@@ -84,18 +103,18 @@ export function useInactivityRefresh(
 
     const elapsed = now - lastActiveRef.current;
 
-    // If user was inactive for longer than the timeout, trigger refresh on their return
+    // If inactivity timeout has elapsed, flag that the page needs a refresh instead of auto-refreshing
     if (elapsed >= timeoutMs) {
-      triggerRefresh();
+      setNeedsRefresh(true);
       return;
     }
 
-    // Throttle timestamp updates during continuous interaction (e.g. mouse movement, scrolling)
+    // Throttle timestamp updates during continuous interaction
     if (now - lastThrottleRef.current >= ACTIVITY_THROTTLE_MS) {
       lastThrottleRef.current = now;
       lastActiveRef.current = now;
     }
-  }, [timeoutMs, triggerRefresh]);
+  }, [timeoutMs]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -112,7 +131,7 @@ export function useInactivityRefresh(
       window.addEventListener(evt, handleEvent, { passive: true });
     });
 
-    // Check on tab visibility restoration (e.g. returning to background tab)
+    // Check when user returns to the tab
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         const now = Date.now();
@@ -120,28 +139,28 @@ export function useInactivityRefresh(
           lastActiveRef.current > 0 &&
           now - lastActiveRef.current >= timeoutMs
         ) {
-          triggerRefresh();
-        } else {
+          setNeedsRefresh(true);
+        } else if (lastActiveRef.current === 0) {
           lastActiveRef.current = now;
         }
       }
     };
 
-    // Check on window focus
+    // Check when window gains focus
     const handleFocus = () => {
       const now = Date.now();
       if (
         lastActiveRef.current > 0 &&
         now - lastActiveRef.current >= timeoutMs
       ) {
-        triggerRefresh();
+        setNeedsRefresh(true);
       }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('focus', handleFocus);
 
-    // Periodic heartbeat check for tabs that remain open and visible without interaction
+    // Periodic heartbeat check for tabs left open without interaction
     const intervalId = window.setInterval(() => {
       if (document.visibilityState === 'visible') {
         const now = Date.now();
@@ -149,10 +168,10 @@ export function useInactivityRefresh(
           lastActiveRef.current > 0 &&
           now - lastActiveRef.current >= timeoutMs
         ) {
-          triggerRefresh();
+          setNeedsRefresh(true);
         }
       }
-    }, 60_000); // Check once every minute
+    }, 60_000);
 
     return () => {
       activityEvents.forEach((evt) => {
@@ -162,5 +181,12 @@ export function useInactivityRefresh(
       window.removeEventListener('focus', handleFocus);
       window.clearInterval(intervalId);
     };
-  }, [recordActivity, timeoutMs, triggerRefresh]);
+  }, [recordActivity, timeoutMs]);
+
+  return {
+    needsRefresh,
+    isRefreshing,
+    refresh,
+    dismiss,
+  };
 }
