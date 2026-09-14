@@ -235,6 +235,12 @@ a {
   width: var(--search-width);
 }
 
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
 /* Respect Reduced Motion preferences */
 @media (prefers-reduced-motion: reduce) {
   .motion-layout,
