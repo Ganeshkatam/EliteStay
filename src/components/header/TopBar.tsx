@@ -1,8 +1,8 @@
 import { cn } from '@/lib/utils';
 
-import { Logo } from '../navigation/Logo';
-import { UserMenu } from '../navigation/UserMenu';
-import { HostToggle } from '../navigation/HostToggle';
+import { Logo } from '@/features/guest/discovery/shared/components/navigation/Logo';
+import { UserMenu } from '@/features/guest/discovery/shared/components/navigation/UserMenu';
+import { HostToggle } from '@/features/guest/discovery/shared/components/navigation/HostToggle';
 import { type User } from '@supabase/supabase-js';
 import { type HeaderVariant } from './useHeaderState';
 
