@@ -37,7 +37,9 @@ export function TopBar({
       <div
         className={cn(
           'flex flex-none items-center justify-start motion-transform origin-left ease-premium',
-          isExpanded ? 'scale-100' : 'scale-90'
+          isExpanded
+            ? 'md:scale-100 scale-90 sm:scale-100'
+            : 'scale-90 sm:scale-100'
         )}
       >
         <Logo />
@@ -47,13 +49,20 @@ export function TopBar({
         <div
           className={cn(
             'flex flex-1 items-center justify-center w-full min-w-0 mx-1.5 sm:mx-2 motion-layout ease-premium',
-            isExpanded ? 'translate-y-[88px]' : 'translate-y-0'
+            isExpanded ? 'md:translate-y-[88px] translate-y-0' : 'translate-y-0'
           )}
         >
-          <GlobalSearch
-            variant={isExpanded ? 'hero' : 'compact'}
-            popularCities={popularCities}
-          />
+          {/* On mobile (<md), always render compact GlobalSearch docked inside the 76px topbar */}
+          <div className="w-full flex justify-center md:hidden">
+            <GlobalSearch variant="compact" popularCities={popularCities} />
+          </div>
+          {/* On desktop (md+), switch between hero and compact based on isExpanded */}
+          <div className="w-full hidden md:flex justify-center">
+            <GlobalSearch
+              variant={isExpanded ? 'hero' : 'compact'}
+              popularCities={popularCities}
+            />
+          </div>
         </div>
       )}
 

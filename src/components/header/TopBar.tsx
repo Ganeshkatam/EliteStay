@@ -47,13 +47,18 @@ export function TopBar({
         <div
           className={cn(
             'flex flex-1 items-center justify-center w-full motion-layout ease-premium',
-            isExpanded ? 'translate-y-[88px]' : 'translate-y-0'
+            isExpanded ? 'md:translate-y-[88px] translate-y-0' : 'translate-y-0'
           )}
         >
-          <GlobalSearch
-            variant={isExpanded ? 'hero' : 'compact'}
-            popularCities={popularCities}
-          />
+          <div className="w-full flex justify-center md:hidden">
+            <GlobalSearch variant="compact" popularCities={popularCities} />
+          </div>
+          <div className="w-full hidden md:flex justify-center">
+            <GlobalSearch
+              variant={isExpanded ? 'hero' : 'compact'}
+              popularCities={popularCities}
+            />
+          </div>
         </div>
       )}
 

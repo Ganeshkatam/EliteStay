@@ -139,10 +139,10 @@ export function GuestNavigationBar({
 
   const headerHeightClass = isSearchRoute
     ? isExpanded
-      ? 'h-[240px]'
+      ? 'md:h-[240px] h-[140px]'
       : 'h-[140px]'
     : isExpanded
-      ? 'h-[176px]'
+      ? 'md:h-[176px] h-[76px]'
       : 'h-[76px]';
 
   return (
@@ -153,7 +153,9 @@ export function GuestNavigationBar({
           isSearchRoute
             ? 'h-[140px]'
             : variant === 'public-home'
-              ? 'h-[176px]'
+              ? isExpanded
+                ? 'md:h-[176px] h-[76px]'
+                : 'h-[76px]'
               : 'h-[76px]'
         )}
       />

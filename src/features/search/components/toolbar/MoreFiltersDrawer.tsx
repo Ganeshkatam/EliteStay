@@ -269,7 +269,7 @@ export function MoreFiltersDrawer() {
                       )
                     }
                     className={cn(
-                      'py-2.5 px-3 rounded-xl text-xs font-medium border text-center transition-all duration-150',
+                      'min-h-11 py-2.5 px-3 rounded-xl text-xs font-medium border text-center flex items-center justify-center transition-all duration-150',
                       isSelected
                         ? 'border-slate-900 bg-slate-900 text-white font-semibold shadow-sm'
                         : 'border-gray-200 bg-white text-gray-700 hover:border-gray-900 hover:text-gray-900'
@@ -311,7 +311,7 @@ export function MoreFiltersDrawer() {
                       )
                     }
                     className={cn(
-                      'py-2 px-3.5 rounded-full text-xs font-medium border transition-all duration-150',
+                      'min-h-11 inline-flex items-center justify-center py-2 px-3.5 rounded-full text-xs font-medium border transition-all duration-150',
                       isSelected
                         ? 'border-slate-900 bg-slate-900 text-white font-semibold shadow-sm'
                         : 'border-gray-200 bg-white text-gray-700 hover:border-gray-900 hover:text-gray-900'
@@ -348,7 +348,7 @@ export function MoreFiltersDrawer() {
                     type="button"
                     onClick={() => toggleAmenity(amenity.name)}
                     className={cn(
-                      'flex items-center gap-2 px-3 py-2.5 rounded-xl border text-left text-xs font-medium transition-all duration-150',
+                      'min-h-11 flex items-center gap-2 px-3 py-2.5 rounded-xl border text-left text-xs font-medium transition-all duration-150',
                       isSelected
                         ? 'border-slate-900 bg-slate-900 text-white font-semibold shadow-sm'
                         : 'border-gray-200 bg-white text-gray-700 hover:border-gray-900 hover:text-gray-900'
@@ -375,13 +375,13 @@ export function MoreFiltersDrawer() {
           <Button
             variant="ghost"
             onClick={handleClearAll}
-            className="text-xs font-semibold text-gray-600 hover:text-gray-900 hover:bg-transparent underline px-2 h-9"
+            className="min-h-11 text-xs font-semibold text-gray-600 hover:text-gray-900 hover:bg-transparent underline px-2"
           >
             Clear all
           </Button>
           <Button
             onClick={handleApply}
-            className="px-5 h-9 text-xs rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold shadow-md transition-transform active:scale-95"
+            className="min-h-11 px-5 text-xs rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold shadow-md transition-transform active:scale-95"
           >
             Show results
           </Button>
