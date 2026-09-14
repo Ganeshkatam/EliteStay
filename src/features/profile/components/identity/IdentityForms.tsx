@@ -134,13 +134,7 @@ function InlineForm<TSchema extends z.ZodType<FieldValues>>({
 
 // ---- Personal Info Forms ---- //
 
-export function DisplayNameForm({
-  profile,
-  close,
-}: {
-  profile: ExtendedProfile;
-  close?: () => void;
-}) {
+export function DisplayNameForm({ profile }: { profile: ExtendedProfile }) {
   return (
     <InlineForm
       schema={z.object({
@@ -155,7 +149,6 @@ export function DisplayNameForm({
       onSubmitData={(data) =>
         updateProfile(data as unknown as Parameters<typeof updateProfile>[0])
       }
-      close={close}
     >
       {({ register, errors }) => (
         <div>
@@ -179,13 +172,7 @@ export function DisplayNameForm({
   );
 }
 
-export function NameForm({
-  profile,
-  close,
-}: {
-  profile: ExtendedProfile;
-  close?: () => void;
-}) {
+export function NameForm({ profile }: { profile: ExtendedProfile }) {
   return (
     <InlineForm
       schema={z.object({
@@ -195,7 +182,6 @@ export function NameForm({
       onSubmitData={(data) =>
         updateProfile(data as unknown as Parameters<typeof updateProfile>[0])
       }
-      close={close}
     >
       {({ register, errors }) => (
         <div>
@@ -207,8 +193,8 @@ export function NameForm({
             </p>
           )}
           <p className="text-xs text-slate-500 mt-2">
-            This is the name on your travel document, which could be a license
-            or a passport.
+            This is the name on your legal document, which could be a license or
+            a passport.
           </p>
         </div>
       )}
@@ -216,13 +202,7 @@ export function NameForm({
   );
 }
 
-export function DateOfBirthForm({
-  profile,
-  close,
-}: {
-  profile: ExtendedProfile;
-  close?: () => void;
-}) {
+export function DateOfBirthForm({ profile }: { profile: ExtendedProfile }) {
   return (
     <InlineForm
       schema={z.object({ date_of_birth: z.string().optional().nullable() })}
@@ -230,7 +210,6 @@ export function DateOfBirthForm({
       onSubmitData={(data) =>
         updateProfile(data as unknown as Parameters<typeof updateProfile>[0])
       }
-      close={close}
     >
       {({ watch, setValue }) => {
         const dateStr = watch('date_of_birth');
@@ -279,13 +258,7 @@ export function DateOfBirthForm({
   );
 }
 
-export function GenderForm({
-  profile,
-  close,
-}: {
-  profile: ExtendedProfile;
-  close?: () => void;
-}) {
+export function GenderForm({ profile }: { profile: ExtendedProfile }) {
   return (
     <InlineForm
       schema={z.object({
@@ -299,7 +272,6 @@ export function GenderForm({
       onSubmitData={(data) =>
         updateProfile(data as unknown as Parameters<typeof updateProfile>[0])
       }
-      close={close}
     >
       {({ register }) => (
         <div>
@@ -318,13 +290,7 @@ export function GenderForm({
   );
 }
 
-export function OccupationForm({
-  profile,
-  close,
-}: {
-  profile: ExtendedProfile;
-  close?: () => void;
-}) {
+export function OccupationForm({ profile }: { profile: ExtendedProfile }) {
   return (
     <InlineForm
       schema={z.object({ occupation: z.string().optional().nullable() })}
@@ -332,7 +298,6 @@ export function OccupationForm({
       onSubmitData={(data) =>
         updateProfile(data as unknown as Parameters<typeof updateProfile>[0])
       }
-      close={close}
     >
       {({ register }) => (
         <div>
@@ -356,13 +321,7 @@ export function OccupationForm({
   );
 }
 
-export function BioForm({
-  profile,
-  close,
-}: {
-  profile: ExtendedProfile;
-  close?: () => void;
-}) {
+export function BioForm({ profile }: { profile: ExtendedProfile }) {
   return (
     <InlineForm
       schema={z.object({
@@ -376,7 +335,6 @@ export function BioForm({
       onSubmitData={(data) =>
         updateProfile(data as unknown as Parameters<typeof updateProfile>[0])
       }
-      close={close}
     >
       {({ register, errors }) => (
         <div>
@@ -400,13 +358,7 @@ export function BioForm({
 
 // ---- Contact Forms ---- //
 
-export function PhoneForm({
-  profile,
-  close,
-}: {
-  profile: ExtendedProfile;
-  close?: () => void;
-}) {
+export function PhoneForm({ profile }: { profile: ExtendedProfile }) {
   return (
     <InlineForm
       schema={z.object({
@@ -416,7 +368,6 @@ export function PhoneForm({
       onSubmitData={(data) =>
         updateProfile(data as unknown as Parameters<typeof updateProfile>[0])
       }
-      close={close}
     >
       {({ register, errors }) => (
         <div>
