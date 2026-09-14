@@ -163,14 +163,14 @@ export function GuestNavigationBar({
       <header
         ref={headerRef}
         className={cn(
-          'fixed top-0 left-0 z-40 w-full overflow-visible border-none bg-transparent transition-all duration-300 ease-premium',
+          'fixed top-0 left-0 z-40 w-full overflow-visible border-none bg-transparent transition-[height] duration-300 ease-premium',
           headerHeightClass
         )}
       >
         {/* Glass Layer: GPU-accelerated height scaling */}
         <div
           className={cn(
-            'absolute inset-x-0 top-0 bg-white/85 backdrop-blur-md border-b border-border/45 transition-all duration-300 ease-premium',
+            'absolute inset-x-0 top-0 bg-white/85 backdrop-blur-md border-b border-border/45 transition-[height] duration-300 ease-premium',
             headerHeightClass
           )}
         />

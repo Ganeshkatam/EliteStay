@@ -4,6 +4,7 @@
 
 html {
   height: 100%;
+  scrollbar-gutter: stable;
 }
 
 body {
@@ -12,6 +13,12 @@ body {
   flex-direction: column;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+body[data-scroll-locked] {
+  margin-right: 0px !important;
+  padding-right: 0px !important;
 }
 
 * {
