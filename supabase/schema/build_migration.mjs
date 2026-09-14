@@ -24,6 +24,8 @@ const orderedFiles = [
   '10_bookings.sql',
   '11_stays.sql',
   '12_reviews.sql',
+  '19_host_profiles.sql',
+  '20_host_settings.sql',
   '13_notifications.sql',
   '14_messaging.sql',
   '15_calendar_sync.sql',

@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import Map, { Marker, NavigationControl } from 'react-map-gl/maplibre';
+import 'maplibre-gl/dist/maplibre-gl.css';
 import { ListingCardData } from '@/features/listings/types';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';

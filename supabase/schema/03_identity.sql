@@ -262,7 +262,7 @@ CREATE TRIGGER user_preferences_updated_at
   FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
 
 -- 9. Account Deletion RPC and Triggers
-CREATE OR REPLACE FUNCTION public.delete_user_account()
+CREATE OR REPLACE FUNCTION public.request_account_deletion()
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -273,13 +273,58 @@ DECLARE
 BEGIN
     v_user_id := auth.uid();
     IF v_user_id IS NULL THEN
-        RAISE EXCEPTION 'Not authenticated';
+        RETURN jsonb_build_object(
+            'success', false,
+            'error', 'UNAUTHENTICATED',
+            'code', '401',
+            'message', 'User must be authenticated to request account deletion'
+        );
     END IF;
     
-    DELETE FROM auth.users WHERE id = v_user_id;
-    RETURN jsonb_build_object('success', true);
+    BEGIN
+        DELETE FROM auth.users WHERE id = v_user_id;
+        RETURN jsonb_build_object(
+            'success', true,
+            'user_id', v_user_id,
+            'message', 'Account successfully scheduled for immediate deletion'
+        );
+    EXCEPTION
+        WHEN foreign_key_violation THEN
+            RETURN jsonb_build_object(
+                'success', false,
+                'error', 'DEPENDENCY_DELETE_BLOCKED',
+                'code', '23503',
+                'message', SQLERRM
+            );
+        WHEN others THEN
+            RETURN jsonb_build_object(
+                'success', false,
+                'error', 'ACCOUNT_DELETION_FAILED',
+                'code', SQLSTATE,
+                'message', SQLERRM
+            );
+    END;
 END;
 $$;
+
+CREATE OR REPLACE FUNCTION public.delete_user_account()
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+    -- Forward to canonical domain deletion procedure
+    RETURN public.request_account_deletion();
+END;
+$$;
+
+ALTER FUNCTION public.request_account_deletion() OWNER TO postgres;
+ALTER FUNCTION public.delete_user_account() OWNER TO postgres;
+REVOKE ALL ON FUNCTION public.request_account_deletion() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.delete_user_account() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.request_account_deletion() TO postgres, authenticated;
+GRANT EXECUTE ON FUNCTION public.delete_user_account() TO postgres, authenticated;
 
 CREATE OR REPLACE FUNCTION public.handle_user_delete_cleanup()
 RETURNS TRIGGER
@@ -359,12 +404,52 @@ BEGIN
       USING ERRCODE = '23503';
   END IF;
 
-  -- Tenant Check 3: Financial accounts
+  -- Tenant Check 3: Submitted reviews (immutable public reputation)
+  IF EXISTS (
+    SELECT 1 FROM public.reviews
+    WHERE guest_id = OLD.id
+  ) THEN
+    RAISE EXCEPTION 'Cannot delete user account %: user has submitted public reviews on record. Reviews are permanent historical records.',
+      OLD.id
+      USING ERRCODE = '23503';
+  END IF;
+
+  -- Tenant Check 4: Financial accounts
   IF EXISTS (
     SELECT 1 FROM public.accounts
     WHERE tenant_id = OLD.id
   ) THEN
     RAISE EXCEPTION 'Cannot delete user account %: user has financial ledger accounts on record.',
+      OLD.id
+      USING ERRCODE = '23503';
+  END IF;
+
+  -- Tenant Check 5: Active or historical maintenance requests
+  IF EXISTS (
+    SELECT 1 FROM public.maintenance_requests
+    WHERE resident_id = OLD.id
+  ) THEN
+    RAISE EXCEPTION 'Cannot delete user account %: user has active or historical maintenance requests on record.',
+      OLD.id
+      USING ERRCODE = '23503';
+  END IF;
+
+  -- Statutory Audit Check 1: Lease contract versions authored
+  IF EXISTS (
+    SELECT 1 FROM public.lease_versions
+    WHERE created_by = OLD.id
+  ) THEN
+    RAISE EXCEPTION 'Cannot delete user account %: user is recorded as creator of statutory lease contract versions.',
+      OLD.id
+      USING ERRCODE = '23503';
+  END IF;
+
+  -- Statutory Audit Check 2: Documents uploaded
+  IF EXISTS (
+    SELECT 1 FROM public.documents
+    WHERE uploaded_by = OLD.id
+  ) THEN
+    RAISE EXCEPTION 'Cannot delete user account %: user has uploaded statutory tenancy documents on record.',
       OLD.id
       USING ERRCODE = '23503';
   END IF;
@@ -392,11 +477,22 @@ BEGIN
       USING ERRCODE = '23503';
   END IF;
 
-  -- Host Check 3: Active bookings
+  -- Host Check 3: Any property with public reviews
+  IF EXISTS (
+    SELECT 1 FROM public.listings l
+    JOIN public.reviews r ON r.listing_id = l.id
+    WHERE l.host_id = OLD.id
+  ) THEN
+    RAISE EXCEPTION 'Cannot delete host account %: user owns properties with public review records on file. Properties must be archived, not deleted.',
+      OLD.id
+      USING ERRCODE = '23503';
+  END IF;
+
+  -- Host Check 4: Active bookings
   IF EXISTS (
     SELECT 1 FROM public.listings l
     JOIN public.bookings b ON b.listing_id = l.id
-    WHERE l.host_id = OLD.id AND b.status IN ('pending', 'approved')
+    WHERE l.host_id = OLD.id AND b.status::text IN ('pending', 'approved')
   ) THEN
     RAISE EXCEPTION 'Cannot delete host account %: user owns properties with active booking reservations.',
       OLD.id

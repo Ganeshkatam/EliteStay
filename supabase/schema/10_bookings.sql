@@ -216,10 +216,24 @@ CREATE TRIGGER trg_lock_parent_listing_for_booking
   FOR EACH ROW
   EXECUTE FUNCTION public.lock_parent_listing_for_booking();
 
+CREATE OR REPLACE FUNCTION public.ordered_dual_listing_locker(p_listing_a uuid, p_listing_b uuid)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  PERFORM public.acquire_listing_locks_ordered(p_listing_a, p_listing_b);
+END;
+$$;
+
 ALTER FUNCTION public.acquire_listing_locks_ordered(uuid, uuid) OWNER TO postgres;
+ALTER FUNCTION public.ordered_dual_listing_locker(uuid, uuid) OWNER TO postgres;
 ALTER FUNCTION public.lock_parent_listing_for_booking() OWNER TO postgres;
 REVOKE ALL ON FUNCTION public.acquire_listing_locks_ordered(uuid, uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.ordered_dual_listing_locker(uuid, uuid) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.lock_parent_listing_for_booking() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.acquire_listing_locks_ordered(uuid, uuid) TO postgres, authenticated;
+GRANT EXECUTE ON FUNCTION public.ordered_dual_listing_locker(uuid, uuid) TO postgres, authenticated;
 GRANT EXECUTE ON FUNCTION public.lock_parent_listing_for_booking() TO postgres, authenticated;
 

@@ -41,6 +41,12 @@
 \echo 'Creating Reviews Schema...'
 \i 12_reviews.sql
 
+\echo 'Creating Host Profiles Schema...'
+\i 19_host_profiles.sql
+
+\echo 'Creating Host Settings Schema...'
+\i 20_host_settings.sql
+
 \echo 'Creating Notifications Schema...'
 \i 13_notifications.sql
 

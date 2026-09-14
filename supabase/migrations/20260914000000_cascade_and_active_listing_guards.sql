@@ -124,11 +124,12 @@ BEGIN
   WHERE conrelid = 'public.accounts'::regclass
     AND confrelid = 'public.leases'::regclass
     AND contype = 'f';
-  IF v_match_count = 1 THEN
-    EXECUTE format('ALTER TABLE public.accounts DROP CONSTRAINT %I', v_conname);
-    ALTER TABLE public.accounts ADD CONSTRAINT accounts_lease_id_fkey 
-      FOREIGN KEY (lease_id) REFERENCES public.leases(id) ON DELETE RESTRICT;
+  IF v_match_count <> 1 THEN
+    RAISE EXCEPTION 'FAIL-CLOSED: accounts -> leases count %', v_match_count;
   END IF;
+  EXECUTE format('ALTER TABLE public.accounts DROP CONSTRAINT %I', v_conname);
+  ALTER TABLE public.accounts ADD CONSTRAINT accounts_lease_id_fkey 
+    FOREIGN KEY (lease_id) REFERENCES public.leases(id) ON DELETE RESTRICT;
 
   -- 10. invoices(lease_id) -> leases(id) ON DELETE RESTRICT
   SELECT count(*), min(conname) INTO v_match_count, v_conname
@@ -136,11 +137,12 @@ BEGIN
   WHERE conrelid = 'public.invoices'::regclass
     AND confrelid = 'public.leases'::regclass
     AND contype = 'f';
-  IF v_match_count = 1 THEN
-    EXECUTE format('ALTER TABLE public.invoices DROP CONSTRAINT %I', v_conname);
-    ALTER TABLE public.invoices ADD CONSTRAINT invoices_lease_id_fkey 
-      FOREIGN KEY (lease_id) REFERENCES public.leases(id) ON DELETE RESTRICT;
+  IF v_match_count <> 1 THEN
+    RAISE EXCEPTION 'FAIL-CLOSED: invoices -> leases count %', v_match_count;
   END IF;
+  EXECUTE format('ALTER TABLE public.invoices DROP CONSTRAINT %I', v_conname);
+  ALTER TABLE public.invoices ADD CONSTRAINT invoices_lease_id_fkey 
+    FOREIGN KEY (lease_id) REFERENCES public.leases(id) ON DELETE RESTRICT;
 
   -- 11. charge_schedules(lease_id) -> leases(id) ON DELETE RESTRICT
   SELECT count(*), min(conname) INTO v_match_count, v_conname
@@ -148,11 +150,12 @@ BEGIN
   WHERE conrelid = 'public.charge_schedules'::regclass
     AND confrelid = 'public.leases'::regclass
     AND contype = 'f';
-  IF v_match_count = 1 THEN
-    EXECUTE format('ALTER TABLE public.charge_schedules DROP CONSTRAINT %I', v_conname);
-    ALTER TABLE public.charge_schedules ADD CONSTRAINT charge_schedules_lease_id_fkey 
-      FOREIGN KEY (lease_id) REFERENCES public.leases(id) ON DELETE RESTRICT;
+  IF v_match_count <> 1 THEN
+    RAISE EXCEPTION 'FAIL-CLOSED: charge_schedules -> leases count %', v_match_count;
   END IF;
+  EXECUTE format('ALTER TABLE public.charge_schedules DROP CONSTRAINT %I', v_conname);
+  ALTER TABLE public.charge_schedules ADD CONSTRAINT charge_schedules_lease_id_fkey 
+    FOREIGN KEY (lease_id) REFERENCES public.leases(id) ON DELETE RESTRICT;
 
   -- 12. resident_notices(lease_id) -> leases(id) ON DELETE RESTRICT
   SELECT count(*), min(conname) INTO v_match_count, v_conname
@@ -160,11 +163,12 @@ BEGIN
   WHERE conrelid = 'public.resident_notices'::regclass
     AND confrelid = 'public.leases'::regclass
     AND contype = 'f';
-  IF v_match_count = 1 THEN
-    EXECUTE format('ALTER TABLE public.resident_notices DROP CONSTRAINT %I', v_conname);
-    ALTER TABLE public.resident_notices ADD CONSTRAINT resident_notices_lease_id_fkey 
-      FOREIGN KEY (lease_id) REFERENCES public.leases(id) ON DELETE RESTRICT;
+  IF v_match_count <> 1 THEN
+    RAISE EXCEPTION 'FAIL-CLOSED: resident_notices -> leases count %', v_match_count;
   END IF;
+  EXECUTE format('ALTER TABLE public.resident_notices DROP CONSTRAINT %I', v_conname);
+  ALTER TABLE public.resident_notices ADD CONSTRAINT resident_notices_lease_id_fkey 
+    FOREIGN KEY (lease_id) REFERENCES public.leases(id) ON DELETE RESTRICT;
 
   -- 13. maintenance_requests(lease_id) -> leases(id) ON DELETE RESTRICT
   SELECT count(*), min(conname) INTO v_match_count, v_conname
@@ -172,11 +176,12 @@ BEGIN
   WHERE conrelid = 'public.maintenance_requests'::regclass
     AND confrelid = 'public.leases'::regclass
     AND contype = 'f';
-  IF v_match_count = 1 THEN
-    EXECUTE format('ALTER TABLE public.maintenance_requests DROP CONSTRAINT %I', v_conname);
-    ALTER TABLE public.maintenance_requests ADD CONSTRAINT maintenance_requests_lease_id_fkey 
-      FOREIGN KEY (lease_id) REFERENCES public.leases(id) ON DELETE RESTRICT;
+  IF v_match_count <> 1 THEN
+    RAISE EXCEPTION 'FAIL-CLOSED: maintenance_requests -> leases count %', v_match_count;
   END IF;
+  EXECUTE format('ALTER TABLE public.maintenance_requests DROP CONSTRAINT %I', v_conname);
+  ALTER TABLE public.maintenance_requests ADD CONSTRAINT maintenance_requests_lease_id_fkey 
+    FOREIGN KEY (lease_id) REFERENCES public.leases(id) ON DELETE RESTRICT;
 
   -- 14. stay_events(stay_id) -> stays(id) ON DELETE RESTRICT
   SELECT count(*), min(conname) INTO v_match_count, v_conname
@@ -184,11 +189,12 @@ BEGIN
   WHERE conrelid = 'public.stay_events'::regclass
     AND confrelid = 'public.stays'::regclass
     AND contype = 'f';
-  IF v_match_count = 1 THEN
-    EXECUTE format('ALTER TABLE public.stay_events DROP CONSTRAINT %I', v_conname);
-    ALTER TABLE public.stay_events ADD CONSTRAINT stay_events_stay_id_fkey 
-      FOREIGN KEY (stay_id) REFERENCES public.stays(id) ON DELETE RESTRICT;
+  IF v_match_count <> 1 THEN
+    RAISE EXCEPTION 'FAIL-CLOSED: stay_events -> stays count %', v_match_count;
   END IF;
+  EXECUTE format('ALTER TABLE public.stay_events DROP CONSTRAINT %I', v_conname);
+  ALTER TABLE public.stay_events ADD CONSTRAINT stay_events_stay_id_fkey 
+    FOREIGN KEY (stay_id) REFERENCES public.stays(id) ON DELETE RESTRICT;
 
   -- 15. conversations(stay_id) -> stays(id) ON DELETE SET NULL
   SELECT count(*), min(conname) INTO v_match_count, v_conname
@@ -196,11 +202,12 @@ BEGIN
   WHERE conrelid = 'public.conversations'::regclass
     AND confrelid = 'public.stays'::regclass
     AND contype = 'f';
-  IF v_match_count = 1 THEN
-    EXECUTE format('ALTER TABLE public.conversations DROP CONSTRAINT %I', v_conname);
-    ALTER TABLE public.conversations ADD CONSTRAINT conversations_stay_id_fkey 
-      FOREIGN KEY (stay_id) REFERENCES public.stays(id) ON DELETE SET NULL;
+  IF v_match_count <> 1 THEN
+    RAISE EXCEPTION 'FAIL-CLOSED: conversations -> stays count %', v_match_count;
   END IF;
+  EXECUTE format('ALTER TABLE public.conversations DROP CONSTRAINT %I', v_conname);
+  ALTER TABLE public.conversations ADD CONSTRAINT conversations_stay_id_fkey 
+    FOREIGN KEY (stay_id) REFERENCES public.stays(id) ON DELETE SET NULL;
 
   -- 16. ledger_entries(account_id) -> accounts(id) ON DELETE RESTRICT
   SELECT count(*), min(conname) INTO v_match_count, v_conname
@@ -208,11 +215,12 @@ BEGIN
   WHERE conrelid = 'public.ledger_entries'::regclass
     AND confrelid = 'public.accounts'::regclass
     AND contype = 'f';
-  IF v_match_count = 1 THEN
-    EXECUTE format('ALTER TABLE public.ledger_entries DROP CONSTRAINT %I', v_conname);
-    ALTER TABLE public.ledger_entries ADD CONSTRAINT ledger_entries_account_id_fkey 
-      FOREIGN KEY (account_id) REFERENCES public.accounts(id) ON DELETE RESTRICT;
+  IF v_match_count <> 1 THEN
+    RAISE EXCEPTION 'FAIL-CLOSED: ledger_entries -> accounts count %', v_match_count;
   END IF;
+  EXECUTE format('ALTER TABLE public.ledger_entries DROP CONSTRAINT %I', v_conname);
+  ALTER TABLE public.ledger_entries ADD CONSTRAINT ledger_entries_account_id_fkey 
+    FOREIGN KEY (account_id) REFERENCES public.accounts(id) ON DELETE RESTRICT;
 
   -- 17. payment_allocations(payment_entry_id) -> ledger_entries(id) ON DELETE RESTRICT
   SELECT count(*), min(conname) INTO v_match_count, v_conname
@@ -220,11 +228,12 @@ BEGIN
   WHERE conrelid = 'public.payment_allocations'::regclass
     AND confrelid = 'public.ledger_entries'::regclass
     AND contype = 'f';
-  IF v_match_count = 1 THEN
-    EXECUTE format('ALTER TABLE public.payment_allocations DROP CONSTRAINT %I', v_conname);
-    ALTER TABLE public.payment_allocations ADD CONSTRAINT payment_allocations_payment_entry_id_fkey 
-      FOREIGN KEY (payment_entry_id) REFERENCES public.ledger_entries(id) ON DELETE RESTRICT;
+  IF v_match_count <> 1 THEN
+    RAISE EXCEPTION 'FAIL-CLOSED: payment_allocations -> ledger_entries count %', v_match_count;
   END IF;
+  EXECUTE format('ALTER TABLE public.payment_allocations DROP CONSTRAINT %I', v_conname);
+  ALTER TABLE public.payment_allocations ADD CONSTRAINT payment_allocations_payment_entry_id_fkey 
+    FOREIGN KEY (payment_entry_id) REFERENCES public.ledger_entries(id) ON DELETE RESTRICT;
 
   -- 18. payment_allocations(invoice_id) -> invoices(id) ON DELETE RESTRICT
   SELECT count(*), min(conname) INTO v_match_count, v_conname
@@ -232,11 +241,12 @@ BEGIN
   WHERE conrelid = 'public.payment_allocations'::regclass
     AND confrelid = 'public.invoices'::regclass
     AND contype = 'f';
-  IF v_match_count = 1 THEN
-    EXECUTE format('ALTER TABLE public.payment_allocations DROP CONSTRAINT %I', v_conname);
-    ALTER TABLE public.payment_allocations ADD CONSTRAINT payment_allocations_invoice_id_fkey 
-      FOREIGN KEY (invoice_id) REFERENCES public.invoices(id) ON DELETE RESTRICT;
+  IF v_match_count <> 1 THEN
+    RAISE EXCEPTION 'FAIL-CLOSED: payment_allocations -> invoices count %', v_match_count;
   END IF;
+  EXECUTE format('ALTER TABLE public.payment_allocations DROP CONSTRAINT %I', v_conname);
+  ALTER TABLE public.payment_allocations ADD CONSTRAINT payment_allocations_invoice_id_fkey 
+    FOREIGN KEY (invoice_id) REFERENCES public.invoices(id) ON DELETE RESTRICT;
 
 END $$;
 
@@ -582,15 +592,29 @@ CREATE TRIGGER trg_lock_parent_listing_for_lease
   FOR EACH ROW
   EXECUTE FUNCTION public.lock_parent_listing_for_lease();
 
+CREATE OR REPLACE FUNCTION public.ordered_dual_listing_locker(p_listing_a uuid, p_listing_b uuid)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  PERFORM public.acquire_listing_locks_ordered(p_listing_a, p_listing_b);
+END;
+$$;
+
 ALTER FUNCTION public.acquire_listing_locks_ordered(uuid, uuid) OWNER TO postgres;
+ALTER FUNCTION public.ordered_dual_listing_locker(uuid, uuid) OWNER TO postgres;
 ALTER FUNCTION public.lock_parent_listing_for_booking() OWNER TO postgres;
 ALTER FUNCTION public.lock_parent_listing_for_stay() OWNER TO postgres;
 ALTER FUNCTION public.lock_parent_listing_for_lease() OWNER TO postgres;
 REVOKE ALL ON FUNCTION public.acquire_listing_locks_ordered(uuid, uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.ordered_dual_listing_locker(uuid, uuid) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.lock_parent_listing_for_booking() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.lock_parent_listing_for_stay() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.lock_parent_listing_for_lease() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.acquire_listing_locks_ordered(uuid, uuid) TO postgres, authenticated;
+GRANT EXECUTE ON FUNCTION public.ordered_dual_listing_locker(uuid, uuid) TO postgres, authenticated;
 GRANT EXECUTE ON FUNCTION public.lock_parent_listing_for_booking() TO postgres, authenticated;
 GRANT EXECUTE ON FUNCTION public.lock_parent_listing_for_stay() TO postgres, authenticated;
 GRANT EXECUTE ON FUNCTION public.lock_parent_listing_for_lease() TO postgres, authenticated;

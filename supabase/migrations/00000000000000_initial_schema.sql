@@ -427,7 +427,7 @@ CREATE TRIGGER user_preferences_updated_at
   FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
 
 -- 9. Account Deletion RPC and Triggers
-CREATE OR REPLACE FUNCTION public.delete_user_account()
+CREATE OR REPLACE FUNCTION public.request_account_deletion()
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -438,13 +438,58 @@ DECLARE
 BEGIN
     v_user_id := auth.uid();
     IF v_user_id IS NULL THEN
-        RAISE EXCEPTION 'Not authenticated';
+        RETURN jsonb_build_object(
+            'success', false,
+            'error', 'UNAUTHENTICATED',
+            'code', '401',
+            'message', 'User must be authenticated to request account deletion'
+        );
     END IF;
     
-    DELETE FROM auth.users WHERE id = v_user_id;
-    RETURN jsonb_build_object('success', true);
+    BEGIN
+        DELETE FROM auth.users WHERE id = v_user_id;
+        RETURN jsonb_build_object(
+            'success', true,
+            'user_id', v_user_id,
+            'message', 'Account successfully scheduled for immediate deletion'
+        );
+    EXCEPTION
+        WHEN foreign_key_violation THEN
+            RETURN jsonb_build_object(
+                'success', false,
+                'error', 'DEPENDENCY_DELETE_BLOCKED',
+                'code', '23503',
+                'message', SQLERRM
+            );
+        WHEN others THEN
+            RETURN jsonb_build_object(
+                'success', false,
+                'error', 'ACCOUNT_DELETION_FAILED',
+                'code', SQLSTATE,
+                'message', SQLERRM
+            );
+    END;
 END;
 $$;
+
+CREATE OR REPLACE FUNCTION public.delete_user_account()
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+    -- Forward to canonical domain deletion procedure
+    RETURN public.request_account_deletion();
+END;
+$$;
+
+ALTER FUNCTION public.request_account_deletion() OWNER TO postgres;
+ALTER FUNCTION public.delete_user_account() OWNER TO postgres;
+REVOKE ALL ON FUNCTION public.request_account_deletion() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.delete_user_account() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.request_account_deletion() TO postgres, authenticated;
+GRANT EXECUTE ON FUNCTION public.delete_user_account() TO postgres, authenticated;
 
 CREATE OR REPLACE FUNCTION public.handle_user_delete_cleanup()
 RETURNS TRIGGER
@@ -524,12 +569,52 @@ BEGIN
       USING ERRCODE = '23503';
   END IF;
 
-  -- Tenant Check 3: Financial accounts
+  -- Tenant Check 3: Submitted reviews (immutable public reputation)
+  IF EXISTS (
+    SELECT 1 FROM public.reviews
+    WHERE guest_id = OLD.id
+  ) THEN
+    RAISE EXCEPTION 'Cannot delete user account %: user has submitted public reviews on record. Reviews are permanent historical records.',
+      OLD.id
+      USING ERRCODE = '23503';
+  END IF;
+
+  -- Tenant Check 4: Financial accounts
   IF EXISTS (
     SELECT 1 FROM public.accounts
     WHERE tenant_id = OLD.id
   ) THEN
     RAISE EXCEPTION 'Cannot delete user account %: user has financial ledger accounts on record.',
+      OLD.id
+      USING ERRCODE = '23503';
+  END IF;
+
+  -- Tenant Check 5: Active or historical maintenance requests
+  IF EXISTS (
+    SELECT 1 FROM public.maintenance_requests
+    WHERE resident_id = OLD.id
+  ) THEN
+    RAISE EXCEPTION 'Cannot delete user account %: user has active or historical maintenance requests on record.',
+      OLD.id
+      USING ERRCODE = '23503';
+  END IF;
+
+  -- Statutory Audit Check 1: Lease contract versions authored
+  IF EXISTS (
+    SELECT 1 FROM public.lease_versions
+    WHERE created_by = OLD.id
+  ) THEN
+    RAISE EXCEPTION 'Cannot delete user account %: user is recorded as creator of statutory lease contract versions.',
+      OLD.id
+      USING ERRCODE = '23503';
+  END IF;
+
+  -- Statutory Audit Check 2: Documents uploaded
+  IF EXISTS (
+    SELECT 1 FROM public.documents
+    WHERE uploaded_by = OLD.id
+  ) THEN
+    RAISE EXCEPTION 'Cannot delete user account %: user has uploaded statutory tenancy documents on record.',
       OLD.id
       USING ERRCODE = '23503';
   END IF;
@@ -557,11 +642,22 @@ BEGIN
       USING ERRCODE = '23503';
   END IF;
 
-  -- Host Check 3: Active bookings
+  -- Host Check 3: Any property with public reviews
+  IF EXISTS (
+    SELECT 1 FROM public.listings l
+    JOIN public.reviews r ON r.listing_id = l.id
+    WHERE l.host_id = OLD.id
+  ) THEN
+    RAISE EXCEPTION 'Cannot delete host account %: user owns properties with public review records on file. Properties must be archived, not deleted.',
+      OLD.id
+      USING ERRCODE = '23503';
+  END IF;
+
+  -- Host Check 4: Active bookings
   IF EXISTS (
     SELECT 1 FROM public.listings l
     JOIN public.bookings b ON b.listing_id = l.id
-    WHERE l.host_id = OLD.id AND b.status IN ('pending', 'approved')
+    WHERE l.host_id = OLD.id AND b.status::text IN ('pending', 'approved')
   ) THEN
     RAISE EXCEPTION 'Cannot delete host account %: user owns properties with active booking reservations.',
       OLD.id
@@ -1691,11 +1787,25 @@ CREATE TRIGGER trg_lock_parent_listing_for_booking
   FOR EACH ROW
   EXECUTE FUNCTION public.lock_parent_listing_for_booking();
 
+CREATE OR REPLACE FUNCTION public.ordered_dual_listing_locker(p_listing_a uuid, p_listing_b uuid)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  PERFORM public.acquire_listing_locks_ordered(p_listing_a, p_listing_b);
+END;
+$$;
+
 ALTER FUNCTION public.acquire_listing_locks_ordered(uuid, uuid) OWNER TO postgres;
+ALTER FUNCTION public.ordered_dual_listing_locker(uuid, uuid) OWNER TO postgres;
 ALTER FUNCTION public.lock_parent_listing_for_booking() OWNER TO postgres;
 REVOKE ALL ON FUNCTION public.acquire_listing_locks_ordered(uuid, uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.ordered_dual_listing_locker(uuid, uuid) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.lock_parent_listing_for_booking() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.acquire_listing_locks_ordered(uuid, uuid) TO postgres, authenticated;
+GRANT EXECUTE ON FUNCTION public.ordered_dual_listing_locker(uuid, uuid) TO postgres, authenticated;
 GRANT EXECUTE ON FUNCTION public.lock_parent_listing_for_booking() TO postgres, authenticated;
 
 
@@ -1935,6 +2045,141 @@ CREATE POLICY "Guests can update their own reviews" ON public.reviews
 
 CREATE POLICY "Admins can manage reviews" ON public.reviews
   FOR ALL USING (public.is_admin());
+
+
+-- SOURCE: 19_host_profiles.sql
+/*
+==================================================
+Domain: Hosting Bounded Context & Host Profile Entity
+Purpose: Permanent record for host entity business settings, verified facts, and capabilities without replacing guest roles.
+==================================================
+*/
+
+CREATE TABLE IF NOT EXISTS public.host_profiles (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+    status public.host_status NOT NULL DEFAULT 'NOT_STARTED'::public.host_status,
+    primary_accommodation_type_id UUID REFERENCES public.accommodation_types(id) ON DELETE SET NULL,
+    bank_account_id UUID,
+    bank_name TEXT,
+    bank_account_last4 TEXT,
+    tax_profile_id UUID,
+    tax_id_last4 TEXT,
+    tax_id_type TEXT,
+    identity_verified_at TIMESTAMPTZ,
+    agreed_to_policies_at TIMESTAMPTZ,
+    support_phone TEXT,
+    support_email TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS host_profiles_status_idx ON public.host_profiles(status);
+CREATE INDEX IF NOT EXISTS idx_host_profiles_accommodation_type ON public.host_profiles(primary_accommodation_type_id);
+
+ALTER TABLE public.host_profiles ENABLE ROW LEVEL SECURITY;
+
+-- Least privilege RLS Policies
+CREATE POLICY "Users can view their own host profile"
+    ON public.host_profiles
+    FOR SELECT
+    USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can create their own host profile"
+    ON public.host_profiles
+    FOR INSERT
+    WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own host profile"
+    ON public.host_profiles
+    FOR UPDATE
+    USING (auth.uid() = user_id)
+    WITH CHECK (auth.uid() = user_id);
+
+
+-- SOURCE: 20_host_settings.sql
+/*
+==================================================
+Domain: Hosting Bounded Context & Host Settings
+Purpose: Stores global operational preferences, localization, and notifications for a host.
+==================================================
+*/
+
+CREATE TABLE IF NOT EXISTS public.host_settings (
+    host_profile_id UUID PRIMARY KEY REFERENCES public.host_profiles(id) ON DELETE CASCADE,
+    
+    -- Localization Preferences
+    language VARCHAR(10) NOT NULL DEFAULT 'en',
+    timezone VARCHAR(100) NOT NULL DEFAULT 'Asia/Kolkata',
+    currency CHAR(3) NOT NULL DEFAULT 'INR',
+    week_start_day SMALLINT NOT NULL DEFAULT 1,
+    
+    -- Visibility & Communication
+    show_profile_publicly BOOLEAN NOT NULL DEFAULT true,
+    allow_direct_messages BOOLEAN NOT NULL DEFAULT true,
+    
+    -- Automation
+    auto_accept_booking_requests BOOLEAN NOT NULL DEFAULT false,
+    
+    -- Notification Preferences (Grouped)
+    notify_email_bookings BOOLEAN NOT NULL DEFAULT true,
+    notify_push_bookings BOOLEAN NOT NULL DEFAULT true,
+    notify_sms_bookings BOOLEAN NOT NULL DEFAULT false,
+    
+    notify_email_messages BOOLEAN NOT NULL DEFAULT true,
+    notify_push_messages BOOLEAN NOT NULL DEFAULT true,
+    
+    notify_email_system BOOLEAN NOT NULL DEFAULT true,
+    notify_push_system BOOLEAN NOT NULL DEFAULT true,
+    
+    notify_email_marketing BOOLEAN NOT NULL DEFAULT false,
+    notify_push_marketing BOOLEAN NOT NULL DEFAULT false,
+    
+    -- Future UI Preferences
+    preferences JSONB NOT NULL DEFAULT '{}'::jsonb,
+    
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    
+    -- Constraints
+    CONSTRAINT chk_host_settings_week_start CHECK (week_start_day BETWEEN 0 AND 6),
+    CONSTRAINT chk_host_settings_language CHECK (language <> ''),
+    CONSTRAINT chk_host_settings_currency CHECK (char_length(currency) = 3)
+);
+
+CREATE TRIGGER host_settings_updated_at 
+  BEFORE UPDATE ON public.host_settings 
+  FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
+
+ALTER TABLE public.host_settings ENABLE ROW LEVEL SECURITY;
+
+-- Least privilege RLS Policies
+CREATE POLICY "Users can view their own host settings"
+    ON public.host_settings FOR SELECT
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.host_profiles hp 
+            WHERE hp.id = host_settings.host_profile_id 
+            AND hp.user_id = auth.uid()
+        )
+    );
+
+CREATE POLICY "Users can manage their own host settings"
+    ON public.host_settings FOR ALL
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.host_profiles hp 
+            WHERE hp.id = host_settings.host_profile_id 
+            AND hp.user_id = auth.uid()
+        )
+    )
+    WITH CHECK (
+        EXISTS (
+            SELECT 1 FROM public.host_profiles hp 
+            WHERE hp.id = host_settings.host_profile_id 
+            AND hp.user_id = auth.uid()
+        )
+    );
 
 
 -- SOURCE: 13_notifications.sql
