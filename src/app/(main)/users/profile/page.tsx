@@ -16,6 +16,13 @@ import {
 import { ContentPanel } from '@/features/dashboard/components/ContentPanel';
 import { PageCanvas } from '@/features/dashboard/components/PageCanvas';
 import { Lock } from 'lucide-react';
+import { type Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Profile & Identity | EliteStay',
+  description:
+    'Manage your profile details, verified credentials, and identity on EliteStay.',
+};
 
 export default async function ProfilePage() {
   const supabase = await createClient();

@@ -1,4 +1,11 @@
 import { MessageSquare } from 'lucide-react';
+import { type Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Inbox & Messages | EliteStay',
+  description:
+    'View and manage your conversations with hosts and guests on EliteStay.',
+};
 
 export default function InboxEmptyState() {
   return (

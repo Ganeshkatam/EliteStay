@@ -12,8 +12,22 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: 'EliteStay | Premium Hospitality',
-  description: 'Book exceptional listings worldwide.',
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_APP_URL || 'https://elite-stay-one.vercel.app'
+  ),
+  title: {
+    default: 'EliteStay | Premium Accommodation & Living',
+    template: '%s | EliteStay',
+  },
+  description:
+    'Discover, compare, and book exceptional PG accommodations, student hostels, and premium living spaces.',
+  openGraph: {
+    title: 'EliteStay | Premium Accommodation & Living',
+    description:
+      'Discover, compare, and book exceptional PG accommodations, student hostels, and premium living spaces.',
+    siteName: 'EliteStay',
+    type: 'website',
+  },
 };
 
 export default function RootLayout({
