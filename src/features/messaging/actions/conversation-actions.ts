@@ -10,23 +10,33 @@ import {
 } from '../view-models/inbox.viewmodel';
 
 export async function getGuestConversations(): Promise<GuestInboxViewModel[]> {
-  const user = await getCurrentUser();
-  if (!user) throw new Error('Unauthorized');
+  try {
+    const user = await getCurrentUser();
+    if (!user) return [];
 
-  const supabase = await createClient();
-  const service = new MessagingService(supabase);
-  return service.getGuestInbox(user.id);
+    const supabase = await createClient();
+    const service = new MessagingService(supabase);
+    return await service.getGuestInbox(user.id);
+  } catch (err) {
+    console.error('Failed to get guest conversations:', err);
+    return [];
+  }
 }
 
 export async function getHostConversations(
   hostProfileId: string
 ): Promise<HostInboxViewModel[]> {
-  const user = await getCurrentUser();
-  if (!user) throw new Error('Unauthorized');
+  try {
+    const user = await getCurrentUser();
+    if (!user) return [];
 
-  const supabase = await createClient();
-  const service = new MessagingService(supabase);
-  return service.getHostInbox(hostProfileId);
+    const supabase = await createClient();
+    const service = new MessagingService(supabase);
+    return await service.getHostInbox(hostProfileId);
+  } catch (err) {
+    console.error('Failed to get host conversations:', err);
+    return [];
+  }
 }
 
 export async function createConversation(params: {

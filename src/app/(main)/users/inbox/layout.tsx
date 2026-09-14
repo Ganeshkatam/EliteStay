@@ -1,4 +1,5 @@
 import { ReactNode } from 'react';
+import { redirect } from 'next/navigation';
 import { PageCanvas } from '@/features/dashboard/components/PageCanvas';
 import { ContentPanel } from '@/features/dashboard/components/ContentPanel';
 import { getCurrentUser } from '@/features/auth/server/auth-helpers';
@@ -13,7 +14,9 @@ export default async function InboxLayout({
 }) {
   const user = await getCurrentUser();
 
-  if (!user) return null;
+  if (!user) {
+    redirect('/login');
+  }
 
   const conversations = await getGuestConversations();
 
