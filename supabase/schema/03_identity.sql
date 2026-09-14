@@ -39,8 +39,7 @@ CREATE TABLE public.user_preferences (
     privacy JSONB NOT NULL DEFAULT '{
       "allow_host_messages": true,
       "show_profile_photo": true,
-      "show_reviews": true,
-      "allow_search_indexing": false
+      "show_reviews": true
     }'::jsonb,
     notifications JSONB NOT NULL DEFAULT '{
       "email": true,
