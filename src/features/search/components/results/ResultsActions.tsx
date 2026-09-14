@@ -87,8 +87,8 @@ export function ResultsActions() {
         </PopoverContent>
       </Popover>
 
-      {/* View Mode Switcher: Split (Map+Grid) vs Full Grid */}
-      <div className="flex items-center bg-gray-100 rounded-full p-1 border border-gray-200 shadow-inner">
+      {/* View Mode Switcher: Split (Map+Grid) vs Full Grid - Only on >= 1000px */}
+      <div className="hidden min-[1000px]:flex items-center bg-gray-100 rounded-full p-1 border border-gray-200 shadow-inner">
         <button
           onClick={() => setViewMode(SearchViewMode.SPLIT)}
           title="Split view with map"

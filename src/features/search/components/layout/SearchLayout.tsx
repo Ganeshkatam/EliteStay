@@ -26,22 +26,33 @@ export function SearchLayout({ viewMode, children }: SearchLayoutProps) {
   }
 
   if (viewMode === SearchViewMode.MAP) {
-    return <div className="w-full flex-1 relative flex h-full">{mapPane}</div>;
+    return (
+      <>
+        {/* Map view strictly available only on >= 1000px */}
+        <div className="hidden min-[1000px]:flex w-full flex-1 relative h-full">
+          {mapPane}
+        </div>
+        {/* Fallback to full listings grid on viewports < 1000px */}
+        <div className="flex min-[1000px]:hidden w-full max-w-[1800px] mx-auto px-4 sm:px-6 md:px-8 xl:px-12 py-6 h-full overflow-y-auto">
+          {resultsPane}
+        </div>
+      </>
+    );
   }
 
   // SPLIT Mode
   return (
     <div
-      className="w-full h-full flex flex-col lg:flex-row items-stretch px-4 sm:px-6 lg:px-8 py-6 overflow-hidden"
+      className="w-full h-full flex flex-col min-[1000px]:flex-row items-stretch px-4 sm:px-6 md:px-8 xl:px-12 py-6 overflow-hidden"
       style={{ gap: SPACING.SEARCH_LAYOUT.panelPadding }}
     >
-      {/* Results Pane: Takes roughly 60% on XL */}
-      <div className="w-full lg:w-[64%] xl:w-[60%] 2xl:w-[58%] flex-shrink-0 h-full overflow-hidden pr-2">
+      {/* Results Pane: 100% on < 1000px, ~60% on >= 1000px */}
+      <div className="w-full min-[1000px]:w-[64%] xl:w-[60%] 2xl:w-[58%] flex-shrink-0 h-full overflow-hidden pr-2">
         {resultsPane}
       </div>
 
-      {/* Map Pane: Takes the remaining width (fills layout height, sticky) */}
-      <div className="hidden lg:flex flex-1 min-w-0 h-full sticky top-0 self-start">
+      {/* Map Pane: Strictly hidden on viewports < 1000px */}
+      <div className="hidden min-[1000px]:flex flex-1 min-w-0 h-full sticky top-0 self-start">
         {mapPane}
       </div>
     </div>

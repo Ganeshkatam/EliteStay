@@ -1,6 +1,13 @@
 'use client';
 
-import React, { createContext, useContext, useState, useMemo } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useMemo,
+  useEffect,
+  useCallback,
+} from 'react';
 import { SearchWorkspaceViewModel, SearchViewMode } from '../types';
 
 // 1. Immutable Data Context
@@ -45,7 +52,7 @@ interface SearchProviderProps {
 }
 
 export function SearchProvider({ viewModel, children }: SearchProviderProps) {
-  // Default to SPLIT for desktop, but a responsive hook should eventually control this
+  // Default to SPLIT for desktop, but guarded by viewport >= 1000px
   const [viewMode, setViewMode] = useState<SearchViewMode>(
     SearchViewMode.SPLIT
   );
@@ -56,10 +63,39 @@ export function SearchProvider({ viewModel, children }: SearchProviderProps) {
   const [selectedMarkerId, setSelectedMarkerId] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
+  // Disable Map view on viewports < 1000px
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const mediaQuery = window.matchMedia('(min-width: 1000px)');
+    const handleMediaChange = (e: MediaQueryListEvent | MediaQueryList) => {
+      if (!e.matches) {
+        setViewMode((current) =>
+          current !== SearchViewMode.LIST ? SearchViewMode.LIST : current
+        );
+      }
+    };
+
+    handleMediaChange(mediaQuery);
+    mediaQuery.addEventListener('change', handleMediaChange);
+    return () => mediaQuery.removeEventListener('change', handleMediaChange);
+  }, []);
+
+  const handleSetViewMode = useCallback((mode: SearchViewMode) => {
+    if (
+      typeof window !== 'undefined' &&
+      window.innerWidth < 1000 &&
+      mode !== SearchViewMode.LIST
+    ) {
+      return;
+    }
+    setViewMode(mode);
+  }, []);
+
   const uiState = useMemo<SearchUIState>(
     () => ({
       viewMode,
-      setViewMode,
+      setViewMode: handleSetViewMode,
       hoveredListingId,
       setHoveredListingId,
       selectedListingId,
