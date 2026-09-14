@@ -41,7 +41,13 @@ async function applyTags(key: string, tags: string[]) {
   if (tags.length === 0) return;
   const provider = getProvider();
   try {
-    await Promise.all(tags.map((tag) => provider.sadd(`tag:${tag}`, key)));
+    if (provider.saddBatch) {
+      await provider.saddBatch(
+        tags.map((tag) => ({ key: `tag:${tag}`, member: key }))
+      );
+    } else {
+      await Promise.all(tags.map((tag) => provider.sadd(`tag:${tag}`, key)));
+    }
   } catch (err) {
     console.warn(`[Redis] Failed to apply tags to key ${key}:`, err);
     recordFailure();

@@ -179,6 +179,14 @@ export class MemoryProvider implements CacheProvider {
     this.sets.clear();
   }
 
+  async saddBatch(
+    operations: { key: string; member: string }[]
+  ): Promise<void> {
+    for (const op of operations) {
+      await this.sadd(op.key, op.member);
+    }
+  }
+
   /** Return the number of live (non-expired) entries. */
   size(): number {
     let count = 0;

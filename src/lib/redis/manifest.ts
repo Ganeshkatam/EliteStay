@@ -106,7 +106,7 @@ export const CacheManifest: Record<
   }),
   searchCities: (query: string) => ({
     key: `${KEY_PREFIX}search_cities:${query.toLowerCase()}`,
-    policy: 'search',
+    policy: 'reference',
     tags: ['search', 'search_cities'],
   }),
 
@@ -145,7 +145,7 @@ export const CacheManifest: Record<
   // Reference Data
   accommodationTypes: () => ({
     key: `${KEY_PREFIX}ref:accommodation_types`,
-    policy: 'homepage',
+    policy: 'reference',
     tags: ['ref'],
   }),
 

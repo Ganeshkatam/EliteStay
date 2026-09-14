@@ -66,4 +66,7 @@ export interface CacheProvider {
 
   /** Remove one or more members from a set. */
   srem(key: string, ...members: string[]): Promise<number>;
+
+  /** Optionally batch multiple sadd operations across keys into a single pipelined round-trip. */
+  saddBatch?(operations: { key: string; member: string }[]): Promise<void>;
 }

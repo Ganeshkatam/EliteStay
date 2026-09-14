@@ -48,7 +48,16 @@ async function runHomepageSnapshotGateBenchmark() {
       const redisGetTimes: number[] = [];
       const e2eTimes: number[] = [];
 
-      for (let i = 0; i < ITERATIONS; i++) {
+      // Protect Upstash free-tier command limits:
+      // In-memory / local runs can do 300 iterations; remote Upstash defaults to 25.
+      const isRemoteUpstash = Boolean(process.env.UPSTASH_REDIS_REST_URL);
+      const redisIterations = process.env.BENCHMARK_ITERATIONS
+        ? parseInt(process.env.BENCHMARK_ITERATIONS, 10)
+        : isRemoteUpstash
+          ? 25
+          : ITERATIONS;
+
+      for (let i = 0; i < redisIterations; i++) {
         const e2eStart = performance.now();
 
         const getStart = performance.now();

@@ -73,4 +73,14 @@ export const CachePolicyRegistry: Record<string, CachePolicy> = {
     metrics: true,
     invalidation: 'version',
   },
+  reference: {
+    ttl: 3600 * 24 * 7, // 7 days
+    staleWindow: 3600 * 6, // 6 hours
+    compression: true,
+    negativeCache: true,
+    negativeTtl: 300,
+    jitter: true,
+    metrics: true,
+    invalidation: 'tags',
+  },
 };

@@ -109,4 +109,15 @@ export class IoRedisProvider implements CacheProvider {
     if (members.length === 0) return 0;
     return this.client.srem(key, ...members);
   }
+
+  async saddBatch(
+    operations: { key: string; member: string }[]
+  ): Promise<void> {
+    if (operations.length === 0) return;
+    const p = this.client.pipeline();
+    for (const op of operations) {
+      p.sadd(op.key, op.member);
+    }
+    await p.exec();
+  }
 }
