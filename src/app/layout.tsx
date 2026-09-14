@@ -4,6 +4,7 @@ import { Analytics } from '@vercel/analytics/next';
 import { Plus_Jakarta_Sans } from 'next/font/google';
 import './globals.css';
 import '@/config/env';
+import { InactivityRefresh } from '@/components/common/InactivityRefresh';
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   variable: '--font-sans',
@@ -23,6 +24,7 @@ export default function RootLayout({
   const layout = (
     <html lang="en" className={`${plusJakartaSans.variable}`}>
       <body className="flex min-h-screen flex-col antialiased">
+        <InactivityRefresh />
         <Suspense>{children}</Suspense>
         <Analytics />
       </body>
