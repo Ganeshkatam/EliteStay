@@ -12,7 +12,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "prepare": "husky",
-    "db:build": "node supabase/schema/build_migration.js"
+    "db:build": "node supabase/schema/build_migration.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",

@@ -59,7 +59,6 @@ CREATE TYPE public.gender_preference AS ENUM ('any', 'male', 'female');
 CREATE TYPE public.furnishing AS ENUM ('unfurnished', 'semi_furnished', 'fully_furnished');
 CREATE TYPE public.sync_direction AS ENUM ('import', 'export', 'both');
 CREATE TYPE public.host_status AS ENUM ('NOT_STARTED', 'ONBOARDING', 'READY', 'ACTIVE', 'PAUSED', 'SUSPENDED');
-CREATE TYPE public.host_business_type AS ENUM ('individual', 'company', 'property_manager');
 
 
 -- SOURCE: 02_shared_functions.sql
@@ -191,8 +190,7 @@ CREATE TABLE public.profiles (
     date_of_birth DATE,
     gender public.gender,
     occupation public.user_occupation,
-    username TEXT CHECK (username IS NULL OR (char_length(username) >= 3 AND char_length(username) <= 30 AND username ~ '^[a-z0-9_]+$'::text)),
-    timezone TEXT
+    username TEXT NOT NULL UNIQUE CHECK (username ~ '^[a-z0-9_]{3,30}$')
 );
 
 CREATE INDEX IF NOT EXISTS profiles_role_idx ON public.profiles(role);
@@ -302,6 +300,11 @@ BEGIN
     NEW.role = OLD.role;
     NEW.created_at = OLD.created_at;
   END IF;
+  
+  IF NEW.username IS DISTINCT FROM OLD.username THEN
+    RAISE EXCEPTION 'Username is immutable and cannot be changed.';
+  END IF;
+
   RETURN NEW;
 END;
 $$;
@@ -310,6 +313,68 @@ CREATE TRIGGER enforce_profile_immutability
   BEFORE UPDATE ON public.profiles
   FOR EACH ROW EXECUTE PROCEDURE public.protect_identity_fields();
 
+-- Username Generator
+CREATE OR REPLACE FUNCTION public.generate_unique_username(raw_meta_data JSONB, user_email TEXT)
+RETURNS TEXT
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+    base_name TEXT;
+    clean_base TEXT;
+    attempt TEXT;
+    is_unique BOOLEAN;
+    counter INTEGER := 1;
+    reserved_words TEXT[] := ARRAY['admin', 'root', 'support', 'help', 'host', 'guest', 'users', 'login', 'signup', 'settings', 'notifications', 'messages', 'profile', 'api', 'system'];
+BEGIN
+    IF raw_meta_data->>'full_name' IS NOT NULL AND raw_meta_data->>'full_name' != '' THEN
+        base_name := raw_meta_data->>'full_name';
+    ELSIF raw_meta_data->>'name' IS NOT NULL AND raw_meta_data->>'name' != '' THEN
+        base_name := raw_meta_data->>'name';
+    ELSIF user_email IS NOT NULL AND user_email != '' THEN
+        base_name := split_part(user_email, '@', 1);
+    ELSE
+        base_name := 'user';
+    END IF;
+
+    clean_base := lower(regexp_replace(base_name, '[^a-zA-Z0-9]', '', 'g'));
+    
+    IF char_length(clean_base) < 3 THEN
+        clean_base := clean_base || 'es';
+    END IF;
+
+    IF char_length(clean_base) > 24 THEN
+        clean_base := left(clean_base, 24);
+    END IF;
+
+    attempt := clean_base;
+
+    IF attempt = ANY(reserved_words) THEN
+        attempt := attempt || 'user';
+        clean_base := attempt;
+    END IF;
+
+    LOOP
+        SELECT NOT EXISTS (
+            SELECT 1 FROM public.profiles WHERE username = attempt
+        ) INTO is_unique;
+
+        IF is_unique THEN
+            RETURN attempt;
+        END IF;
+
+        counter := counter + 1;
+        
+        IF counter > 100 THEN
+            attempt := clean_base || substring(md5(random()::text) from 1 for 6);
+        ELSE
+            attempt := clean_base || counter::text;
+        END IF;
+    END LOOP;
+END;
+$$;
+
 -- 7. Handle New User Signup
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER
@@ -317,12 +382,17 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = ''
 AS $$
+DECLARE
+    generated_username TEXT;
 BEGIN
+  generated_username := public.generate_unique_username(NEW.raw_user_meta_data, NEW.email);
+
   INSERT INTO public.profiles (
     id, 
     full_name, 
     avatar_storage_path, 
     role,
+    username,
     created_at,
     updated_at
   ) VALUES (
@@ -330,6 +400,7 @@ BEGIN
     NEW.raw_user_meta_data->>'full_name', 
     NEW.raw_user_meta_data->>'avatar_url', 
     'guest'::public.user_role,
+    generated_username,
     NOW(),
     NOW()
   );
@@ -782,7 +853,7 @@ CREATE OR REPLACE FUNCTION public.enforce_host_accommodation_specialization()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = ''
 AS $$
 DECLARE
   v_host_specialization_id UUID;
@@ -1583,19 +1654,27 @@ Contains:
 
 CREATE TABLE public.notifications (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+    user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    category TEXT NOT NULL,
+    event_type TEXT NOT NULL,
+    entity_type TEXT,
+    entity_id UUID,
+    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
     title TEXT NOT NULL,
     message TEXT NOT NULL,
-    type TEXT NOT NULL,
-    data JSONB DEFAULT '{}'::jsonb,
+    action_path TEXT,
+    source_event_id UUID NOT NULL,
     read_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT notifications_source_event_user_key UNIQUE (source_event_id, user_id)
 );
 
 -- Partial index for fast queries of unread notifications
 CREATE INDEX IF NOT EXISTS idx_notifications_unread ON public.notifications (user_id) WHERE read_at IS NULL;
 -- Composite index for fetching all notifications sorted by timestamp
 CREATE INDEX IF NOT EXISTS idx_notifications_user_created ON public.notifications (user_id, created_at DESC);
+-- Index for idempotency checks
+CREATE INDEX IF NOT EXISTS idx_notifications_source_user ON public.notifications (source_event_id, user_id);
 
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 
@@ -1621,20 +1700,33 @@ Contains:
 ==================================================
 */
 
+CREATE TYPE public.conversation_type AS ENUM ('INQUIRY', 'BOOKING', 'STAY', 'SUPPORT', 'SYSTEM');
+CREATE TYPE public.conversation_status AS ENUM ('OPEN', 'CLOSED', 'ARCHIVED', 'BLOCKED');
+
 CREATE TABLE public.conversations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    type public.conversation_type NOT NULL DEFAULT 'INQUIRY',
+    status public.conversation_status NOT NULL DEFAULT 'OPEN',
+    listing_id UUID REFERENCES public.listings(id) ON DELETE CASCADE,
     booking_id UUID REFERENCES public.bookings(id) ON DELETE CASCADE,
     stay_id UUID REFERENCES public.stays(id) ON DELETE CASCADE,
+    guest_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+    host_profile_id UUID REFERENCES public.host_profiles(id) ON DELETE CASCADE NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-    CONSTRAINT chk_conversation_link CHECK (
-        (booking_id IS NOT NULL AND stay_id IS NULL) OR 
-        (booking_id IS NULL AND stay_id IS NOT NULL)
+    CONSTRAINT chk_conversation_type CHECK (
+        (type = 'INQUIRY' AND listing_id IS NOT NULL) OR
+        (type = 'BOOKING' AND booking_id IS NOT NULL) OR
+        (type = 'STAY' AND stay_id IS NOT NULL) OR
+        (type IN ('SUPPORT', 'SYSTEM'))
     )
 );
 
+CREATE INDEX IF NOT EXISTS idx_conversations_listing_id ON public.conversations (listing_id);
 CREATE INDEX IF NOT EXISTS idx_conversations_booking_id ON public.conversations (booking_id);
 CREATE INDEX IF NOT EXISTS idx_conversations_stay_id ON public.conversations (stay_id);
+CREATE INDEX IF NOT EXISTS idx_conversations_guest_id ON public.conversations (guest_id);
+CREATE INDEX IF NOT EXISTS idx_conversations_host_profile_id ON public.conversations (host_profile_id);
 
 CREATE TRIGGER conversations_updated_at 
   BEFORE UPDATE ON public.conversations 
@@ -1645,6 +1737,7 @@ CREATE TABLE public.messages (
     conversation_id UUID REFERENCES public.conversations(id) ON DELETE CASCADE NOT NULL,
     sender_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
     content TEXT NOT NULL,
+    read_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
 );
 
@@ -1655,35 +1748,34 @@ ALTER TABLE public.conversations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
 
 -- Conversations Policies
-CREATE POLICY "Users can access their booking conversations" ON public.conversations
+CREATE POLICY "Users can access their conversations" ON public.conversations
   FOR SELECT USING (
+    guest_id = auth.uid() OR 
     EXISTS (
-      SELECT 1 FROM public.bookings b
-      WHERE b.id = conversations.booking_id
-      AND (b.guest_id = auth.uid() OR public.is_listing_owner(b.listing_id) OR public.is_admin())
-    )
-  );
-
-CREATE POLICY "Users can access their stay conversations" ON public.conversations
-  FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM public.stays s
-      WHERE s.id = conversations.stay_id
-      AND (s.guest_id = auth.uid() OR public.is_listing_owner(s.listing_id) OR public.is_admin())
-    )
+      SELECT 1 FROM public.host_profiles hp 
+      WHERE hp.id = conversations.host_profile_id AND hp.user_id = auth.uid()
+    ) OR 
+    public.is_admin()
   );
 
 CREATE POLICY "Users can insert conversations" ON public.conversations
   FOR INSERT WITH CHECK (
+    guest_id = auth.uid() OR 
     EXISTS (
-      SELECT 1 FROM public.bookings b
-      WHERE b.id = conversations.booking_id
-      AND (b.guest_id = auth.uid() OR public.is_listing_owner(b.listing_id) OR public.is_admin())
-    ) OR EXISTS (
-      SELECT 1 FROM public.stays s
-      WHERE s.id = conversations.stay_id
-      AND (s.guest_id = auth.uid() OR public.is_listing_owner(s.listing_id) OR public.is_admin())
-    )
+      SELECT 1 FROM public.host_profiles hp 
+      WHERE hp.id = conversations.host_profile_id AND hp.user_id = auth.uid()
+    ) OR 
+    public.is_admin()
+  );
+
+CREATE POLICY "Users can update conversations" ON public.conversations
+  FOR UPDATE USING (
+    guest_id = auth.uid() OR 
+    EXISTS (
+      SELECT 1 FROM public.host_profiles hp 
+      WHERE hp.id = conversations.host_profile_id AND hp.user_id = auth.uid()
+    ) OR 
+    public.is_admin()
   );
 
 -- Messages Policies
@@ -1691,12 +1783,13 @@ CREATE POLICY "Users can read messages in their conversations" ON public.message
   FOR SELECT USING (
     EXISTS (
       SELECT 1 FROM public.conversations c
-      LEFT JOIN public.bookings b ON b.id = c.booking_id
-      LEFT JOIN public.stays s ON s.id = c.stay_id
       WHERE c.id = messages.conversation_id
       AND (
-        b.guest_id = auth.uid() OR public.is_listing_owner(b.listing_id) OR
-        s.guest_id = auth.uid() OR public.is_listing_owner(s.listing_id) OR
+        c.guest_id = auth.uid() OR 
+        EXISTS (
+          SELECT 1 FROM public.host_profiles hp 
+          WHERE hp.id = c.host_profile_id AND hp.user_id = auth.uid()
+        ) OR 
         public.is_admin()
       )
     )
@@ -1707,12 +1800,29 @@ CREATE POLICY "Users can post messages to their conversations" ON public.message
     sender_id = auth.uid() AND
     EXISTS (
       SELECT 1 FROM public.conversations c
-      LEFT JOIN public.bookings b ON b.id = c.booking_id
-      LEFT JOIN public.stays s ON s.id = c.stay_id
       WHERE c.id = messages.conversation_id
       AND (
-        b.guest_id = auth.uid() OR public.is_listing_owner(b.listing_id) OR
-        s.guest_id = auth.uid() OR public.is_listing_owner(s.listing_id) OR
+        c.guest_id = auth.uid() OR 
+        EXISTS (
+          SELECT 1 FROM public.host_profiles hp 
+          WHERE hp.id = c.host_profile_id AND hp.user_id = auth.uid()
+        ) OR 
+        public.is_admin()
+      )
+    )
+  );
+
+CREATE POLICY "Users can update messages in their conversations" ON public.messages
+  FOR UPDATE USING (
+    EXISTS (
+      SELECT 1 FROM public.conversations c
+      WHERE c.id = messages.conversation_id
+      AND (
+        c.guest_id = auth.uid() OR 
+        EXISTS (
+          SELECT 1 FROM public.host_profiles hp 
+          WHERE hp.id = c.host_profile_id AND hp.user_id = auth.uid()
+        ) OR 
         public.is_admin()
       )
     )
@@ -1835,12 +1945,40 @@ USING (bucket_id = 'avatars');
 CREATE POLICY "Auth Upload Listings" ON storage.objects FOR INSERT 
 WITH CHECK (bucket_id = 'listings' AND auth.role() = 'authenticated');
 
-CREATE POLICY "Auth Upload Avatars" ON storage.objects FOR INSERT 
-WITH CHECK (bucket_id = 'avatars' AND auth.role() = 'authenticated');
-
 -- Allow authenticated users to update/delete their uploaded objects
-CREATE POLICY "Users modify own avatars" ON storage.objects FOR ALL
-USING (bucket_id = 'avatars' AND auth.uid() = owner);
+CREATE POLICY "Users can modify own avatars" 
+ON storage.objects FOR INSERT 
+WITH CHECK (
+  bucket_id = 'avatars' 
+  AND auth.uid()::text = (storage.foldername(name))[1]
+  AND name = auth.uid()::text || '/avatar.webp'
+);
+
+CREATE POLICY "Users can update their own avatar"
+ON storage.objects FOR UPDATE
+USING (
+  bucket_id = 'avatars' 
+  AND auth.uid()::text = (storage.foldername(name))[1]
+)
+WITH CHECK (
+  bucket_id = 'avatars' 
+  AND auth.uid()::text = (storage.foldername(name))[1]
+  AND name = auth.uid()::text || '/avatar.webp'
+);
+
+CREATE POLICY "Users can delete their own avatar"
+ON storage.objects FOR DELETE
+USING (
+  bucket_id = 'avatars' 
+  AND auth.uid()::text = (storage.foldername(name))[1]
+);
+
+CREATE POLICY "Users can select their own avatar"
+ON storage.objects FOR SELECT
+USING (
+  bucket_id = 'avatars' 
+  AND auth.uid()::text = (storage.foldername(name))[1]
+);
 
 CREATE POLICY "Users modify own listing photos" ON storage.objects FOR ALL
 USING (bucket_id = 'listings' AND auth.uid() = owner);
