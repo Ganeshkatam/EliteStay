@@ -43,16 +43,17 @@ export function UserMenu({ user, profile, variant }: UserMenuProps) {
   // If no user, render the logged out navigation options
   if (!user) {
     return (
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
         <Link
           href="/login"
-          className="text-sm font-medium text-slate-700 hover:text-slate-900 transition-colors hidden sm:block px-3 py-2 rounded-full hover:bg-slate-100"
+          className="text-xs sm:text-sm font-medium text-slate-700 hover:text-slate-900 transition-colors hidden sm:block px-2.5 py-1.5 rounded-full hover:bg-slate-100"
         >
           Log in
         </Link>
         <Button
           asChild
-          className="rounded-full bg-slate-900 text-white hover:bg-slate-800 shadow-sm font-medium h-10 px-5 transition-transform active:scale-95"
+          size="sm"
+          className="rounded-full bg-slate-900 text-white hover:bg-slate-800 shadow-xs font-medium h-8 sm:h-9 px-3 sm:px-4 text-xs sm:text-sm shrink-0 whitespace-nowrap transition-transform active:scale-95"
         >
           <Link href="/signup">Sign up</Link>
         </Button>

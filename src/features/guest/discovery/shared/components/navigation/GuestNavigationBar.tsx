@@ -184,7 +184,7 @@ export function GuestNavigationBar({
         />
 
         <div className="relative z-10 h-full flex flex-col justify-between">
-          <Container className="flex h-[88px] md:h-[76px] items-end pb-3 md:pb-0 md:items-center justify-between gap-2 sm:gap-4 relative px-3 sm:px-6 md:px-8 xl:px-12 max-w-[1800px] [padding-top:max(0.75rem,env(safe-area-inset-top))] md:[padding-top:0px]">
+          <Container className="flex h-[88px] md:h-[76px] items-end pb-3 md:pb-0 md:items-center justify-between gap-1.5 sm:gap-4 relative px-2.5 sm:px-6 md:px-8 xl:px-12 max-w-[1800px] [padding-top:max(0.75rem,env(safe-area-inset-top))] md:[padding-top:0px]">
             <TopBar
               variant={variant}
               user={user}

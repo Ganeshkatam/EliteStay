@@ -62,7 +62,7 @@ export function TopBar({
         </div>
       )}
 
-      <div className="flex flex-none items-center justify-end space-x-1.5 sm:space-x-3">
+      <div className="flex flex-none shrink-0 items-center justify-end space-x-1 sm:space-x-2">
         {user && <HostToggle isHost={isHost} variant={variant} />}
         <UserMenu user={user} profile={profile} variant={variant} />
       </div>
