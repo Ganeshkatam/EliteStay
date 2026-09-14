@@ -14,6 +14,8 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 
+export { navigation as HOST_NAVIGATION };
+
 const navigation = [
   { name: 'Dashboard', href: '/host', icon: LayoutDashboard },
   { name: 'Properties', href: '/host/listings', icon: List },
