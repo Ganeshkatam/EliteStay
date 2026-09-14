@@ -62,16 +62,8 @@ export async function releaseLock(
   const provider = getProvider();
   const lockKey = `${KEY_PREFIX}lock:${resourceKey}`;
 
-  // Simple check-and-delete.
-  // In a truly distributed environment where clock skew is a huge issue,
-  // we would use a Lua script:
-  //   if redis.call("get",KEYS[1]) == ARGV[1] then return redis.call("del",KEYS[1]) else return 0 end
-  // But for simple lock release, get + del is acceptable if the TTL hasn't expired.
   try {
-    const currentToken = await provider.get(lockKey);
-    if (currentToken === token) {
-      await provider.del(lockKey);
-    }
+    await provider.compareAndDelete(lockKey, token);
   } catch (err) {
     console.warn(`[Redis] Failed to release lock ${resourceKey}:`, err);
     recordFailure();

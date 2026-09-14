@@ -72,6 +72,15 @@ export class MemoryProvider implements CacheProvider {
     return true;
   }
 
+  async compareAndDelete(key: string, expectedValue: string): Promise<boolean> {
+    const entry = this.getEntry(key);
+    if (entry && entry.value === expectedValue) {
+      this.store.delete(key);
+      return true;
+    }
+    return false;
+  }
+
   async ping(): Promise<boolean> {
     return true;
   }

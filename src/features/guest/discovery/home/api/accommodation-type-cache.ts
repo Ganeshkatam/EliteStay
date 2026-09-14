@@ -1,7 +1,7 @@
 import { createStaticClient } from '@/lib/supabase/server';
 import { Cache, CacheManifest } from '@/lib/redis';
 
-interface AccommodationTypeMapping {
+export interface AccommodationTypeMapping {
   id: string;
   name: string;
   slug: string;

@@ -48,12 +48,22 @@ export async function removeKeyFromTag(
 }
 
 // ---------------------------------------------------------------------------
-// Legacy Search Versioning (Migrating to tags)
+// Search Versioning with L1 In-Process Coalesced Cache
+//
+// INVARIANT: Search cache propagation latency across multiple application
+// instances is bounded to at most 5 seconds.
 // ---------------------------------------------------------------------------
 
 const SEARCH_VERSION_KEY = 'elitestay:v1:search:version';
+const VERSION_CACHE_TTL_MS = 5000; // 5-second process-local TTL
+
+let localSearchVersion: { version: number; expiresAt: number } | null = null;
+let inflightVersionPromise: Promise<number> | null = null;
 
 export async function invalidateSearchNamespace(): Promise<void> {
+  // Clear local memory cache immediately upon local invalidation
+  localSearchVersion = null;
+
   if (!isCircuitClosed()) return;
   const provider = getProvider();
   try {
@@ -67,14 +77,40 @@ export async function invalidateSearchNamespace(): Promise<void> {
 }
 
 export async function getSearchVersion(): Promise<number> {
-  if (!isCircuitClosed()) return 0;
-  const provider = getProvider();
-  try {
-    const raw = await provider.get(SEARCH_VERSION_KEY);
-    return raw ? parseInt(raw, 10) : 0;
-  } catch (err) {
-    console.warn('[Redis] Failed to get search version:', err);
-    recordFailure();
-    return 0;
+  const now = Date.now();
+
+  // 1. L1 Memory Hit
+  if (localSearchVersion && now < localSearchVersion.expiresAt) {
+    return localSearchVersion.version;
   }
+
+  // 2. Coalesce concurrent in-process requests on L1 miss/expiry
+  if (inflightVersionPromise) {
+    return inflightVersionPromise;
+  }
+
+  inflightVersionPromise = (async () => {
+    if (!isCircuitClosed()) {
+      return localSearchVersion ? localSearchVersion.version : 0;
+    }
+
+    const provider = getProvider();
+    try {
+      const raw = await provider.get(SEARCH_VERSION_KEY);
+      const version = raw ? parseInt(raw, 10) : 0;
+      localSearchVersion = {
+        version,
+        expiresAt: Date.now() + VERSION_CACHE_TTL_MS,
+      };
+      return version;
+    } catch (err) {
+      console.warn('[Redis] Failed to get search version:', err);
+      recordFailure();
+      return localSearchVersion ? localSearchVersion.version : 0;
+    } finally {
+      inflightVersionPromise = null;
+    }
+  })();
+
+  return inflightVersionPromise;
 }

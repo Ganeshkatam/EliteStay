@@ -4,9 +4,17 @@ import { Container } from '@/components/layout/Container';
 import { getAccommodationTypes } from '../api/accommodation-type-cache';
 import { observeServerComponent } from '@/lib/observability/instrumentation/react-observer';
 
-export async function Categories() {
+import { AccommodationTypeMapping } from '../api/accommodation-type-cache';
+
+interface CategoriesProps {
+  categories?: AccommodationTypeMapping[];
+}
+
+export async function Categories({
+  categories: initialCategories,
+}: CategoriesProps = {}) {
   return observeServerComponent('Categories', async () => {
-    const types = await getAccommodationTypes();
+    const types = initialCategories ?? (await getAccommodationTypes());
 
     return (
       <Container className="py-2">

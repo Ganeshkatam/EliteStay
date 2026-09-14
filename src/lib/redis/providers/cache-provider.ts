@@ -25,6 +25,13 @@ export interface CacheProvider {
    */
   setnx(key: string, value: string, ttlMs: number): Promise<boolean>;
 
+  /**
+   * Compare and delete key atomically.
+   * Deletes the key only if its current value matches expectedValue.
+   * Returns true if deleted, false otherwise.
+   */
+  compareAndDelete(key: string, expectedValue: string): Promise<boolean>;
+
   /** Lightweight connectivity check. Returns `true` when the store is reachable. */
   ping(): Promise<boolean>;
 

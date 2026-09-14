@@ -111,6 +111,11 @@ export const CacheManifest: Record<
   }),
 
   // Home
+  homeSnapshot: (version: number = 1) => ({
+    key: `${KEY_PREFIX}home:snapshot:v${version}`,
+    policy: 'homepage',
+    tags: [],
+  }),
   homeFeatured: () => ({
     key: `${KEY_PREFIX}home:featured`,
     policy: 'homepage',

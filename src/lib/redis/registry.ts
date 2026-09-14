@@ -1,3 +1,5 @@
+export type InvalidationStrategy = 'none' | 'tags' | 'version';
+
 export interface CachePolicy {
   ttl: number; // in seconds
   staleWindow: number; // in seconds (for SWR)
@@ -7,6 +9,7 @@ export interface CachePolicy {
   jitter: boolean;
   serializer?: 'json' | 'raw'; // default 'json'
   metrics: boolean;
+  invalidation: InvalidationStrategy;
 }
 
 export const CachePolicyRegistry: Record<string, CachePolicy> = {
@@ -18,6 +21,7 @@ export const CachePolicyRegistry: Record<string, CachePolicy> = {
     negativeTtl: 60,
     jitter: true,
     metrics: true,
+    invalidation: 'tags',
   },
   reviews: {
     ttl: 3600,
@@ -27,6 +31,7 @@ export const CachePolicyRegistry: Record<string, CachePolicy> = {
     negativeTtl: 60,
     jitter: true,
     metrics: true,
+    invalidation: 'tags',
   },
   search: {
     ttl: 600, // 10 mins
@@ -36,6 +41,7 @@ export const CachePolicyRegistry: Record<string, CachePolicy> = {
     negativeTtl: 60,
     jitter: true,
     metrics: true,
+    invalidation: 'version',
   },
   pricing: {
     ttl: 300, // 5 mins
@@ -45,6 +51,7 @@ export const CachePolicyRegistry: Record<string, CachePolicy> = {
     negativeTtl: 0,
     jitter: false,
     metrics: true,
+    invalidation: 'tags',
   },
   availability: {
     ttl: 60, // 1 min
@@ -54,6 +61,7 @@ export const CachePolicyRegistry: Record<string, CachePolicy> = {
     negativeTtl: 0,
     jitter: false,
     metrics: true,
+    invalidation: 'none',
   },
   homepage: {
     ttl: 3600 * 24, // 24 hours
@@ -63,5 +71,6 @@ export const CachePolicyRegistry: Record<string, CachePolicy> = {
     negativeTtl: 0,
     jitter: true,
     metrics: true,
+    invalidation: 'version',
   },
 };

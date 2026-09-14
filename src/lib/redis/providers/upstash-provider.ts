@@ -53,6 +53,22 @@ export class UpstashProvider implements CacheProvider {
     return result === 'OK';
   }
 
+  async compareAndDelete(key: string, expectedValue: string): Promise<boolean> {
+    const script = `
+      if redis.call("get", KEYS[1]) == ARGV[1] then
+        return redis.call("del", KEYS[1])
+      else
+        return 0
+      end
+    `;
+    const res = await this.client.eval<[string], number>(
+      script,
+      [key],
+      [expectedValue]
+    );
+    return res === 1;
+  }
+
   async ping(): Promise<boolean> {
     try {
       const response = await this.client.ping();
