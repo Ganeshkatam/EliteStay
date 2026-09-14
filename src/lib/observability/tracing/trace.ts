@@ -105,7 +105,7 @@ export class Trace implements ActiveTraceContext {
           process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA ||
           process.env.GIT_COMMIT ||
           'development',
-        buildVersion: process.env.NEXT_PUBLIC_APP_VERSION || '0.1.0',
+        buildVersion: process.env.NEXT_PUBLIC_APP_VERSION || '1.0.0',
         deployment: process.env.VERCEL_URL
           ? `vercel-${process.env.VERCEL_URL}`
           : 'local-workspace',
