@@ -5,6 +5,7 @@ import { ProfileSection } from '@/features/profile/components/identity/ProfileSe
 import { ProfileField } from '@/features/profile/components/identity/ProfileField';
 import { VerificationSection } from '@/features/profile/components/identity/VerificationSection';
 import {
+  DisplayNameForm,
   NameForm,
   DateOfBirthForm,
   GenderForm,
@@ -90,7 +91,7 @@ export default async function ProfilePage() {
                     label="Display Name"
                     value={profile.display_name}
                   >
-                    <div />
+                    <DisplayNameForm profile={profile} />
                   </ProfileField>
                   <ProfileField label="Legal Name" value={profile.full_name}>
                     <NameForm profile={profile} />

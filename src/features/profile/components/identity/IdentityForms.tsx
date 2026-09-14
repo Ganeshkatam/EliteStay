@@ -134,6 +134,51 @@ function InlineForm<TSchema extends z.ZodType<FieldValues>>({
 
 // ---- Personal Info Forms ---- //
 
+export function DisplayNameForm({
+  profile,
+  close,
+}: {
+  profile: ExtendedProfile;
+  close?: () => void;
+}) {
+  return (
+    <InlineForm
+      schema={z.object({
+        display_name: z
+          .string()
+          .min(2, 'Display name must be at least 2 characters')
+          .optional()
+          .nullable()
+          .or(z.literal('')),
+      })}
+      defaultValues={{ display_name: profile.display_name || '' }}
+      onSubmitData={(data) =>
+        updateProfile(data as unknown as Parameters<typeof updateProfile>[0])
+      }
+      close={close}
+    >
+      {({ register, errors }) => (
+        <div>
+          <label className="block text-sm font-medium mb-1">Display Name</label>
+          <Input
+            {...register('display_name')}
+            placeholder="How you want to be called"
+          />
+          {errors.display_name && (
+            <p className="mt-1 text-sm text-destructive">
+              {errors.display_name.message}
+            </p>
+          )}
+          <p className="text-xs text-slate-500 mt-2">
+            This is how your name will appear to hosts and guests across
+            EliteStay.
+          </p>
+        </div>
+      )}
+    </InlineForm>
+  );
+}
+
 export function NameForm({
   profile,
   close,
