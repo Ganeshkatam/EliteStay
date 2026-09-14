@@ -159,7 +159,12 @@ export function UserMenu({ user, profile, variant }: UserMenuProps) {
               <span>Resident Portal</span>
             </Link>
           </DropdownMenuItem>
+        </div>
 
+        <DropdownMenuSeparator className="bg-slate-100 my-1" />
+
+        {/* Profile Section */}
+        <div className="space-y-0.5">
           <DropdownMenuItem
             asChild
             className="cursor-pointer rounded-xl px-3 py-2 text-slate-700 hover:text-slate-900 focus:text-slate-900 hover:bg-slate-100/80 focus:bg-slate-100/80 transition-colors"
