@@ -50,6 +50,9 @@ export function LocationMap({ latitude, longitude, city }: LocationMapProps) {
         center: [longitude, latitude],
         zoom: 14,
         interactive: false, // Prevent scrolling from hijacking the page
+        fadeDuration: 0,
+        renderWorldCopies: false,
+        maxTileCacheSize: 100,
       });
 
       // Add a simple marker

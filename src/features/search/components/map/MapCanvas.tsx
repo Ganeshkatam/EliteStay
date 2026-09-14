@@ -67,6 +67,10 @@ export function MapCanvas({ children, onViewportChange }: MapCanvasProps) {
       minZoom={mapConfig.minZoom}
       maxZoom={mapConfig.maxZoom}
       onMoveEnd={handleMapMove}
+      fadeDuration={0}
+      renderWorldCopies={false}
+      maxTileCacheSize={150}
+      reuseMaps={true}
       style={{ width: '100%', height: '100%' }}
     >
       <NavigationControl position="top-right" />

@@ -23,6 +23,14 @@ export default function RootLayout({
 }>) {
   const layout = (
     <html lang="en" className={`${plusJakartaSans.variable}`}>
+      <head>
+        <link
+          rel="preconnect"
+          href="https://tiles.openfreemap.org"
+          crossOrigin="anonymous"
+        />
+        <link rel="dns-prefetch" href="https://tiles.openfreemap.org" />
+      </head>
       <body className="flex min-h-screen flex-col antialiased">
         <InactivityRefresh />
         <Suspense>{children}</Suspense>
