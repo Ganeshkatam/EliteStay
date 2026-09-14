@@ -79,16 +79,138 @@ export function UserMenu({ user, profile, variant }: UserMenuProps) {
       .slice(0, 2) || 'U';
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button
-          id="user-profile-menu-button"
-          aria-label="User navigation menu"
-          className="group flex items-center gap-2.5 rounded-full border border-slate-200/90 bg-white p-1.5 pl-3.5 shadow-sm hover:shadow-md hover:border-slate-300 transition-all duration-200 outline-none focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 active:scale-[0.98] data-[state=open]:shadow-md data-[state=open]:border-slate-300"
+    <div className="flex items-center gap-2">
+      {/* Navigation Hamburger Menu */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            id="navigation-menu-button"
+            aria-label="Navigation menu"
+            className="flex items-center justify-center h-10 w-10 rounded-full border border-slate-200/90 bg-white text-slate-600 hover:text-slate-900 hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 shadow-xs outline-none focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 active:scale-95 data-[state=open]:shadow-sm data-[state=open]:border-slate-300 data-[state=open]:bg-slate-50"
+          >
+            <Menu className="h-4 w-4 text-slate-700" />
+          </button>
+        </DropdownMenuTrigger>
+
+        <DropdownMenuContent
+          align="end"
+          sideOffset={8}
+          onCloseAutoFocus={(e) => e.preventDefault()}
+          className="w-56 rounded-2xl border border-slate-200/80 bg-white p-1.5 shadow-xl shadow-slate-900/10 animate-in fade-in-0 zoom-in-95"
         >
-          <Menu className="h-4 w-4 text-slate-600 group-hover:text-slate-900 transition-colors" />
-          <div className="relative">
-            <Avatar className="h-8 w-8 rounded-full ring-1 ring-slate-200/80 shadow-xs">
+          <div className="space-y-0.5">
+            <DropdownMenuItem
+              asChild
+              className="cursor-pointer rounded-xl px-3 py-2 text-slate-700 hover:text-slate-900 focus:text-slate-900 hover:bg-slate-100/80 focus:bg-slate-100/80 transition-colors"
+            >
+              <Link
+                href="/users/inbox"
+                className="flex items-center gap-2.5 w-full text-sm font-medium"
+              >
+                <MessageSquare className="h-4 w-4 text-slate-500" />
+                <span>Inbox</span>
+              </Link>
+            </DropdownMenuItem>
+
+            <DropdownMenuItem
+              asChild
+              className="cursor-pointer rounded-xl px-3 py-2 text-slate-700 hover:text-slate-900 focus:text-slate-900 hover:bg-slate-100/80 focus:bg-slate-100/80 transition-colors"
+            >
+              <Link
+                href="/users/notifications"
+                className="flex items-center gap-2.5 w-full text-sm font-medium"
+              >
+                <Bell className="h-4 w-4 text-slate-500" />
+                <span>Notifications</span>
+              </Link>
+            </DropdownMenuItem>
+
+            <DropdownMenuItem
+              asChild
+              className="cursor-pointer rounded-xl px-3 py-2 text-slate-700 hover:text-slate-900 focus:text-slate-900 hover:bg-slate-100/80 focus:bg-slate-100/80 transition-colors"
+            >
+              <Link
+                href="/resident"
+                className="flex items-center gap-2.5 w-full text-sm font-medium"
+              >
+                <Home className="h-4 w-4 text-slate-500" />
+                <span>Resident Portal</span>
+              </Link>
+            </DropdownMenuItem>
+          </div>
+
+          <DropdownMenuSeparator className="bg-slate-100 my-1" />
+
+          {/* Mode / Hosting Actions */}
+          <div className="space-y-0.5">
+            {variant === 'host' ? (
+              <>
+                <DropdownMenuItem
+                  asChild
+                  className="cursor-pointer rounded-xl px-3 py-2 text-slate-700 hover:text-slate-900 focus:text-slate-900 hover:bg-slate-100/80 focus:bg-slate-100/80 transition-colors"
+                >
+                  <Link
+                    href="/"
+                    className="flex items-center gap-2.5 w-full text-sm font-medium"
+                  >
+                    <Compass className="h-4 w-4 text-slate-500" />
+                    <span>Switch to Guest View</span>
+                  </Link>
+                </DropdownMenuItem>
+
+                <DropdownMenuItem
+                  asChild
+                  className="cursor-pointer rounded-xl px-3 py-2 text-slate-700 hover:text-slate-900 focus:text-slate-900 hover:bg-slate-100/80 focus:bg-slate-100/80 transition-colors"
+                >
+                  <Link
+                    href="/host/profile"
+                    className="flex items-center gap-2.5 w-full text-sm font-medium"
+                  >
+                    <ShieldCheck className="h-4 w-4 text-slate-500" />
+                    <span>Host Settings</span>
+                  </Link>
+                </DropdownMenuItem>
+              </>
+            ) : isHostRole ? (
+              <DropdownMenuItem
+                asChild
+                className="cursor-pointer rounded-xl px-3 py-2 text-slate-700 hover:text-slate-900 focus:text-slate-900 hover:bg-slate-100/80 focus:bg-slate-100/80 transition-colors"
+              >
+                <Link
+                  href="/host"
+                  className="flex items-center gap-2.5 w-full text-sm font-medium"
+                >
+                  <Sparkles className="h-4 w-4 text-rose-500" />
+                  <span>Switch to hosting</span>
+                </Link>
+              </DropdownMenuItem>
+            ) : (
+              <DropdownMenuItem
+                asChild
+                className="cursor-pointer rounded-xl px-3 py-2 text-slate-700 hover:text-slate-900 focus:text-slate-900 hover:bg-slate-100/80 focus:bg-slate-100/80 transition-colors"
+              >
+                <Link
+                  href="/host/start"
+                  className="flex items-center gap-2.5 w-full text-sm font-medium"
+                >
+                  <Sparkles className="h-4 w-4 text-rose-500" />
+                  <span>Become a Host</span>
+                </Link>
+              </DropdownMenuItem>
+            )}
+          </div>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {/* User Profile Menu */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            id="user-profile-menu-button"
+            aria-label="User profile menu"
+            className="relative flex items-center justify-center rounded-full outline-none focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 transition-transform active:scale-95 group"
+          >
+            <Avatar className="h-10 w-10 rounded-full ring-2 ring-slate-200/90 group-hover:ring-slate-300 shadow-xs transition-all">
               <AvatarImage
                 src={avatarUrl}
                 alt={displayName}
@@ -98,174 +220,69 @@ export function UserMenu({ user, profile, variant }: UserMenuProps) {
                 {initials}
               </AvatarFallback>
             </Avatar>
-            <span className="absolute bottom-0 right-0 h-2 w-2 rounded-full bg-emerald-500 ring-1.5 ring-white" />
-          </div>
-        </button>
-      </DropdownMenuTrigger>
+            <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white" />
+          </button>
+        </DropdownMenuTrigger>
 
-      <DropdownMenuContent
-        align="end"
-        sideOffset={8}
-        onCloseAutoFocus={(e) => e.preventDefault()}
-        className="w-64 rounded-2xl border border-slate-200/80 bg-white p-1.5 shadow-xl shadow-slate-900/10 animate-in fade-in-0 zoom-in-95"
-      >
-        {/* User Identity Header */}
-        <div className="px-3 py-2.5 border-b border-slate-100 mb-1">
-          <p className="text-sm font-semibold text-slate-900 truncate">
-            {displayName}
-          </p>
-          {email && (
-            <p className="text-xs text-slate-500 truncate mt-0.5">{email}</p>
-          )}
-        </div>
-
-        {/* Primary Navigation Items */}
-        <div className="space-y-0.5">
-          <DropdownMenuItem
-            asChild
-            className="cursor-pointer rounded-xl px-3 py-2 text-slate-700 hover:text-slate-900 focus:text-slate-900 hover:bg-slate-100/80 focus:bg-slate-100/80 transition-colors"
-          >
-            <Link
-              href="/users/inbox"
-              className="flex items-center gap-2.5 w-full text-sm font-medium"
-            >
-              <MessageSquare className="h-4 w-4 text-slate-500" />
-              <span>Inbox</span>
-            </Link>
-          </DropdownMenuItem>
-
-          <DropdownMenuItem
-            asChild
-            className="cursor-pointer rounded-xl px-3 py-2 text-slate-700 hover:text-slate-900 focus:text-slate-900 hover:bg-slate-100/80 focus:bg-slate-100/80 transition-colors"
-          >
-            <Link
-              href="/users/notifications"
-              className="flex items-center gap-2.5 w-full text-sm font-medium"
-            >
-              <Bell className="h-4 w-4 text-slate-500" />
-              <span>Notifications</span>
-            </Link>
-          </DropdownMenuItem>
-
-          <DropdownMenuItem
-            asChild
-            className="cursor-pointer rounded-xl px-3 py-2 text-slate-700 hover:text-slate-900 focus:text-slate-900 hover:bg-slate-100/80 focus:bg-slate-100/80 transition-colors"
-          >
-            <Link
-              href="/resident"
-              className="flex items-center gap-2.5 w-full text-sm font-medium"
-            >
-              <Home className="h-4 w-4 text-slate-500" />
-              <span>Resident Portal</span>
-            </Link>
-          </DropdownMenuItem>
-        </div>
-
-        <DropdownMenuSeparator className="bg-slate-100 my-1" />
-
-        {/* Profile Section */}
-        <div className="space-y-0.5">
-          <DropdownMenuItem
-            asChild
-            className="cursor-pointer rounded-xl px-3 py-2 text-slate-700 hover:text-slate-900 focus:text-slate-900 hover:bg-slate-100/80 focus:bg-slate-100/80 transition-colors"
-          >
-            <Link
-              href="/users/profile"
-              className="flex items-center gap-2.5 w-full text-sm font-medium"
-            >
-              <UserIcon className="h-4 w-4 text-slate-500" />
-              <span>Profile</span>
-            </Link>
-          </DropdownMenuItem>
-        </div>
-
-        <DropdownMenuSeparator className="bg-slate-100 my-1" />
-
-        {/* Mode / Hosting Actions */}
-        <div className="space-y-0.5">
-          {variant === 'host' ? (
-            <>
-              <DropdownMenuItem
-                asChild
-                className="cursor-pointer rounded-xl px-3 py-2 text-slate-700 hover:text-slate-900 focus:text-slate-900 hover:bg-slate-100/80 focus:bg-slate-100/80 transition-colors"
-              >
-                <Link
-                  href="/"
-                  className="flex items-center gap-2.5 w-full text-sm font-medium"
-                >
-                  <Compass className="h-4 w-4 text-slate-500" />
-                  <span>Switch to Guest View</span>
-                </Link>
-              </DropdownMenuItem>
-
-              <DropdownMenuItem
-                asChild
-                className="cursor-pointer rounded-xl px-3 py-2 text-slate-700 hover:text-slate-900 focus:text-slate-900 hover:bg-slate-100/80 focus:bg-slate-100/80 transition-colors"
-              >
-                <Link
-                  href="/host/profile"
-                  className="flex items-center gap-2.5 w-full text-sm font-medium"
-                >
-                  <ShieldCheck className="h-4 w-4 text-slate-500" />
-                  <span>Host Settings</span>
-                </Link>
-              </DropdownMenuItem>
-            </>
-          ) : isHostRole ? (
-            <DropdownMenuItem
-              asChild
-              className="cursor-pointer rounded-xl px-3 py-2 text-slate-700 hover:text-slate-900 focus:text-slate-900 hover:bg-slate-100/80 focus:bg-slate-100/80 transition-colors"
-            >
-              <Link
-                href="/host"
-                className="flex items-center gap-2.5 w-full text-sm font-medium"
-              >
-                <Sparkles className="h-4 w-4 text-rose-500" />
-                <span>Switch to hosting</span>
-              </Link>
-            </DropdownMenuItem>
-          ) : (
-            <DropdownMenuItem
-              asChild
-              className="cursor-pointer rounded-xl px-3 py-2 text-slate-700 hover:text-slate-900 focus:text-slate-900 hover:bg-slate-100/80 focus:bg-slate-100/80 transition-colors"
-            >
-              <Link
-                href="/host/start"
-                className="flex items-center gap-2.5 w-full text-sm font-medium"
-              >
-                <Sparkles className="h-4 w-4 text-rose-500" />
-                <span>Become a Host</span>
-              </Link>
-            </DropdownMenuItem>
-          )}
-
-          <DropdownMenuItem
-            asChild
-            className="cursor-pointer rounded-xl px-3 py-2 text-slate-700 hover:text-slate-900 focus:text-slate-900 hover:bg-slate-100/80 focus:bg-slate-100/80 transition-colors"
-          >
-            <Link
-              href="/users/settings"
-              className="flex items-center gap-2.5 w-full text-sm font-medium"
-            >
-              <Settings className="h-4 w-4 text-slate-500" />
-              <span>Account Settings</span>
-            </Link>
-          </DropdownMenuItem>
-        </div>
-
-        <DropdownMenuSeparator className="bg-slate-100 my-1" />
-
-        {/* Sign Out Action */}
-        <DropdownMenuItem
-          className="cursor-pointer rounded-xl px-3 py-2 text-sm font-medium text-rose-600 hover:text-rose-700 hover:bg-rose-50/80 focus:bg-rose-50/80 focus:text-rose-700 transition-colors flex items-center gap-2.5"
-          onClick={async () => {
-            await signOut();
-          }}
+        <DropdownMenuContent
+          align="end"
+          sideOffset={8}
+          onCloseAutoFocus={(e) => e.preventDefault()}
+          className="w-60 rounded-2xl border border-slate-200/80 bg-white p-1.5 shadow-xl shadow-slate-900/10 animate-in fade-in-0 zoom-in-95"
         >
-          <LogOut className="h-4 w-4" />
-          <span>Sign out</span>
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+          {/* User Identity Header */}
+          <div className="px-3 py-2.5 border-b border-slate-100 mb-1">
+            <p className="text-sm font-semibold text-slate-900 truncate">
+              {displayName}
+            </p>
+            {email && (
+              <p className="text-xs text-slate-500 truncate mt-0.5">{email}</p>
+            )}
+          </div>
+
+          {/* Profile & Account Settings */}
+          <div className="space-y-0.5">
+            <DropdownMenuItem
+              asChild
+              className="cursor-pointer rounded-xl px-3 py-2 text-slate-700 hover:text-slate-900 focus:text-slate-900 hover:bg-slate-100/80 focus:bg-slate-100/80 transition-colors"
+            >
+              <Link
+                href="/users/profile"
+                className="flex items-center gap-2.5 w-full text-sm font-medium"
+              >
+                <UserIcon className="h-4 w-4 text-slate-500" />
+                <span>Profile</span>
+              </Link>
+            </DropdownMenuItem>
+
+            <DropdownMenuItem
+              asChild
+              className="cursor-pointer rounded-xl px-3 py-2 text-slate-700 hover:text-slate-900 focus:text-slate-900 hover:bg-slate-100/80 focus:bg-slate-100/80 transition-colors"
+            >
+              <Link
+                href="/users/settings"
+                className="flex items-center gap-2.5 w-full text-sm font-medium"
+              >
+                <Settings className="h-4 w-4 text-slate-500" />
+                <span>Account Settings</span>
+              </Link>
+            </DropdownMenuItem>
+          </div>
+
+          <DropdownMenuSeparator className="bg-slate-100 my-1" />
+
+          {/* Sign Out Action */}
+          <DropdownMenuItem
+            className="cursor-pointer rounded-xl px-3 py-2 text-sm font-medium text-rose-600 hover:text-rose-700 hover:bg-rose-50/80 focus:bg-rose-50/80 focus:text-rose-700 transition-colors flex items-center gap-2.5"
+            onClick={async () => {
+              await signOut();
+            }}
+          >
+            <LogOut className="h-4 w-4" />
+            <span>Sign out</span>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
   );
 }
