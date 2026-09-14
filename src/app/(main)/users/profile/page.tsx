@@ -40,20 +40,20 @@ export default async function ProfilePage() {
     <ContentPanel>
       <PageCanvas>
         <div className="max-w-6xl mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
-            {/* Left Column: Overview & Verification */}
-            <div className="lg:col-span-4 space-y-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-start">
+            {/* Left Column: Overview & Verification (Pinned to viewport while scrolling) */}
+            <div className="lg:col-span-4 space-y-5 lg:sticky lg:top-0 lg:self-start">
               <ProfileOverview profile={profile} />
 
               <div
                 id="verification"
-                className="bg-white rounded-2xl border border-slate-200/60 p-6"
+                className="bg-white rounded-2xl border border-slate-200/60 p-5"
               >
-                <div className="mb-6">
-                  <h3 className="text-lg font-semibold tracking-tight text-slate-900">
+                <div className="mb-4">
+                  <h3 className="text-base font-semibold tracking-tight text-slate-900">
                     Identity & Verification
                   </h3>
-                  <p className="text-sm text-slate-500 mt-1">
+                  <p className="text-xs text-slate-500 mt-0.5">
                     Your trusted status on EliteStay.
                   </p>
                 </div>
@@ -62,7 +62,7 @@ export default async function ProfilePage() {
             </div>
 
             {/* Right Column: Forms & Details */}
-            <div className="lg:col-span-8 space-y-12">
+            <div className="lg:col-span-8 space-y-8">
               <div id="identity">
                 <ProfileSection
                   title="Identity"
