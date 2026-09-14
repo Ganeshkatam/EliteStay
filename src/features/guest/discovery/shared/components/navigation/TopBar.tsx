@@ -52,7 +52,7 @@ export function TopBar({
             isExpanded ? 'md:translate-y-[88px] translate-y-0' : 'translate-y-0'
           )}
         >
-          {/* On mobile (<md), always render compact GlobalSearch docked inside the 76px topbar */}
+          {/* On mobile (<md), always render compact GlobalSearch docked in the top bar */}
           <div className="w-full flex justify-center md:hidden">
             <GlobalSearch variant="compact" popularCities={popularCities} />
           </div>

@@ -46,7 +46,7 @@ export function TopBar({
       {variant !== 'host' && variant !== 'dashboard' && (
         <div
           className={cn(
-            'flex flex-1 items-center justify-center w-full motion-layout ease-premium',
+            'flex flex-1 items-center justify-center w-full min-w-0 mx-1.5 sm:mx-2 motion-layout ease-premium',
             isExpanded ? 'md:translate-y-[88px] translate-y-0' : 'translate-y-0'
           )}
         >
@@ -62,8 +62,8 @@ export function TopBar({
         </div>
       )}
 
-      <div className="flex flex-none items-center justify-end space-x-3">
-        {user && <HostToggle isHost={isHost} />}
+      <div className="flex flex-none items-center justify-end space-x-1.5 sm:space-x-3">
+        {user && <HostToggle isHost={isHost} variant={variant} />}
         <UserMenu user={user} profile={profile} variant={variant} />
       </div>
     </>

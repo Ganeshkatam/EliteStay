@@ -29,7 +29,7 @@ export function HostNavigationBar({ user, profile }: HostNavigationBarProps) {
   const headerTitle = getHostRouteTitle(pathname);
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-white border-b border-slate-200">
+    <header className="sticky top-0 z-50 w-full bg-white border-b border-slate-200 pt-2 sm:pt-0 [padding-top:max(0.5rem,env(safe-area-inset-top))] sm:[padding-top:0px]">
       <div className="flex h-16 items-center justify-between gap-3 px-3 sm:px-6">
         <div className="flex min-w-0 items-center gap-3 sm:gap-4">
           <Sheet>
