@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
+import { Analytics } from '@vercel/analytics/next';
 import { Plus_Jakarta_Sans } from 'next/font/google';
 import './globals.css';
 import '@/config/env';
@@ -23,6 +24,7 @@ export default function RootLayout({
     <html lang="en" className={`${plusJakartaSans.variable}`}>
       <body className="flex min-h-screen flex-col antialiased">
         <Suspense>{children}</Suspense>
+        <Analytics />
       </body>
     </html>
   );
