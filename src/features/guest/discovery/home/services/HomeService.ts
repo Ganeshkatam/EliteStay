@@ -11,7 +11,7 @@ import {
 const LOCAL_CITY_IMAGES: Record<string, string> = {
   bangalore: '/images/cities/bangalore.jpg',
   mumbai: '/images/cities/mumbai.jpg',
-  'new-delhi': '/images/cities/new-delhi.jpg',
+  new_delhi: '/images/cities/new_delhi.jpg',
   hyderabad: '/images/cities/hyderabad.jpg',
   pune: '/images/cities/pune.jpg',
   chennai: '/images/cities/chennai.jpg',

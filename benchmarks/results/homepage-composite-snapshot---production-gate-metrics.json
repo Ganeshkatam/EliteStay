@@ -1,0 +1,26 @@
+{
+  "name": "Homepage Composite Snapshot - Production Gate Metrics",
+  "passed": false,
+  "durationMs": 49437.6886,
+  "metrics": {
+    "totalListingsInSnapshot": 80,
+    "uncompressedBytes": 46368,
+    "uncompressedKB": 45.28,
+    "compressedBytes": 2522,
+    "compressedKB": 2.46,
+    "compressionRatio": 18.39,
+    "serialize_p50_ms": 72.616,
+    "serialize_p95_ms": 94.696,
+    "serialize_p99_ms": 101.03,
+    "deserialize_p50_ms": 0.465,
+    "deserialize_p95_ms": 0.971,
+    "deserialize_p99_ms": 1.427,
+    "redis_get_p50_ms": 72.466,
+    "redis_get_p95_ms": 127.867,
+    "redis_get_p99_ms": 429.766,
+    "e2e_hit_p50_ms": 73.242,
+    "e2e_hit_p95_ms": 128.922,
+    "e2e_hit_p99_ms": 430.2
+  },
+  "error": "Assertion failed for e2e_hit_p95_ms: p95 end-to-end cache hit must be < 30ms (Actual: 128.922)"
+}
