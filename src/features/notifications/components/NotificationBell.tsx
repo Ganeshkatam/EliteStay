@@ -9,7 +9,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import * as NotificationService from '../actions/notification-actions';
+import * as NotificationService from '../actions/notification.actions';
 import { type NotificationRow } from '../types';
 import Link from 'next/link';
 import { formatDistanceToNowStrict } from 'date-fns';
@@ -123,7 +123,7 @@ export function NotificationBell() {
               {notifications.slice(0, 5).map((notification) => (
                 <Link
                   href={
-                    notification.link ||
+                    notification.action_path ||
                     `/users/notifications/${notification.id}`
                   }
                   onClick={() =>

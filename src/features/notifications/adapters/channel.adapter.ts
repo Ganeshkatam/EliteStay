@@ -1,5 +1,5 @@
 import { NotificationPayload } from '../domain/notification.types';
 
 export interface ChannelAdapter {
-  send(payload: NotificationPayload): Promise<boolean>;
+  send(payload: NotificationPayload): Promise<void>;
 }

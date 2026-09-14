@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -792,8 +792,6 @@ export type Database = {
           bank_account_id: string | null;
           bank_account_last4: string | null;
           bank_name: string | null;
-          business_name: string | null;
-          business_type: Database['public']['Enums']['host_business_type'];
           created_at: string;
           id: string;
           identity_verified_at: string | null;
@@ -812,8 +810,6 @@ export type Database = {
           bank_account_id?: string | null;
           bank_account_last4?: string | null;
           bank_name?: string | null;
-          business_name?: string | null;
-          business_type?: Database['public']['Enums']['host_business_type'];
           created_at?: string;
           id?: string;
           identity_verified_at?: string | null;
@@ -832,8 +828,6 @@ export type Database = {
           bank_account_id?: string | null;
           bank_account_last4?: string | null;
           bank_name?: string | null;
-          business_name?: string | null;
-          business_type?: Database['public']['Enums']['host_business_type'];
           created_at?: string;
           id?: string;
           identity_verified_at?: string | null;
@@ -3012,7 +3006,6 @@ export type Database = {
       furnishing: 'unfurnished' | 'semi_furnished' | 'fully_furnished';
       gender: 'male' | 'female';
       gender_preference: 'any' | 'male' | 'female';
-      host_business_type: 'individual' | 'company' | 'property_manager';
       host_status:
         | 'NOT_STARTED'
         | 'ONBOARDING'
@@ -3265,7 +3258,6 @@ export const Constants = {
       furnishing: ['unfurnished', 'semi_furnished', 'fully_furnished'],
       gender: ['male', 'female'],
       gender_preference: ['any', 'male', 'female'],
-      host_business_type: ['individual', 'company', 'property_manager'],
       host_status: [
         'NOT_STARTED',
         'ONBOARDING',

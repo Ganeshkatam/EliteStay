@@ -96,9 +96,10 @@ export function NotificationRow({
           {notification.message}
         </p>
 
-        {notification.link && (
+        {(notification.actionPath || notification.link) && (
           <div className="mt-3 flex items-center text-sm font-medium text-slate-900 group-hover:text-blue-600 transition-colors">
-            {notification.actionLabel} <ChevronRight className="w-4 h-4 ml-1" />
+            {notification.actionLabel || 'View Details'}
+            <ChevronRight className="w-4 h-4 ml-1 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
           </div>
         )}
       </div>
@@ -109,16 +110,12 @@ export function NotificationRow({
     </div>
   );
 
-  if (notification.link) {
-    return (
-      <Link href={notification.link} className="block">
-        {Content}
-      </Link>
-    );
-  }
-
+  const href =
+    notification.actionPath ||
+    notification.link ||
+    `/users/notifications/${notification.id}`;
   return (
-    <Link href={`/users/notifications/${notification.id}`} className="block">
+    <Link href={href} className="block">
       {Content}
     </Link>
   );

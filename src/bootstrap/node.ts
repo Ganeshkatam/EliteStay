@@ -6,6 +6,7 @@ import { initializeLeaseEventHandlers } from '@/features/tenancy/lease/events/le
 import { initializeDepositEventHandlers } from '@/features/tenancy/deposit/events/deposit-events.handler';
 import { initializeMoveInEventHandlers } from '@/features/tenancy/move-in/events/move-in-events.handler';
 import { initializeOccupancyEventHandlers } from '@/features/tenancy/occupancy/events/occupancy-events.handler';
+import { registerNotificationEventHandlers } from '@/features/notifications/events/notification-events.handler';
 
 export function bootstrapNode() {
   auditLogger.bindToEventBus();
@@ -16,4 +17,5 @@ export function bootstrapNode() {
   initializeDepositEventHandlers();
   initializeMoveInEventHandlers();
   initializeOccupancyEventHandlers();
+  registerNotificationEventHandlers();
 }

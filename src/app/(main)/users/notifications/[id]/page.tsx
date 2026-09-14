@@ -1,6 +1,6 @@
 import { ContentPanel } from '@/features/dashboard/components/ContentPanel';
 import { PageCanvas } from '@/features/dashboard/components/PageCanvas';
-import * as NotificationService from '@/features/notifications/actions/notification-actions';
+import * as NotificationService from '@/features/notifications/actions/notification.actions';
 import { getCurrentUser } from '@/features/auth/server/auth-helpers';
 import { redirect } from 'next/navigation';
 import { format } from 'date-fns';
@@ -37,7 +37,7 @@ export default async function NotificationDetailsPage(props: {
     redirect('/');
   }
 
-  const notification = await NotificationService.getNotificationById(params.id);
+  const notification = await NotificationService.getNotification(params.id);
 
   if (!notification) {
     return (
@@ -66,7 +66,7 @@ export default async function NotificationDetailsPage(props: {
   }
 
   let Icon = Info;
-  switch (notification.type) {
+  switch (notification.event_type) {
     case 'NEW_MESSAGE':
       Icon = MessageCircle;
       break;
@@ -142,10 +142,10 @@ export default async function NotificationDetailsPage(props: {
               </p>
             </div>
 
-            {notification.link && (
+            {notification.action_path && (
               <div className="pt-6 border-t border-slate-100">
                 <Button asChild size="lg" className="w-full sm:w-auto">
-                  <Link href={notification.link}>
+                  <Link href={notification.action_path}>
                     Take Action
                     <ChevronRight className="w-4 h-4 ml-2" />
                   </Link>

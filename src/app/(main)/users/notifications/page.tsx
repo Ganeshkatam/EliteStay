@@ -1,7 +1,7 @@
 import { ContentPanel } from '@/features/dashboard/components/ContentPanel';
 import { PageCanvas } from '@/features/dashboard/components/PageCanvas';
 import { NotificationWorkspace } from '@/features/notifications/components/NotificationWorkspace';
-import * as NotificationService from '@/features/notifications/actions/notification-actions';
+import * as NotificationService from '@/features/notifications/actions/notification.actions';
 import { getCurrentUser } from '@/features/auth/server/auth-helpers';
 import { redirect } from 'next/navigation';
 

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { CheckCheck, Loader2 } from 'lucide-react';
-import * as NotificationService from '../actions/notification-actions';
+import * as NotificationService from '../actions/notification.actions';
 
 export function MarkAllReadButton() {
   const [isPending, setIsPending] = useState(false);
@@ -15,9 +15,9 @@ export function MarkAllReadButton() {
   };
 
   return (
-    <Button 
-      variant="outline" 
-      size="sm" 
+    <Button
+      variant="outline"
+      size="sm"
       onClick={handleMarkAllRead}
       disabled={isPending}
       className="text-slate-600 hover:text-slate-900"

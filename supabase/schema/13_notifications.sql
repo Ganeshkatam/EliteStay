@@ -10,20 +10,27 @@ Contains:
 
 CREATE TABLE public.notifications (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+    user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    category TEXT NOT NULL,
+    event_type TEXT NOT NULL,
+    entity_type TEXT,
+    entity_id UUID,
+    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
     title TEXT NOT NULL,
     message TEXT NOT NULL,
-    link TEXT,
-    type TEXT NOT NULL,
-    data JSONB DEFAULT '{}'::jsonb,
+    action_path TEXT,
+    source_event_id UUID NOT NULL,
     read_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT notifications_source_event_user_key UNIQUE (source_event_id, user_id)
 );
 
 -- Partial index for fast queries of unread notifications
 CREATE INDEX IF NOT EXISTS idx_notifications_unread ON public.notifications (user_id) WHERE read_at IS NULL;
 -- Composite index for fetching all notifications sorted by timestamp
 CREATE INDEX IF NOT EXISTS idx_notifications_user_created ON public.notifications (user_id, created_at DESC);
+-- Index for idempotency checks
+CREATE INDEX IF NOT EXISTS idx_notifications_source_user ON public.notifications (source_event_id, user_id);
 
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 

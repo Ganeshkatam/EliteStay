@@ -1,9 +1,5 @@
-import { type NotificationRow } from '../types';
-import {
-  type NotificationViewModel,
-  type NotificationGroup,
-  NotificationType,
-} from '../types';
+import { NotificationRow } from '../domain/notification.types';
+import { NotificationViewModel, NotificationGroup } from '../types';
 import { formatNotificationTime } from '@/lib/formatters/time';
 import { differenceInHours } from 'date-fns';
 
@@ -12,60 +8,49 @@ export function mapToViewModel(row: NotificationRow): NotificationViewModel {
   let iconColorClass = 'text-slate-500 bg-slate-50';
   let actionLabel = 'View Details';
 
-  switch (row.type) {
-    case NotificationType.NEW_MESSAGE:
+  switch (row.category) {
+    case 'PROFILE':
+      iconName = 'UserCircle';
+      iconColorClass = 'text-blue-500 bg-blue-50';
+      actionLabel = 'View Profile';
+      break;
+    case 'SECURITY':
+      iconName = 'ShieldCheck';
+      iconColorClass = 'text-emerald-500 bg-emerald-50';
+      actionLabel = 'Security Settings';
+      break;
+    case 'MESSAGING':
       iconName = 'MessageCircle';
       iconColorClass = 'text-blue-500 bg-blue-50';
       actionLabel = 'Open Conversation';
       break;
-    case NotificationType.HOST_RESPONSE:
-      iconName = 'Reply';
-      iconColorClass = 'text-purple-500 bg-purple-50';
-      actionLabel = 'Open Conversation';
-      break;
-    case NotificationType.BOOKING_REQUEST:
+    case 'BOOKING':
       iconName = 'CalendarClock';
-      iconColorClass = 'text-amber-500 bg-amber-50';
-      actionLabel = 'Review Request';
+      if (row.event_type.includes('APPROVED')) {
+        iconName = 'CheckCircle2';
+        iconColorClass = 'text-green-500 bg-green-50';
+      } else if (
+        row.event_type.includes('DECLINED') ||
+        row.event_type.includes('CANCELLED')
+      ) {
+        iconName = 'XCircle';
+        iconColorClass = 'text-red-500 bg-red-50';
+      } else {
+        iconColorClass = 'text-amber-500 bg-amber-50';
+        actionLabel = 'Review Request';
+      }
       break;
-    case NotificationType.BOOKING_APPROVED:
-      iconName = 'CheckCircle2';
-      iconColorClass = 'text-green-500 bg-green-50';
-      actionLabel = 'View Booking';
-      break;
-    case NotificationType.BOOKING_REJECTED:
-      iconName = 'XCircle';
-      iconColorClass = 'text-red-500 bg-red-50';
-      actionLabel = 'View Details';
-      break;
-    case NotificationType.BOOKING_CANCELLED:
-      iconName = 'Ban';
-      iconColorClass = 'text-slate-500 bg-slate-100';
-      actionLabel = 'View Details';
-      break;
-    case NotificationType.STAY_CHECKED_IN:
+    case 'STAY':
       iconName = 'DoorOpen';
       iconColorClass = 'text-emerald-500 bg-emerald-50';
       break;
-    case NotificationType.STAY_CHECKED_OUT:
-      iconName = 'DoorClosed';
-      iconColorClass = 'text-slate-500 bg-slate-50';
-      break;
-    case NotificationType.REVIEW_REMINDER:
-    case NotificationType.REVIEW_RECEIVED:
+    case 'REVIEW':
       iconName = 'Star';
       iconColorClass = 'text-yellow-500 bg-yellow-50';
       actionLabel = 'Read Review';
       break;
-    case NotificationType.CALENDAR_SYNC_SUCCESS:
-      iconName = 'RefreshCcw';
-      iconColorClass = 'text-green-500 bg-green-50';
-      break;
-    case NotificationType.CALENDAR_SYNC_FAILED:
-      iconName = 'AlertCircle';
-      iconColorClass = 'text-red-500 bg-red-50';
-      break;
-    case NotificationType.SYSTEM:
+    case 'SYSTEM':
+    default:
       iconName = 'Info';
       iconColorClass = 'text-slate-500 bg-slate-50';
       break;
@@ -78,11 +63,12 @@ export function mapToViewModel(row: NotificationRow): NotificationViewModel {
     timeLabel: formatNotificationTime(row.created_at),
     isRead:
       row.read_at !== null && row.read_at !== undefined && row.read_at !== '',
-    type: row.type,
+    category: row.category,
+    eventType: row.event_type,
     iconName,
     iconColorClass,
-    link: row.link,
-    actionLabel,
+    actionPath: row.action_path,
+    actionLabel: row.action_path ? actionLabel : null,
   };
 }
 
@@ -98,19 +84,17 @@ export function groupNotificationsByDate(
 
   rows.forEach((row) => {
     const date = new Date(row.created_at);
-    const viewModel = mapToViewModel(row);
+    const vm = mapToViewModel(row);
 
-    // If less than 24 hours old, put in New
-    const hours = differenceInHours(now, date);
-
-    if (hours < 24) {
-      groups['New'].push(viewModel);
+    if (differenceInHours(now, date) < 24) {
+      groups['New'].push(vm);
     } else {
-      groups['Earlier'].push(viewModel);
+      groups['Earlier'].push(vm);
     }
   });
 
-  return Object.entries(groups)
-    .filter(([_, items]) => items.length > 0)
-    .map(([title, items]) => ({ title, items }));
+  return [
+    { title: 'New', items: groups['New'] },
+    { title: 'Earlier', items: groups['Earlier'] },
+  ].filter((g) => g.items.length > 0);
 }

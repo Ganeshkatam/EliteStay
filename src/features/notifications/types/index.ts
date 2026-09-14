@@ -1,3 +1,9 @@
+import {
+  type NotificationCategory,
+  type NotificationRow,
+} from '../domain/notification.types';
+export type { NotificationCategory, NotificationRow };
+
 export enum NotificationType {
   NEW_MESSAGE = 'NEW_MESSAGE',
   BOOKING_REQUEST = 'BOOKING_REQUEST',
@@ -11,18 +17,7 @@ export enum NotificationType {
   REVIEW_REMINDER = 'REVIEW_REMINDER',
   STAY_CHECKED_IN = 'STAY_CHECKED_IN',
   STAY_CHECKED_OUT = 'STAY_CHECKED_OUT',
-  SYSTEM = 'SYSTEM'
-}
-
-export interface NotificationRow {
-  id: string;
-  user_id: string;
-  type: NotificationType;
-  title: string;
-  message: string;
-  link: string | null;
-  read_at: string | null;
-  created_at: string;
+  SYSTEM = 'SYSTEM',
 }
 
 export enum NotificationFilter {
@@ -33,17 +28,33 @@ export enum NotificationFilter {
   SYSTEM,
 }
 
+// Legacy NotificationRow for backward compatibility in unmigrated code
+export interface LegacyNotificationRow {
+  id: string;
+  user_id: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  link: string | null;
+  read_at: string | null;
+  created_at: string;
+}
+
 export interface NotificationViewModel {
   id: string;
   title: string;
   message: string;
   timeLabel: string;
   isRead: boolean;
-  type: NotificationType;
+  category: NotificationCategory;
+  eventType: string;
   iconName: string;
   iconColorClass: string;
-  link: string | null;
+  actionPath: string | null;
   actionLabel: string | null;
+  // Legacy support
+  type?: NotificationType;
+  link?: string | null;
 }
 
 export interface NotificationGroup {

@@ -1,13 +1,15 @@
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
-import { revalidatePath } from 'next/cache';
+import { NotificationType } from '../types';
+import { type NotificationCategory } from '../domain/notification.types';
 
-import { NotificationType, type NotificationRow } from '../types';
+import { notificationRepository } from '../repositories/notification.repository';
+import { randomUUID } from 'crypto';
 
 /**
  * Creates a notification for a specific user.
  * This is the single entry point for all feature modules to generate notifications.
+ * @deprecated - Migrate to emitting Domain Events instead.
  */
 export async function createNotification(params: {
   userId: string;
@@ -16,26 +18,32 @@ export async function createNotification(params: {
   message: string;
   link?: string;
 }) {
-  const supabase = await createClient();
+  try {
+    // Map legacy type to new Category
+    let category: NotificationCategory = 'SYSTEM';
+    if (
+      params.type === NotificationType.NEW_MESSAGE ||
+      params.type === NotificationType.HOST_RESPONSE
+    )
+      category = 'MESSAGING';
+    if (params.type.includes('BOOKING')) category = 'BOOKING';
+    if (params.type.includes('STAY')) category = 'STAY';
+    if (params.type.includes('REVIEW')) category = 'REVIEW';
 
-  // We do NOT use getUser() here because this might be triggered by another user
-  // e.g., guest books host's place -> notification for host.
-  // The server client with service_role is NOT used according to rules,
-  // but standard insert with authenticated user context is allowed if RLS permits.
-  // Wait, the RLS policy says:
-  // CREATE POLICY "System can insert notifications" ON public.notifications FOR INSERT WITH CHECK (true);
-  // This allows any authenticated user to insert notifications for ANY user (like sending a message).
-
-  const { error } = await supabase.from('notifications').insert({
-    user_id: params.userId,
-    type: params.type,
-    title: params.title,
-    message: params.message,
-    link: params.link || null,
-  });
-
-  if (error) {
-    console.error('Failed to create notification:', error);
+    await notificationRepository.create({
+      recipientId: params.userId,
+      category,
+      eventType: params.type,
+      entityType: 'LEGACY',
+      entityId: undefined, // no easy way to extract
+      metadata: {},
+      title: params.title,
+      message: params.message,
+      actionPath: params.link,
+      sourceEventId: randomUUID(), // Temporary fix since we don't have a real source event here
+    });
+  } catch (error) {
+    console.error('Failed to create legacy notification:', error);
   }
 }
 
@@ -136,78 +144,16 @@ export async function notifyProfileUpdated(userId: string) {
   });
 }
 
-export async function getNotificationById(
-  id: string
-): Promise<NotificationRow | null> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
+import {
+  getNotification,
+  getMyNotifications,
+  markRead,
+  markAllRead,
+} from './notification.actions';
 
-  const { data, error } = await supabase
-    .from('notifications')
-    .select('*')
-    .eq('id', id)
-    .eq('user_id', user.id)
-    .single();
-
-  if (error || !data) {
-    console.error('Error fetching notification:', error);
-    return null;
-  }
-
-  return data as NotificationRow;
-}
-
-export async function getMyNotifications(): Promise<NotificationRow[]> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return [];
-
-  const { data } = await supabase
-    .from('notifications')
-    .select('*')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false })
-    .limit(50);
-
-  return (data as NotificationRow[]) || [];
-}
-
-export async function markRead(notificationId: string) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return { error: 'Unauthorized' };
-
-  await supabase
-    .from('notifications')
-    .update({ read_at: new Date().toISOString() })
-    .eq('id', notificationId)
-    .eq('user_id', user.id);
-
-  revalidatePath('/users/notifications');
-}
-
-export async function markAllRead() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return { error: 'Unauthorized' };
-
-  await supabase
-    .from('notifications')
-    .update({ read_at: new Date().toISOString() })
-    .eq('user_id', user.id)
-    .is('read_at', null);
-
-  revalidatePath('/users/notifications');
-}
+export {
+  getNotification as getNotificationById,
+  getMyNotifications,
+  markRead,
+  markAllRead,
+};
