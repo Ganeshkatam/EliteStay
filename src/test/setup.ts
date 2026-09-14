@@ -16,14 +16,21 @@ try {
       if (idx > 0) {
         const key = trimmed.slice(0, idx).trim();
         const val = trimmed.slice(idx + 1).trim();
-        if (!process.env[key]) {
-          process.env[key] = val;
-        }
+        process.env[key] = val;
       }
     }
   }
 } catch {
   // Ignore env read failures
+}
+
+// Provide fallback values for CI environments where .env.local is not present
+if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
+  process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://mock.supabase.co';
+}
+if (!process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY) {
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY =
+    'mock-supabase-publishable-key';
 }
 
 afterEach(() => {

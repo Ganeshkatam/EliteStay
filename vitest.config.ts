@@ -8,6 +8,10 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
+    env: {
+      NEXT_PUBLIC_SUPABASE_URL: 'https://mock.supabase.co',
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'mock-supabase-publishable-key',
+    },
     alias: {
       '@': resolve(__dirname, './src'),
     },

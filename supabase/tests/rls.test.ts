@@ -10,7 +10,11 @@ const supabaseKey =
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'your-anon-key';
 
 const hasSupabase = Boolean(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL
+  (process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL) &&
+  process.env.NEXT_PUBLIC_SUPABASE_URL !== 'https://mock.supabase.co' &&
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY !==
+    'mock-supabase-publishable-key' &&
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY !== 'your-anon-key'
 );
 
 describe('RLS Policies - Bookings', () => {
