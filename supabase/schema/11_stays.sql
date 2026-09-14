@@ -12,8 +12,8 @@ Contains:
 
 CREATE TABLE public.stays (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    listing_id UUID REFERENCES public.listings(id) ON DELETE CASCADE NOT NULL,
-    guest_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+    listing_id UUID REFERENCES public.listings(id) ON DELETE RESTRICT NOT NULL,
+    guest_id UUID REFERENCES public.profiles(id) ON DELETE RESTRICT NOT NULL,
     created_from_booking_id UUID REFERENCES public.bookings(id) ON DELETE SET NULL,
     created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
     expected_move_in_date DATE NOT NULL,
@@ -35,7 +35,7 @@ CREATE INDEX IF NOT EXISTS idx_stays_listing_status ON public.stays(listing_id, 
 
 CREATE TABLE public.stay_events (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    stay_id UUID NOT NULL REFERENCES public.stays(id) ON DELETE CASCADE,
+    stay_id UUID NOT NULL REFERENCES public.stays(id) ON DELETE RESTRICT,
     actor_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
     action TEXT NOT NULL,
     previous_status public.stay_status,
@@ -141,3 +141,35 @@ BEGIN
   RETURN jsonb_build_object('success', true);
 END;
 $$;
+
+-- Stays Lock Trigger
+CREATE OR REPLACE FUNCTION public.lock_parent_listing_for_stay()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  IF TG_OP = 'UPDATE' THEN
+    IF OLD.listing_id IS DISTINCT FROM NEW.listing_id THEN
+      PERFORM public.acquire_listing_locks_ordered(OLD.listing_id, NEW.listing_id);
+    ELSIF NEW.status IN ('upcoming', 'active', 'extended') AND OLD.status IS DISTINCT FROM NEW.status THEN
+      PERFORM 1 FROM public.listings WHERE id = NEW.listing_id FOR UPDATE;
+    END IF;
+  ELSIF TG_OP = 'INSERT' THEN
+    PERFORM 1 FROM public.listings WHERE id = NEW.listing_id FOR UPDATE;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_lock_parent_listing_for_stay ON public.stays;
+CREATE TRIGGER trg_lock_parent_listing_for_stay
+  BEFORE INSERT OR UPDATE ON public.stays
+  FOR EACH ROW
+  EXECUTE FUNCTION public.lock_parent_listing_for_stay();
+
+ALTER FUNCTION public.lock_parent_listing_for_stay() OWNER TO postgres;
+REVOKE ALL ON FUNCTION public.lock_parent_listing_for_stay() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.lock_parent_listing_for_stay() TO postgres, authenticated;
+

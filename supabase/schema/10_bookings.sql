@@ -154,3 +154,72 @@ BEGIN
   RETURN jsonb_build_object('success', true);
 END;
 $$;
+
+-- Explicit Deterministic Dual Listing Locker
+CREATE OR REPLACE FUNCTION public.acquire_listing_locks_ordered(
+  p_listing_a uuid,
+  p_listing_b uuid
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_first uuid;
+  v_second uuid;
+BEGIN
+  IF p_listing_a IS NULL AND p_listing_b IS NULL THEN
+    RETURN;
+  ELSIF p_listing_a IS NULL THEN
+    PERFORM 1 FROM public.listings WHERE id = p_listing_b FOR UPDATE;
+    RETURN;
+  ELSIF p_listing_b IS NULL OR p_listing_a = p_listing_b THEN
+    PERFORM 1 FROM public.listings WHERE id = p_listing_a FOR UPDATE;
+    RETURN;
+  END IF;
+
+  v_first := LEAST(p_listing_a, p_listing_b);
+  v_second := GREATEST(p_listing_a, p_listing_b);
+
+  PERFORM 1 FROM public.listings WHERE id = v_first FOR UPDATE;
+  PERFORM 1 FROM public.listings WHERE id = v_second FOR UPDATE;
+END;
+$$;
+
+-- Bookings Lock Trigger
+CREATE OR REPLACE FUNCTION public.lock_parent_listing_for_booking()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  IF TG_OP = 'UPDATE' THEN
+    IF OLD.listing_id IS DISTINCT FROM NEW.listing_id THEN
+      PERFORM public.acquire_listing_locks_ordered(OLD.listing_id, NEW.listing_id);
+    ELSIF NEW.status IN ('pending', 'approved') AND OLD.status IS DISTINCT FROM NEW.status THEN
+      PERFORM 1 FROM public.listings WHERE id = NEW.listing_id FOR UPDATE;
+    END IF;
+  ELSIF TG_OP = 'INSERT' THEN
+    IF NEW.status IN ('pending', 'approved') THEN
+      PERFORM 1 FROM public.listings WHERE id = NEW.listing_id FOR UPDATE;
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_lock_parent_listing_for_booking ON public.bookings;
+CREATE TRIGGER trg_lock_parent_listing_for_booking
+  BEFORE INSERT OR UPDATE ON public.bookings
+  FOR EACH ROW
+  EXECUTE FUNCTION public.lock_parent_listing_for_booking();
+
+ALTER FUNCTION public.acquire_listing_locks_ordered(uuid, uuid) OWNER TO postgres;
+ALTER FUNCTION public.lock_parent_listing_for_booking() OWNER TO postgres;
+REVOKE ALL ON FUNCTION public.acquire_listing_locks_ordered(uuid, uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.lock_parent_listing_for_booking() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.acquire_listing_locks_ordered(uuid, uuid) TO postgres, authenticated;
+GRANT EXECUTE ON FUNCTION public.lock_parent_listing_for_booking() TO postgres, authenticated;
+

@@ -11,8 +11,8 @@ Contains:
 CREATE TABLE public.reviews (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     stay_id UUID REFERENCES public.stays(id) ON DELETE RESTRICT NOT NULL UNIQUE,
-    listing_id UUID REFERENCES public.listings(id) ON DELETE CASCADE NOT NULL,
-    guest_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+    listing_id UUID REFERENCES public.listings(id) ON DELETE RESTRICT NOT NULL,
+    guest_id UUID REFERENCES public.profiles(id) ON DELETE RESTRICT NOT NULL,
     rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
     comment TEXT CHECK (comment IS NULL OR char_length(comment) >= 10),
     host_reply TEXT,

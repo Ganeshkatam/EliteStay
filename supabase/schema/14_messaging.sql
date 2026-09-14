@@ -18,7 +18,7 @@ CREATE TABLE public.conversations (
     status public.conversation_status NOT NULL DEFAULT 'OPEN',
     listing_id UUID REFERENCES public.listings(id) ON DELETE CASCADE,
     booking_id UUID REFERENCES public.bookings(id) ON DELETE CASCADE,
-    stay_id UUID REFERENCES public.stays(id) ON DELETE CASCADE,
+    stay_id UUID REFERENCES public.stays(id) ON DELETE SET NULL,
     guest_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
     host_profile_id UUID REFERENCES public.host_profiles(id) ON DELETE CASCADE NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,

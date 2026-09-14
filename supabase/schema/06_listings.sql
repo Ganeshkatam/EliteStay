@@ -371,3 +371,78 @@ CREATE TRIGGER trg_update_city_listing_count
 AFTER INSERT OR UPDATE OR DELETE ON public.listings
 FOR EACH ROW EXECUTE FUNCTION public.update_city_listing_count();
 
+-- Prevent Protected Listing Deletion Guard
+CREATE OR REPLACE FUNCTION public.prevent_protected_listing_deletion()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  -- Priority 1: Active legal leases
+  IF EXISTS (
+    SELECT 1 FROM public.leases l
+    JOIN public.bookings b ON b.id = l.reservation_id
+    WHERE b.listing_id = OLD.id AND l.status IN ('PENDING_SIGNATURE', 'ACTIVE')
+  ) THEN
+    RAISE EXCEPTION 'Cannot delete listing %: an active legal lease contract is currently in effect. Active leases must be formally terminated or expired before deleting.', 
+      OLD.id
+      USING ERRCODE = '23503';
+  END IF;
+
+  -- Priority 2: Active resident stays
+  IF EXISTS (
+    SELECT 1 FROM public.stays
+    WHERE listing_id = OLD.id AND status IN ('upcoming', 'active', 'extended')
+  ) THEN
+    RAISE EXCEPTION 'Cannot delete listing %: an active resident stay is currently in progress. Stays must be checked out or completed before deleting.', 
+      OLD.id
+      USING ERRCODE = '23503';
+  END IF;
+
+  -- Priority 3: Active booking reservations
+  IF EXISTS (
+    SELECT 1 FROM public.bookings
+    WHERE listing_id = OLD.id AND status IN ('pending', 'approved')
+  ) THEN
+    RAISE EXCEPTION 'Cannot delete listing %: an active booking reservation exists. Active bookings must be completed, rejected, or cancelled before deleting.', 
+      OLD.id
+      USING ERRCODE = '23503';
+  END IF;
+
+  -- Priority 4: Any historical lease reference
+  IF EXISTS (
+    SELECT 1 FROM public.leases l
+    JOIN public.bookings b ON b.id = l.reservation_id
+    WHERE b.listing_id = OLD.id
+  ) THEN
+    RAISE EXCEPTION 'Cannot delete listing %: this property has been referenced by a legal lease contract. To retire this property, update status to ''archived'' to preserve statutory financial and tenancy audit history.', 
+      OLD.id
+      USING ERRCODE = '23503';
+  END IF;
+
+  -- Priority 5: Any stay record (unconditional residency history)
+  IF EXISTS (
+    SELECT 1 FROM public.stays
+    WHERE listing_id = OLD.id
+  ) THEN
+    RAISE EXCEPTION 'Cannot delete listing %: this property has resident stay history. Archive the listing instead.', 
+      OLD.id
+      USING ERRCODE = '23503';
+  END IF;
+
+  RETURN OLD;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_prevent_protected_listing_deletion ON public.listings;
+CREATE TRIGGER trg_prevent_protected_listing_deletion
+  BEFORE DELETE ON public.listings
+  FOR EACH ROW
+  EXECUTE FUNCTION public.prevent_protected_listing_deletion();
+
+ALTER FUNCTION public.prevent_protected_listing_deletion() OWNER TO postgres;
+REVOKE ALL ON FUNCTION public.prevent_protected_listing_deletion() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.prevent_protected_listing_deletion() TO postgres, authenticated;
+
+

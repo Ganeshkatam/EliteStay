@@ -300,3 +300,123 @@ CREATE TRIGGER tr_on_user_delete_cleanup
     BEFORE DELETE ON auth.users
     FOR EACH ROW
     EXECUTE PROCEDURE public.handle_user_delete_cleanup();
+
+-- User Privacy Anonymization Trigger
+CREATE OR REPLACE FUNCTION public.anonymize_user_applicant_profile()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM public.applicant_profiles WHERE guest_id = OLD.id) THEN
+    UPDATE public.applicant_profiles
+    SET 
+      employment_status = 'ANONYMIZED',
+      student_status = 'ANONYMIZED',
+      income_range = 'ANONYMIZED',
+      pet_information = NULL,
+      guarantor_information = NULL,
+      smoking_preference = NULL,
+      updated_at = NOW()
+    WHERE guest_id = OLD.id;
+  END IF;
+  RETURN OLD;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_anonymize_user_applicant_profile ON auth.users;
+CREATE TRIGGER trg_anonymize_user_applicant_profile
+  BEFORE DELETE ON auth.users
+  FOR EACH ROW
+  EXECUTE FUNCTION public.anonymize_user_applicant_profile();
+
+-- User Deletion Guard (Symmetric Tenant & Host Protection)
+CREATE OR REPLACE FUNCTION public.prevent_protected_user_deletion()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  -- Tenant Check 1: Active or historical lease contract
+  IF EXISTS (
+    SELECT 1 FROM public.leases
+    WHERE tenant_id = OLD.id
+  ) THEN
+    RAISE EXCEPTION 'Cannot delete user account %: user has active or historical lease contracts on record.',
+      OLD.id
+      USING ERRCODE = '23503';
+  END IF;
+
+  -- Tenant Check 2: Active or historical resident stay
+  IF EXISTS (
+    SELECT 1 FROM public.stays
+    WHERE guest_id = OLD.id
+  ) THEN
+    RAISE EXCEPTION 'Cannot delete user account %: user has active or historical resident stay records on file.',
+      OLD.id
+      USING ERRCODE = '23503';
+  END IF;
+
+  -- Tenant Check 3: Financial accounts
+  IF EXISTS (
+    SELECT 1 FROM public.accounts
+    WHERE tenant_id = OLD.id
+  ) THEN
+    RAISE EXCEPTION 'Cannot delete user account %: user has financial ledger accounts on record.',
+      OLD.id
+      USING ERRCODE = '23503';
+  END IF;
+
+  -- Host Check 1: Any property referenced by a lease
+  IF EXISTS (
+    SELECT 1 FROM public.listings l
+    JOIN public.bookings b ON b.listing_id = l.id
+    JOIN public.leases le ON le.reservation_id = b.id
+    WHERE l.host_id = OLD.id
+  ) THEN
+    RAISE EXCEPTION 'Cannot delete host account %: user owns properties referenced by legal lease contracts. Properties must be archived, not deleted.',
+      OLD.id
+      USING ERRCODE = '23503';
+  END IF;
+
+  -- Host Check 2: Any property referenced by a stay
+  IF EXISTS (
+    SELECT 1 FROM public.listings l
+    JOIN public.stays s ON s.listing_id = l.id
+    WHERE l.host_id = OLD.id
+  ) THEN
+    RAISE EXCEPTION 'Cannot delete host account %: user owns properties with resident stay records on file. Properties must be archived, not deleted.',
+      OLD.id
+      USING ERRCODE = '23503';
+  END IF;
+
+  -- Host Check 3: Active bookings
+  IF EXISTS (
+    SELECT 1 FROM public.listings l
+    JOIN public.bookings b ON b.listing_id = l.id
+    WHERE l.host_id = OLD.id AND b.status IN ('pending', 'approved')
+  ) THEN
+    RAISE EXCEPTION 'Cannot delete host account %: user owns properties with active booking reservations.',
+      OLD.id
+      USING ERRCODE = '23503';
+  END IF;
+
+  RETURN OLD;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_prevent_protected_user_deletion ON auth.users;
+CREATE TRIGGER trg_prevent_protected_user_deletion
+  BEFORE DELETE ON auth.users
+  FOR EACH ROW
+  EXECUTE FUNCTION public.prevent_protected_user_deletion();
+
+ALTER FUNCTION public.prevent_protected_user_deletion() OWNER TO postgres;
+ALTER FUNCTION public.anonymize_user_applicant_profile() OWNER TO postgres;
+REVOKE ALL ON FUNCTION public.prevent_protected_user_deletion() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.anonymize_user_applicant_profile() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.prevent_protected_user_deletion() TO postgres, authenticated;
+GRANT EXECUTE ON FUNCTION public.anonymize_user_applicant_profile() TO postgres, authenticated;
+

@@ -466,6 +466,126 @@ CREATE TRIGGER tr_on_user_delete_cleanup
     FOR EACH ROW
     EXECUTE PROCEDURE public.handle_user_delete_cleanup();
 
+-- User Privacy Anonymization Trigger
+CREATE OR REPLACE FUNCTION public.anonymize_user_applicant_profile()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM public.applicant_profiles WHERE guest_id = OLD.id) THEN
+    UPDATE public.applicant_profiles
+    SET 
+      employment_status = 'ANONYMIZED',
+      student_status = 'ANONYMIZED',
+      income_range = 'ANONYMIZED',
+      pet_information = NULL,
+      guarantor_information = NULL,
+      smoking_preference = NULL,
+      updated_at = NOW()
+    WHERE guest_id = OLD.id;
+  END IF;
+  RETURN OLD;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_anonymize_user_applicant_profile ON auth.users;
+CREATE TRIGGER trg_anonymize_user_applicant_profile
+  BEFORE DELETE ON auth.users
+  FOR EACH ROW
+  EXECUTE FUNCTION public.anonymize_user_applicant_profile();
+
+-- User Deletion Guard (Symmetric Tenant & Host Protection)
+CREATE OR REPLACE FUNCTION public.prevent_protected_user_deletion()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  -- Tenant Check 1: Active or historical lease contract
+  IF EXISTS (
+    SELECT 1 FROM public.leases
+    WHERE tenant_id = OLD.id
+  ) THEN
+    RAISE EXCEPTION 'Cannot delete user account %: user has active or historical lease contracts on record.',
+      OLD.id
+      USING ERRCODE = '23503';
+  END IF;
+
+  -- Tenant Check 2: Active or historical resident stay
+  IF EXISTS (
+    SELECT 1 FROM public.stays
+    WHERE guest_id = OLD.id
+  ) THEN
+    RAISE EXCEPTION 'Cannot delete user account %: user has active or historical resident stay records on file.',
+      OLD.id
+      USING ERRCODE = '23503';
+  END IF;
+
+  -- Tenant Check 3: Financial accounts
+  IF EXISTS (
+    SELECT 1 FROM public.accounts
+    WHERE tenant_id = OLD.id
+  ) THEN
+    RAISE EXCEPTION 'Cannot delete user account %: user has financial ledger accounts on record.',
+      OLD.id
+      USING ERRCODE = '23503';
+  END IF;
+
+  -- Host Check 1: Any property referenced by a lease
+  IF EXISTS (
+    SELECT 1 FROM public.listings l
+    JOIN public.bookings b ON b.listing_id = l.id
+    JOIN public.leases le ON le.reservation_id = b.id
+    WHERE l.host_id = OLD.id
+  ) THEN
+    RAISE EXCEPTION 'Cannot delete host account %: user owns properties referenced by legal lease contracts. Properties must be archived, not deleted.',
+      OLD.id
+      USING ERRCODE = '23503';
+  END IF;
+
+  -- Host Check 2: Any property referenced by a stay
+  IF EXISTS (
+    SELECT 1 FROM public.listings l
+    JOIN public.stays s ON s.listing_id = l.id
+    WHERE l.host_id = OLD.id
+  ) THEN
+    RAISE EXCEPTION 'Cannot delete host account %: user owns properties with resident stay records on file. Properties must be archived, not deleted.',
+      OLD.id
+      USING ERRCODE = '23503';
+  END IF;
+
+  -- Host Check 3: Active bookings
+  IF EXISTS (
+    SELECT 1 FROM public.listings l
+    JOIN public.bookings b ON b.listing_id = l.id
+    WHERE l.host_id = OLD.id AND b.status IN ('pending', 'approved')
+  ) THEN
+    RAISE EXCEPTION 'Cannot delete host account %: user owns properties with active booking reservations.',
+      OLD.id
+      USING ERRCODE = '23503';
+  END IF;
+
+  RETURN OLD;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_prevent_protected_user_deletion ON auth.users;
+CREATE TRIGGER trg_prevent_protected_user_deletion
+  BEFORE DELETE ON auth.users
+  FOR EACH ROW
+  EXECUTE FUNCTION public.prevent_protected_user_deletion();
+
+ALTER FUNCTION public.prevent_protected_user_deletion() OWNER TO postgres;
+ALTER FUNCTION public.anonymize_user_applicant_profile() OWNER TO postgres;
+REVOKE ALL ON FUNCTION public.prevent_protected_user_deletion() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.anonymize_user_applicant_profile() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.prevent_protected_user_deletion() TO postgres, authenticated;
+GRANT EXECUTE ON FUNCTION public.anonymize_user_applicant_profile() TO postgres, authenticated;
+
+
 
 -- SOURCE: 04_geography.sql
 /*
@@ -1132,6 +1252,81 @@ CREATE TRIGGER trg_update_city_listing_count
 AFTER INSERT OR UPDATE OR DELETE ON public.listings
 FOR EACH ROW EXECUTE FUNCTION public.update_city_listing_count();
 
+-- Prevent Protected Listing Deletion Guard
+CREATE OR REPLACE FUNCTION public.prevent_protected_listing_deletion()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  -- Priority 1: Active legal leases
+  IF EXISTS (
+    SELECT 1 FROM public.leases l
+    JOIN public.bookings b ON b.id = l.reservation_id
+    WHERE b.listing_id = OLD.id AND l.status IN ('PENDING_SIGNATURE', 'ACTIVE')
+  ) THEN
+    RAISE EXCEPTION 'Cannot delete listing %: an active legal lease contract is currently in effect. Active leases must be formally terminated or expired before deleting.', 
+      OLD.id
+      USING ERRCODE = '23503';
+  END IF;
+
+  -- Priority 2: Active resident stays
+  IF EXISTS (
+    SELECT 1 FROM public.stays
+    WHERE listing_id = OLD.id AND status IN ('upcoming', 'active', 'extended')
+  ) THEN
+    RAISE EXCEPTION 'Cannot delete listing %: an active resident stay is currently in progress. Stays must be checked out or completed before deleting.', 
+      OLD.id
+      USING ERRCODE = '23503';
+  END IF;
+
+  -- Priority 3: Active booking reservations
+  IF EXISTS (
+    SELECT 1 FROM public.bookings
+    WHERE listing_id = OLD.id AND status IN ('pending', 'approved')
+  ) THEN
+    RAISE EXCEPTION 'Cannot delete listing %: an active booking reservation exists. Active bookings must be completed, rejected, or cancelled before deleting.', 
+      OLD.id
+      USING ERRCODE = '23503';
+  END IF;
+
+  -- Priority 4: Any historical lease reference
+  IF EXISTS (
+    SELECT 1 FROM public.leases l
+    JOIN public.bookings b ON b.id = l.reservation_id
+    WHERE b.listing_id = OLD.id
+  ) THEN
+    RAISE EXCEPTION 'Cannot delete listing %: this property has been referenced by a legal lease contract. To retire this property, update status to ''archived'' to preserve statutory financial and tenancy audit history.', 
+      OLD.id
+      USING ERRCODE = '23503';
+  END IF;
+
+  -- Priority 5: Any stay record (unconditional residency history)
+  IF EXISTS (
+    SELECT 1 FROM public.stays
+    WHERE listing_id = OLD.id
+  ) THEN
+    RAISE EXCEPTION 'Cannot delete listing %: this property has resident stay history. Archive the listing instead.', 
+      OLD.id
+      USING ERRCODE = '23503';
+  END IF;
+
+  RETURN OLD;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_prevent_protected_listing_deletion ON public.listings;
+CREATE TRIGGER trg_prevent_protected_listing_deletion
+  BEFORE DELETE ON public.listings
+  FOR EACH ROW
+  EXECUTE FUNCTION public.prevent_protected_listing_deletion();
+
+ALTER FUNCTION public.prevent_protected_listing_deletion() OWNER TO postgres;
+REVOKE ALL ON FUNCTION public.prevent_protected_listing_deletion() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.prevent_protected_listing_deletion() TO postgres, authenticated;
+
+
 
 
 -- SOURCE: 07_listing_images.sql
@@ -1435,6 +1630,75 @@ BEGIN
 END;
 $$;
 
+-- Explicit Deterministic Dual Listing Locker
+CREATE OR REPLACE FUNCTION public.acquire_listing_locks_ordered(
+  p_listing_a uuid,
+  p_listing_b uuid
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_first uuid;
+  v_second uuid;
+BEGIN
+  IF p_listing_a IS NULL AND p_listing_b IS NULL THEN
+    RETURN;
+  ELSIF p_listing_a IS NULL THEN
+    PERFORM 1 FROM public.listings WHERE id = p_listing_b FOR UPDATE;
+    RETURN;
+  ELSIF p_listing_b IS NULL OR p_listing_a = p_listing_b THEN
+    PERFORM 1 FROM public.listings WHERE id = p_listing_a FOR UPDATE;
+    RETURN;
+  END IF;
+
+  v_first := LEAST(p_listing_a, p_listing_b);
+  v_second := GREATEST(p_listing_a, p_listing_b);
+
+  PERFORM 1 FROM public.listings WHERE id = v_first FOR UPDATE;
+  PERFORM 1 FROM public.listings WHERE id = v_second FOR UPDATE;
+END;
+$$;
+
+-- Bookings Lock Trigger
+CREATE OR REPLACE FUNCTION public.lock_parent_listing_for_booking()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  IF TG_OP = 'UPDATE' THEN
+    IF OLD.listing_id IS DISTINCT FROM NEW.listing_id THEN
+      PERFORM public.acquire_listing_locks_ordered(OLD.listing_id, NEW.listing_id);
+    ELSIF NEW.status IN ('pending', 'approved') AND OLD.status IS DISTINCT FROM NEW.status THEN
+      PERFORM 1 FROM public.listings WHERE id = NEW.listing_id FOR UPDATE;
+    END IF;
+  ELSIF TG_OP = 'INSERT' THEN
+    IF NEW.status IN ('pending', 'approved') THEN
+      PERFORM 1 FROM public.listings WHERE id = NEW.listing_id FOR UPDATE;
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_lock_parent_listing_for_booking ON public.bookings;
+CREATE TRIGGER trg_lock_parent_listing_for_booking
+  BEFORE INSERT OR UPDATE ON public.bookings
+  FOR EACH ROW
+  EXECUTE FUNCTION public.lock_parent_listing_for_booking();
+
+ALTER FUNCTION public.acquire_listing_locks_ordered(uuid, uuid) OWNER TO postgres;
+ALTER FUNCTION public.lock_parent_listing_for_booking() OWNER TO postgres;
+REVOKE ALL ON FUNCTION public.acquire_listing_locks_ordered(uuid, uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.lock_parent_listing_for_booking() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.acquire_listing_locks_ordered(uuid, uuid) TO postgres, authenticated;
+GRANT EXECUTE ON FUNCTION public.lock_parent_listing_for_booking() TO postgres, authenticated;
+
+
 
 -- SOURCE: 11_stays.sql
 /*
@@ -1451,8 +1715,8 @@ Contains:
 
 CREATE TABLE public.stays (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    listing_id UUID REFERENCES public.listings(id) ON DELETE CASCADE NOT NULL,
-    guest_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+    listing_id UUID REFERENCES public.listings(id) ON DELETE RESTRICT NOT NULL,
+    guest_id UUID REFERENCES public.profiles(id) ON DELETE RESTRICT NOT NULL,
     created_from_booking_id UUID REFERENCES public.bookings(id) ON DELETE SET NULL,
     created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
     expected_move_in_date DATE NOT NULL,
@@ -1474,7 +1738,7 @@ CREATE INDEX IF NOT EXISTS idx_stays_listing_status ON public.stays(listing_id, 
 
 CREATE TABLE public.stay_events (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    stay_id UUID NOT NULL REFERENCES public.stays(id) ON DELETE CASCADE,
+    stay_id UUID NOT NULL REFERENCES public.stays(id) ON DELETE RESTRICT,
     actor_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
     action TEXT NOT NULL,
     previous_status public.stay_status,
@@ -1581,6 +1845,38 @@ BEGIN
 END;
 $$;
 
+-- Stays Lock Trigger
+CREATE OR REPLACE FUNCTION public.lock_parent_listing_for_stay()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  IF TG_OP = 'UPDATE' THEN
+    IF OLD.listing_id IS DISTINCT FROM NEW.listing_id THEN
+      PERFORM public.acquire_listing_locks_ordered(OLD.listing_id, NEW.listing_id);
+    ELSIF NEW.status IN ('upcoming', 'active', 'extended') AND OLD.status IS DISTINCT FROM NEW.status THEN
+      PERFORM 1 FROM public.listings WHERE id = NEW.listing_id FOR UPDATE;
+    END IF;
+  ELSIF TG_OP = 'INSERT' THEN
+    PERFORM 1 FROM public.listings WHERE id = NEW.listing_id FOR UPDATE;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_lock_parent_listing_for_stay ON public.stays;
+CREATE TRIGGER trg_lock_parent_listing_for_stay
+  BEFORE INSERT OR UPDATE ON public.stays
+  FOR EACH ROW
+  EXECUTE FUNCTION public.lock_parent_listing_for_stay();
+
+ALTER FUNCTION public.lock_parent_listing_for_stay() OWNER TO postgres;
+REVOKE ALL ON FUNCTION public.lock_parent_listing_for_stay() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.lock_parent_listing_for_stay() TO postgres, authenticated;
+
+
 
 -- SOURCE: 12_reviews.sql
 /*
@@ -1596,8 +1892,8 @@ Contains:
 CREATE TABLE public.reviews (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     stay_id UUID REFERENCES public.stays(id) ON DELETE RESTRICT NOT NULL UNIQUE,
-    listing_id UUID REFERENCES public.listings(id) ON DELETE CASCADE NOT NULL,
-    guest_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+    listing_id UUID REFERENCES public.listings(id) ON DELETE RESTRICT NOT NULL,
+    guest_id UUID REFERENCES public.profiles(id) ON DELETE RESTRICT NOT NULL,
     rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
     comment TEXT CHECK (comment IS NULL OR char_length(comment) >= 10),
     host_reply TEXT,
@@ -1709,7 +2005,7 @@ CREATE TABLE public.conversations (
     status public.conversation_status NOT NULL DEFAULT 'OPEN',
     listing_id UUID REFERENCES public.listings(id) ON DELETE CASCADE,
     booking_id UUID REFERENCES public.bookings(id) ON DELETE CASCADE,
-    stay_id UUID REFERENCES public.stays(id) ON DELETE CASCADE,
+    stay_id UUID REFERENCES public.stays(id) ON DELETE SET NULL,
     guest_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
     host_profile_id UUID REFERENCES public.host_profiles(id) ON DELETE CASCADE NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
