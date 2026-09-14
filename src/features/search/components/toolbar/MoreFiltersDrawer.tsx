@@ -230,8 +230,8 @@ export function MoreFiltersDrawer() {
       {/* overlayClassName="bg-transparent" ensures the background is NOT dimmed.
           Reduced max-h and adjusted top position to stay clear of the top header. */}
       <DialogContent
-        overlayClassName="bg-transparent"
-        className="sm:max-w-xl max-h-[62vh] top-[56%] p-0 flex flex-col gap-0 overflow-hidden sm:rounded-2xl border border-gray-200 shadow-2xl bg-white z-50"
+        overlayClassName="bg-black/20 backdrop-blur-xs"
+        className="max-sm:fixed max-sm:bottom-0 max-sm:top-auto max-sm:left-0 max-sm:right-0 max-sm:translate-x-0 max-sm:translate-y-0 max-sm:w-full max-sm:max-w-none max-sm:max-h-[85vh] max-sm:rounded-t-3xl max-sm:rounded-b-none sm:max-w-xl sm:max-h-[65vh] sm:top-[56%] p-0 flex flex-col gap-0 overflow-hidden sm:rounded-2xl border border-gray-200 shadow-2xl bg-white z-50"
       >
         <DialogHeader className="p-5 border-b border-gray-100 text-center relative sm:text-center">
           <DialogTitle className="text-base font-bold text-gray-900">

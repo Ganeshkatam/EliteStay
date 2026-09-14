@@ -182,7 +182,7 @@ export function GuestNavigationBar({
         />
 
         <div className="relative z-10 h-full flex flex-col justify-between">
-          <Container className="flex h-[76px] items-center justify-between gap-4 relative py-0 px-4 md:px-8 xl:px-12 max-w-[1800px]">
+          <Container className="flex h-[76px] items-center justify-between gap-2 sm:gap-4 relative py-0 px-3 sm:px-6 md:px-8 xl:px-12 max-w-[1800px]">
             <TopBar
               variant={variant}
               user={user}
@@ -197,7 +197,7 @@ export function GuestNavigationBar({
           {isSearchRoute && (
             <SearchProvider viewModel={dummyViewModel}>
               <div className="h-16 flex items-center border-t border-gray-100/80 w-full">
-                <Container className="h-full flex items-center py-0 px-4 md:px-8 xl:px-12 max-w-[1800px]">
+                <Container className="h-full flex items-center py-0 px-3 sm:px-6 md:px-8 xl:px-12 max-w-[1800px]">
                   <div className="w-full overflow-x-auto no-scrollbar">
                     <ToolbarRenderer />
                   </div>

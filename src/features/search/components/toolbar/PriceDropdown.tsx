@@ -62,7 +62,8 @@ export function PriceDropdown() {
       </PopoverTrigger>
       <PopoverContent
         align="start"
-        className="w-96 p-5 rounded-3xl bg-white shadow-xl border border-gray-100/80 z-50 focus:outline-none"
+        collisionPadding={16}
+        className="w-[calc(100vw-32px)] sm:w-96 max-w-[384px] p-4 sm:p-5 rounded-3xl bg-white shadow-xl border border-gray-100/80 z-50 focus:outline-none"
       >
         {open && (
           <PriceDropdownContent

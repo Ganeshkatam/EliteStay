@@ -19,7 +19,7 @@ export function SearchLayout({ viewMode, children }: SearchLayoutProps) {
 
   if (viewMode === SearchViewMode.LIST) {
     return (
-      <div className="w-full max-w-[1800px] mx-auto px-4 sm:px-6 md:px-8 xl:px-12 py-6 h-full overflow-y-auto">
+      <div className="w-full max-w-[1800px] mx-auto px-3 sm:px-6 md:px-8 xl:px-12 py-3 sm:py-6 h-full overflow-y-auto">
         {resultsPane}
       </div>
     );
@@ -33,7 +33,7 @@ export function SearchLayout({ viewMode, children }: SearchLayoutProps) {
           {mapPane}
         </div>
         {/* Fallback to full listings grid on viewports < 1000px */}
-        <div className="flex min-[1000px]:hidden w-full max-w-[1800px] mx-auto px-4 sm:px-6 md:px-8 xl:px-12 py-6 h-full overflow-y-auto">
+        <div className="flex min-[1000px]:hidden w-full max-w-[1800px] mx-auto px-3 sm:px-6 md:px-8 xl:px-12 py-3 sm:py-6 h-full overflow-y-auto">
           {resultsPane}
         </div>
       </>
@@ -43,7 +43,7 @@ export function SearchLayout({ viewMode, children }: SearchLayoutProps) {
   // SPLIT Mode
   return (
     <div
-      className="w-full h-full flex flex-col min-[1000px]:flex-row items-stretch px-4 sm:px-6 md:px-8 xl:px-12 py-6 overflow-hidden"
+      className="w-full h-full flex flex-col min-[1000px]:flex-row items-stretch px-3 sm:px-6 md:px-8 xl:px-12 py-3 sm:py-6 overflow-hidden"
       style={{ gap: SPACING.SEARCH_LAYOUT.panelPadding }}
     >
       {/* Results Pane: 100% on < 1000px, ~60% on >= 1000px */}

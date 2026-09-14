@@ -28,8 +28,9 @@ export function SearchShell({ variant, children, onClick }: SearchShellProps) {
         'search-container relative mx-auto bg-white rounded-full shadow-[0_1px_2px_rgba(0,0,0,0.08),0_4px_12px_rgba(0,0,0,0.05)] border border-gray-200 z-50 flex items-center cursor-pointer md:cursor-default motion-layout ease-premium',
         variant === 'hero'
           ? 'search-shell-width h-[80px] shadow-[0_4px_24px_rgba(0,0,0,0.06)]'
-          : 'w-[460px] h-[48px]',
-        variant === 'minimal' && 'w-[500px] h-[48px] shadow-sm hover:shadow-md'
+          : 'w-full max-w-[460px] min-w-0 h-[48px]',
+        variant === 'minimal' &&
+          'w-full max-w-[500px] min-w-0 h-[48px] shadow-sm hover:shadow-md'
       )}
     >
       <div

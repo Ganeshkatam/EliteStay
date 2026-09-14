@@ -14,7 +14,7 @@ export function ResultsPane() {
   return (
     <div className="flex flex-col w-full h-full min-h-0">
       {/* Fixed top header & actions bar: stays fixed while results scroll underneath */}
-      <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-gray-100 bg-white z-10">
+      <div className="shrink-0 flex flex-row items-center justify-between gap-2 pb-3 pt-1 border-b border-gray-100 bg-white z-10">
         <ResultsHeader summary={summary} />
         <ResultsActions />
       </div>

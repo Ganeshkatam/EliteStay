@@ -96,13 +96,13 @@ export function GlobalSearch({
           {/* Compact Summary Panel */}
           <div
             className={cn(
-              'absolute inset-y-0 left-0 right-0 flex items-center justify-start pl-6 pr-14 motion-opacity motion-transform ease-premium',
+              'absolute inset-y-0 left-0 right-0 flex items-center justify-start pl-3.5 pr-11 sm:pl-6 sm:pr-14 motion-opacity motion-transform ease-premium',
               isCompact
                 ? 'opacity-100 scale-100 pointer-events-auto'
                 : 'opacity-0 scale-95 pointer-events-none'
             )}
           >
-            <div className="flex items-center gap-4 text-sm font-semibold text-gray-800 truncate">
+            <div className="flex items-center gap-2 sm:gap-4 text-xs sm:text-sm font-semibold text-gray-800 truncate">
               {/* Location (always visible) */}
               <span className="text-gray-900">{citySummary}</span>
 
