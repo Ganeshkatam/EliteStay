@@ -82,11 +82,11 @@ export async function uploadAvatar(
     };
   }
 
-  if (file.size > 3 * 1024 * 1024) {
+  if (file.size > 1 * 1024 * 1024) {
     return {
       error: {
         code: 'validation_error',
-        message: 'File size must be less than 3MB',
+        message: 'File size must be less than 1MB',
       },
     };
   }

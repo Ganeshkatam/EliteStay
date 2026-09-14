@@ -39,8 +39,8 @@ export function AvatarUploader({ currentPath, fullName }: AvatarUploaderProps) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 3 * 1024 * 1024) {
-      setError('File size must be less than 3MB');
+    if (file.size > 1 * 1024 * 1024) {
+      setError('File size must be less than 1MB');
       return;
     }
 
@@ -112,7 +112,7 @@ export function AvatarUploader({ currentPath, fullName }: AvatarUploaderProps) {
           />
         </div>
         <p className="text-xs text-muted-foreground">
-          JPG, PNG or WebP. Max size 3MB.
+          JPG, PNG or WebP. Max size 1MB.
         </p>
         {error && <p className="text-sm text-destructive">{error}</p>}
       </div>
