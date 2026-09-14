@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 interface ImageGalleryProps {
   images: Array<{ url: string; displayOrder: number }>;
@@ -9,6 +9,8 @@ interface ImageGalleryProps {
 
 export function ImageGallery({ images }: ImageGalleryProps) {
   const [showAll, setShowAll] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const mobileCarouselRef = useRef<HTMLDivElement>(null);
 
   if (!images || images.length === 0) {
     return (
@@ -61,6 +63,19 @@ export function ImageGallery({ images }: ImageGalleryProps) {
       {/* Mobile Swipe Carousel */}
       <div className="md:hidden relative w-full overflow-hidden rounded-2xl bg-gray-200">
         <div
+          ref={mobileCarouselRef}
+          onScroll={(event) => {
+            const target = event.currentTarget;
+            const width = target.clientWidth;
+            if (width > 0) {
+              setActiveIndex(
+                Math.min(
+                  images.length - 1,
+                  Math.max(0, Math.round(target.scrollLeft / width))
+                )
+              );
+            }
+          }}
           className="flex w-full snap-x snap-mandatory overflow-x-auto overscroll-x-contain scroll-smooth scrollbar-hide"
           aria-label="Listing photo gallery"
         >
@@ -84,7 +99,7 @@ export function ImageGallery({ images }: ImageGalleryProps) {
           ))}
         </div>
         <div className="pointer-events-none absolute bottom-3 right-3 rounded-full bg-black/60 px-3 py-1 text-xs font-semibold text-white backdrop-blur-sm">
-          {images.length} {images.length === 1 ? 'photo' : 'photos'}
+          {activeIndex + 1} / {images.length}
         </div>
         {images.length > 1 && (
           <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-black/45 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur-sm">
