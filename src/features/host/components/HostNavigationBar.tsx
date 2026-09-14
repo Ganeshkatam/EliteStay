@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -73,13 +74,13 @@ export function HostNavigationBar({ user, profile }: HostNavigationBarProps) {
 
                   return (
                     <SheetClose asChild key={item.name}>
-                      <a
+                      <Link
                         href={item.href}
                         className={`flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors ${isActive ? 'bg-slate-100 text-slate-900' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
                       >
                         <item.icon className={`h-5 w-5 shrink-0 ${isActive ? 'text-slate-900' : 'text-slate-400'}`} aria-hidden="true" />
                         {item.name}
-                      </a>
+                      </Link>
                     </SheetClose>
                   );
                 })}
