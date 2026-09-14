@@ -19,7 +19,7 @@ export function SearchLayout({ viewMode, children }: SearchLayoutProps) {
 
   if (viewMode === SearchViewMode.LIST) {
     return (
-      <div className="w-full max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8 h-full overflow-y-auto">
+      <div className="w-full max-w-[1800px] mx-auto px-4 sm:px-6 md:px-8 xl:px-12 py-6 h-full overflow-y-auto">
         {resultsPane}
       </div>
     );

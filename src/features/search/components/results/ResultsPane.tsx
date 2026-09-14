@@ -21,7 +21,9 @@ export function ResultsPane() {
 
       {/* Independent scrollable results container: ONLY the results move */}
       <div
-        className="flex-1 overflow-y-auto pt-4 no-scrollbar pr-1"
+        className={`flex-1 overflow-y-auto pt-4 no-scrollbar pr-1 flex flex-col ${
+          results.listings.length === 0 ? 'justify-center items-center' : ''
+        }`}
         style={{
           display: 'flex',
           flexDirection: 'column',
