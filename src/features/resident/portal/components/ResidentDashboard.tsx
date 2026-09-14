@@ -20,7 +20,7 @@ interface Props {
 export function ResidentDashboard({ viewModel }: Props) {
   if (!viewModel.lease) {
     return (
-      <div className="bg-white rounded-lg shadow p-12 text-center max-w-3xl mx-auto mt-10">
+      <div className="mx-auto mt-4 max-w-3xl rounded-lg bg-white p-6 text-center shadow sm:mt-10 sm:p-12">
         <Home className="mx-auto h-12 w-12 text-gray-400" />
         <h3 className="mt-2 text-lg font-medium text-gray-900">
           No Active Tenancy
@@ -43,15 +43,15 @@ export function ResidentDashboard({ viewModel }: Props) {
     <div className="space-y-6">
       {/* Header */}
       <div className="bg-white shadow sm:rounded-lg overflow-hidden border-t-4 border-indigo-600">
-        <div className="px-4 py-5 sm:p-6 flex items-center">
+        <div className="flex items-start px-4 py-5 sm:items-center sm:p-6">
           <div className="flex-shrink-0 bg-indigo-100 rounded-full p-3">
             <Key className="h-6 w-6 text-indigo-600" />
           </div>
-          <div className="ml-4">
-            <h2 className="text-xl font-bold text-gray-900">
+          <div className="ml-3 min-w-0 sm:ml-4">
+            <h2 className="text-lg font-bold text-gray-900 sm:text-xl">
               {viewModel.property?.title || 'Your Tenancy'}
             </h2>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm leading-5 text-gray-500">
               {viewModel.property?.address} • Hosted by{' '}
               {viewModel.property?.hostName}
             </p>
@@ -59,7 +59,7 @@ export function ResidentDashboard({ viewModel }: Props) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-3">
         {/* Main Column - Lease & Property Info */}
         <div className="md:col-span-2 space-y-6">
           <CurrentLeaseWidget lease={viewModel.lease} />
