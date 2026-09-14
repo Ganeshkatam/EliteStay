@@ -1,9 +1,15 @@
 'use client';
 
-import React, { useTransition } from 'react';
+import React, { useState, useTransition } from 'react';
 import { ResidentViewModel } from '../../api/resident-view-model.types';
 import { signLeaseAction } from '../../actions/resident-lease.actions';
-import { FileSignature, Calendar, DollarSign, CheckCircle } from 'lucide-react';
+import {
+  FileSignature,
+  Calendar,
+  DollarSign,
+  CheckCircle,
+  AlertCircle,
+} from 'lucide-react';
 
 interface Props {
   lease: NonNullable<ResidentViewModel['lease']>;
@@ -11,14 +17,25 @@ interface Props {
 
 export function CurrentLeaseWidget({ lease }: Props) {
   const [isPending, startTransition] = useTransition();
+  const [statusMessage, setStatusMessage] = useState<{
+    type: 'success' | 'error';
+    text: string;
+  } | null>(null);
 
   const handleSign = () => {
+    setStatusMessage(null);
     startTransition(async () => {
       const result = await signLeaseAction(lease.id);
       if (result.success) {
-        alert('Lease successfully signed!');
+        setStatusMessage({
+          type: 'success',
+          text: 'Lease successfully signed! You can now proceed to security deposit payment.',
+        });
       } else {
-        alert('Failed to sign lease.');
+        setStatusMessage({
+          type: 'error',
+          text: 'Failed to sign lease. Please try again or contact support.',
+        });
       }
     });
   };
@@ -32,6 +49,23 @@ export function CurrentLeaseWidget({ lease }: Props) {
         </h3>
       </div>
       <div className="px-4 py-5 sm:p-6">
+        {statusMessage && (
+          <div
+            role="status"
+            className={`mb-6 flex items-start gap-3 rounded-xl p-4 text-sm font-medium ${
+              statusMessage.type === 'success'
+                ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                : 'bg-rose-50 text-rose-800 border border-rose-200'
+            }`}
+          >
+            {statusMessage.type === 'success' ? (
+              <CheckCircle className="h-5 w-5 shrink-0 text-emerald-600 mt-0.5" />
+            ) : (
+              <AlertCircle className="h-5 w-5 shrink-0 text-rose-600 mt-0.5" />
+            )}
+            <p className="flex-1 leading-snug">{statusMessage.text}</p>
+          </div>
+        )}
         <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="flex items-center">
             <Calendar className="h-5 w-5 text-gray-400 mr-2" />

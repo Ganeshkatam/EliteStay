@@ -12,7 +12,7 @@ import {
   SheetTrigger,
   SheetClose,
 } from '@/components/ui/sheet';
-import { HOST_NAVIGATION } from './HostSidebar';
+import { HOST_NAVIGATION, getHostRouteTitle } from '../config/navigation';
 import { Logo } from '@/features/guest/discovery/shared/components/navigation/Logo';
 import { UserMenu } from '@/features/guest/discovery/shared/components/navigation/UserMenu';
 import { HostToggle } from '@/features/guest/discovery/shared/components/navigation/HostToggle';
@@ -26,26 +26,7 @@ interface HostNavigationBarProps {
 
 export function HostNavigationBar({ user, profile }: HostNavigationBarProps) {
   const pathname = usePathname();
-
-  let headerTitle = 'Host Workspace';
-
-  if (pathname.startsWith('/host/start')) {
-    headerTitle = 'Host Programs';
-  } else if (pathname.startsWith('/host/onboarding')) {
-    headerTitle = 'Host Onboarding';
-  } else if (pathname.startsWith('/host/profile')) {
-    headerTitle = 'Host Profile';
-  } else if (pathname.startsWith('/host/listings')) {
-    headerTitle = 'Listings';
-  } else if (pathname.startsWith('/host/calendar')) {
-    headerTitle = 'Calendar';
-  } else if (pathname.startsWith('/host/bookings')) {
-    headerTitle = 'Bookings';
-  } else if (pathname.startsWith('/host/stays')) {
-    headerTitle = 'Stays';
-  } else if (pathname === '/host') {
-    headerTitle = 'Dashboard';
-  }
+  const headerTitle = getHostRouteTitle(pathname);
 
   return (
     <header className="sticky top-0 z-50 w-full bg-white border-b border-slate-200">
@@ -66,7 +47,10 @@ export function HostNavigationBar({ user, profile }: HostNavigationBarProps) {
               <SheetHeader className="border-b px-5 py-5 text-left">
                 <SheetTitle>Host Workspace</SheetTitle>
               </SheetHeader>
-              <nav className="flex flex-col gap-1 p-3" aria-label="Host workspace navigation">
+              <nav
+                className="flex flex-col gap-1 p-3"
+                aria-label="Host workspace navigation"
+              >
                 {HOST_NAVIGATION.map((item) => {
                   const isActive =
                     pathname === item.href ||
@@ -78,7 +62,10 @@ export function HostNavigationBar({ user, profile }: HostNavigationBarProps) {
                         href={item.href}
                         className={`flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors ${isActive ? 'bg-slate-100 text-slate-900' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
                       >
-                        <item.icon className={`h-5 w-5 shrink-0 ${isActive ? 'text-slate-900' : 'text-slate-400'}`} aria-hidden="true" />
+                        <item.icon
+                          className={`h-5 w-5 shrink-0 ${isActive ? 'text-slate-900' : 'text-slate-400'}`}
+                          aria-hidden="true"
+                        />
                         {item.name}
                       </Link>
                     </SheetClose>

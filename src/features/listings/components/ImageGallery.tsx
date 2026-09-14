@@ -1,7 +1,9 @@
 'use client';
 
 import Image from 'next/image';
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect, useCallback } from 'react';
+import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface ImageGalleryProps {
   images: Array<{ url: string; displayOrder: number }>;
@@ -10,7 +12,44 @@ interface ImageGalleryProps {
 export function ImageGallery({ images }: ImageGalleryProps) {
   const [showAll, setShowAll] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [modalIndex, setModalIndex] = useState(0);
   const mobileCarouselRef = useRef<HTMLDivElement>(null);
+
+  const openModal = useCallback((index: number) => {
+    setModalIndex(index);
+    setShowAll(true);
+  }, []);
+
+  const goToPrev = useCallback(() => {
+    setModalIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1));
+  }, [images.length]);
+
+  const goToNext = useCallback(() => {
+    setModalIndex((prev) => (prev < images.length - 1 ? prev + 1 : 0));
+  }, [images.length]);
+
+  useEffect(() => {
+    if (!showAll) return;
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowAll(false);
+      } else if (e.key === 'ArrowLeft') {
+        goToPrev();
+      } else if (e.key === 'ArrowRight') {
+        goToNext();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [showAll, goToPrev, goToNext]);
 
   if (!images || images.length === 0) {
     return (
@@ -83,7 +122,7 @@ export function ImageGallery({ images }: ImageGalleryProps) {
             <button
               key={idx}
               type="button"
-              onClick={() => setShowAll(true)}
+              onClick={() => openModal(idx)}
               className="relative min-w-full shrink-0 snap-center aspect-[4/3] text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-inset"
               aria-label={`Open listing photo ${idx + 1} of ${images.length}`}
             >
@@ -131,45 +170,88 @@ export function ImageGallery({ images }: ImageGalleryProps) {
         </button>
       )}
 
-      {/* Fullscreen Modal (Placeholder implementation) */}
+      {/* Fullscreen Photo Viewer Modal */}
       {showAll && (
-        <div className="fixed inset-0 z-50 bg-white overflow-y-auto flex flex-col">
-          <div className="sticky top-0 p-4 bg-white/80 backdrop-blur-md flex justify-start border-b z-10">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Listing photo gallery viewer"
+          className="fixed inset-0 z-50 flex flex-col bg-black/95 text-white"
+        >
+          {/* Header Bar */}
+          <div className="flex h-16 shrink-0 items-center justify-between border-b border-white/10 px-4 sm:px-6">
+            <span className="text-sm font-semibold text-slate-200">
+              {modalIndex + 1} / {images.length}
+            </span>
             <button
               onClick={() => setShowAll(false)}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full text-slate-300 hover:bg-white/10 hover:text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              aria-label="Close photo viewer"
             >
-              <svg
-                className="w-6 h-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
+              <X className="h-6 w-6" />
             </button>
           </div>
-          <div className="p-4 max-w-4xl mx-auto w-full flex flex-col gap-4">
-            {images.map((img, idx) => (
-              <div
-                key={idx}
-                className="relative w-full aspect-[3/2] bg-gray-100 rounded-lg overflow-hidden"
+
+          {/* Viewer Stage */}
+          <div className="relative flex flex-1 items-center justify-center p-4">
+            {images.length > 1 && (
+              <button
+                onClick={goToPrev}
+                className="absolute left-4 z-10 inline-flex min-h-11 min-w-11 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/80 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                aria-label="Previous photo"
               >
-                <Image
-                  src={img.url}
-                  alt={`Gallery image ${idx + 1}`}
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 1024px) 100vw, 1024px"
-                />
-              </div>
-            ))}
+                <ChevronLeft className="h-6 w-6" />
+              </button>
+            )}
+
+            <div className="relative h-full w-full max-w-5xl">
+              <Image
+                src={images[modalIndex].url}
+                alt={`Photo ${modalIndex + 1}`}
+                fill
+                className="object-contain"
+                priority
+                sizes="100vw"
+              />
+            </div>
+
+            {images.length > 1 && (
+              <button
+                onClick={goToNext}
+                className="absolute right-4 z-10 inline-flex min-h-11 min-w-11 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/80 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                aria-label="Next photo"
+              >
+                <ChevronRight className="h-6 w-6" />
+              </button>
+            )}
           </div>
+
+          {/* Thumbnail Strip */}
+          {images.length > 1 && (
+            <div className="flex shrink-0 gap-2 overflow-x-auto border-t border-white/10 p-3 no-scrollbar justify-center">
+              {images.map((img, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setModalIndex(idx)}
+                  className={cn(
+                    'relative h-14 w-20 shrink-0 overflow-hidden rounded-md border-2 transition-all min-h-11 min-w-11 focus:outline-none',
+                    idx === modalIndex
+                      ? 'border-white opacity-100 scale-105'
+                      : 'border-transparent opacity-50 hover:opacity-80'
+                  )}
+                  aria-label={`Jump to photo ${idx + 1}`}
+                >
+                  <Image
+                    src={img.url}
+                    alt={`Thumbnail ${idx + 1}`}
+                    fill
+                    className="object-cover"
+                    sizes="80px"
+                  />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

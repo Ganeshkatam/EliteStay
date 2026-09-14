@@ -2,27 +2,12 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import {
-  LayoutDashboard,
-  List,
-  CalendarDays,
-  Inbox,
-  Users,
-  Settings,
-} from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
+import { HOST_NAVIGATION } from '../config/navigation';
 
-const navigation = [
-  { name: 'Dashboard', href: '/host', icon: LayoutDashboard },
-  { name: 'Properties', href: '/host/listings', icon: List },
-  { name: 'Applications', href: '/host/applications', icon: Inbox },
-  { name: 'Residents', href: '/host/residents', icon: Users },
-  { name: 'Settings', href: '/host/profile', icon: Settings },
-];
-
-export { navigation as HOST_NAVIGATION };
+export { HOST_NAVIGATION };
 
 export function HostSidebar() {
   const pathname = usePathname();
@@ -39,7 +24,7 @@ export function HostSidebar() {
 
         {/* Navigation */}
         <nav className="flex-1 space-y-1 px-3">
-          {navigation.map((item) => {
+          {HOST_NAVIGATION.map((item) => {
             const isActive =
               pathname === item.href ||
               (item.href !== '/host' && pathname.startsWith(item.href));
