@@ -183,9 +183,9 @@ function ListingRow({
   const publicId = (listing as { public_id?: string }).public_id; // Just in case it's in the query
 
   return (
-    <div className="grid grid-cols-12 gap-4 p-4 items-center hover:bg-slate-50 transition-colors group">
+    <div className="group p-4 transition-colors hover:bg-slate-50 sm:grid sm:grid-cols-12 sm:items-center sm:gap-4">
       {/* Listing Info */}
-      <div className="col-span-10 sm:col-span-5 flex items-center gap-4">
+      <div className="flex min-w-0 items-center gap-4 sm:col-span-5">
         <div className="h-12 w-12 rounded-lg bg-slate-100 flex-shrink-0 overflow-hidden relative border border-slate-200">
           {imageUrl ? (
             <Image src={imageUrl} alt={title} fill className="object-cover" />
@@ -202,7 +202,7 @@ function ListingRow({
       </div>
 
       {/* Health / Status */}
-      <div className="hidden sm:flex sm:col-span-2 flex-col gap-1 justify-center">
+      <div className="mt-3 flex flex-col gap-1 border-t border-slate-100 pt-3 sm:mt-0 sm:col-span-2 sm:border-0 sm:pt-0">
         {isHealthy ? (
           <div className="flex items-center gap-1.5 text-sm text-emerald-700 font-medium">
             <CheckCircle2 className="w-4 h-4" />
@@ -236,12 +236,12 @@ function ListingRow({
       </div>
 
       {/* Price */}
-      <div className="hidden sm:flex sm:col-span-2 items-center text-sm font-medium text-slate-900">
+      <div className="mt-3 flex items-center text-sm font-medium text-slate-900 sm:col-span-2 sm:mt-0">
         {priceDisplay}
       </div>
 
       {/* Availability */}
-      <div className="hidden sm:flex sm:col-span-2 items-center">
+      <div className="mt-3 flex items-center sm:col-span-2 sm:mt-0">
         {listing.status === 'published' ? (
           <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-50">
             Available
@@ -254,13 +254,13 @@ function ListingRow({
       </div>
 
       {/* Actions */}
-      <div className="col-span-2 sm:col-span-1 flex items-center justify-end">
+      <div className="mt-4 flex items-center justify-end border-t border-slate-100 pt-3 sm:col-span-1 sm:mt-0 sm:border-0 sm:pt-0">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-slate-400 group-hover:text-slate-600"
+              className="h-11 w-11 text-slate-400 group-hover:text-slate-600 sm:h-8 sm:w-8"
             >
               <MoreHorizontal className="h-4 w-4" />
             </Button>
