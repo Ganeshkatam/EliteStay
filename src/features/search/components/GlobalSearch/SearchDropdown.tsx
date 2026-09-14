@@ -5,7 +5,7 @@ import { useSearchContext } from './SearchContext';
 import { cn } from '@/lib/utils';
 import { Navigation, MapPin, Check } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
-import { format, parseISO, isValid } from 'date-fns';
+import { format, parseISO, isValid, addMonths } from 'date-fns';
 import { searchCitiesAction } from '@/features/location/actions/search-city';
 import { type LocationCity } from '@/features/location/types';
 import { useRouter } from 'next/navigation';
@@ -113,7 +113,12 @@ export function SearchDropdown({
   }, []);
   const maxBookingMonth = useMemo(() => {
     const d = new Date();
-    return new Date(d.getFullYear() + 2, 11, 31);
+    return addMonths(new Date(d.getFullYear(), d.getMonth(), 1), 3);
+  }, []);
+  const maxAvailableDate = useMemo(() => {
+    const d = new Date();
+    d.setHours(23, 59, 59, 999);
+    return addMonths(d, 3);
   }, []);
   const todayStartOfDay = useMemo(() => {
     const d = new Date();
@@ -121,7 +126,7 @@ export function SearchDropdown({
     return d;
   }, []);
 
-  const months = Array.from({ length: 6 }).map((_, i) => {
+  const months = Array.from({ length: 4 }).map((_, i) => {
     return new Date(today.getFullYear(), today.getMonth() + i, 1);
   });
 
@@ -364,7 +369,9 @@ export function SearchDropdown({
                   week: 'flex w-full justify-between mt-1',
                   day: 'group/day relative aspect-square h-[--cell-size] w-[--cell-size] select-none p-0 text-center flex items-center justify-center',
                 }}
-                disabled={(date) => date < todayStartOfDay}
+                disabled={(date) =>
+                  date < todayStartOfDay || date > maxAvailableDate
+                }
               />
             </div>
           ) : (
