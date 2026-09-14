@@ -11,6 +11,7 @@
  */
 
 import { getProvider } from './client';
+import { recordFailure } from './circuit-breaker';
 import { KEY_PREFIX } from './config';
 import {
   DEFAULT_LOCK_TTL_MS,
@@ -41,7 +42,9 @@ export async function acquireLock(
   try {
     const acquired = await provider.setnx(lockKey, token, ttlMs);
     return acquired ? token : null;
-  } catch {
+  } catch (err) {
+    console.warn(`[Redis] Failed to acquire lock ${resourceKey}:`, err);
+    recordFailure();
     return null;
   }
 }
@@ -69,8 +72,9 @@ export async function releaseLock(
     if (currentToken === token) {
       await provider.del(lockKey);
     }
-  } catch {
-    // Another process took over or Redis is offline -- do nothing.
+  } catch (err) {
+    console.warn(`[Redis] Failed to release lock ${resourceKey}:`, err);
+    recordFailure();
   }
 }
 

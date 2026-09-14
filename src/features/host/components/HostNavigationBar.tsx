@@ -49,7 +49,9 @@ export function HostNavigationBar({ user, profile }: HostNavigationBarProps) {
         </div>
 
         <div className="flex items-center justify-end space-x-3">
-          {user && <HostToggle isHost={true} variant="host" />}
+          {user && !pathname.startsWith('/host/onboarding') && (
+            <HostToggle isHost={true} variant="host" />
+          )}
           <UserMenu user={user} profile={profile} variant="host" />
         </div>
       </div>

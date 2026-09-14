@@ -3,6 +3,8 @@ import { Metadata } from 'next';
 import { HostAccessService } from '@/features/hosting/services/host-access.service';
 import { HostingService } from '@/features/hosting';
 
+import { OnboardingStepper } from '@/features/hosting/components/OnboardingStepper';
+
 export const metadata: Metadata = {
   title: 'Host Capabilities Onboarding & Eligibility | EliteStay',
   description:
@@ -20,7 +22,10 @@ export default async function OnboardingLayout({
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-24">
-      <main className="max-w-2xl mx-auto px-6 sm:px-12 pt-16">{children}</main>
+      <OnboardingStepper steps={viewModel.steps} />
+      <main className="w-full max-w-3xl mx-auto px-6 sm:px-12 pt-8">
+        {children}
+      </main>
     </div>
   );
 }

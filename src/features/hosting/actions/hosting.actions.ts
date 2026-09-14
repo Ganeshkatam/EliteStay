@@ -5,7 +5,6 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { HostingService } from '../services/hosting.service';
 import { HostProfileService } from '../services/host-profile.service';
-import { HostBusinessType } from '../types/hosting.types';
 import { createDraftListing } from '@/features/host/actions/listing-actions';
 
 const hostingService = new HostingService();
@@ -64,44 +63,6 @@ export async function submitBankStepAction(formData: FormData) {
 
   await hostingService.submitBankStep(user.id, bankName, accountNumber);
   revalidatePath('/host/onboarding', 'layout');
-  redirect('/host/onboarding/business');
-}
-
-/**
- * Submits business entity type and tax credentials (Step 3) and navigates to policy agreement.
- */
-export async function submitBusinessStepAction(formData: FormData) {
-  const user = await getAuthenticatedUser();
-  const businessType = String(
-    formData.get('businessType') || 'individual'
-  ) as HostBusinessType;
-  const businessName = String(formData.get('businessName') || '');
-  const primaryAccommodationSlug = String(
-    formData.get('primaryAccommodationSlug') || ''
-  );
-  const taxIdType = String(formData.get('taxIdType') || 'PAN');
-  const taxIdNumber = String(formData.get('taxIdNumber') || '');
-  const supportPhone = String(formData.get('supportPhone') || '');
-  const supportEmail = String(formData.get('supportEmail') || '');
-
-  if (!businessName || !taxIdNumber || !primaryAccommodationSlug) {
-    throw new Error(
-      'Business entity name, primary accommodation specialization, and tax ID are required'
-    );
-  }
-
-  await hostingService.submitBusinessStep(
-    user.id,
-    businessType,
-    businessName,
-    primaryAccommodationSlug,
-    taxIdType,
-    taxIdNumber,
-    supportPhone,
-    supportEmail
-  );
-
-  revalidatePath('/host/onboarding', 'layout');
   redirect('/host/onboarding/policies');
 }
 
@@ -131,10 +92,6 @@ export async function launchFirstListingAction() {
  */
 export async function updateHostProfileSettingsAction(formData: FormData) {
   const user = await getAuthenticatedUser();
-  const businessType = String(
-    formData.get('businessType') || 'individual'
-  ) as HostBusinessType;
-  const businessName = String(formData.get('businessName') || '');
   const primaryAccommodationSlug = String(
     formData.get('primaryAccommodationSlug') || ''
   );
@@ -143,10 +100,8 @@ export async function updateHostProfileSettingsAction(formData: FormData) {
   const bankName = String(formData.get('bankName') || '');
   const accountLast4 = String(formData.get('accountLast4') || '');
 
-  await profileService.updateBusinessDetails(
+  await profileService.updateHostDetails(
     user.id,
-    businessType,
-    businessName,
     supportPhone,
     supportEmail,
     primaryAccommodationSlug

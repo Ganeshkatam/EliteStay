@@ -71,7 +71,7 @@ export function getProvider(): CacheProvider {
   if (ioRedisUrl) {
     _provider = new IoRedisProvider(ioRedisUrl);
     _providerType = 'ioredis';
-    console.info('[Redis] Initialized IoRedisProvider (Self-Hosted Redis).');
+    console.info('[Redis] Initialized IoRedisProvider (Standard Redis URL).');
   } else if (upstashEnv) {
     _provider = new UpstashProvider(upstashEnv.url, upstashEnv.token);
     _providerType = 'upstash';

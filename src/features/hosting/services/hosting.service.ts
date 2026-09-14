@@ -1,8 +1,5 @@
 import { HostingRepository } from '../repositories/hosting.repository';
-import {
-  HostBusinessType,
-  OnboardingWorkspaceViewModel,
-} from '../types/hosting.types';
+import { OnboardingWorkspaceViewModel } from '../types/hosting.types';
 import { buildOnboardingWizardViewModel } from '../view-models/hosting.viewmodels';
 import { HostingEligibilityPolicy } from '../policies/HostingEligibilityPolicy';
 import { createClient } from '@/lib/supabase/server';
@@ -87,40 +84,6 @@ export class HostingService {
   }
 
   /**
-   * Step 3 Submission: Records governed business entity type, accommodation specialization, and tax identification facts.
-   */
-  public async submitBusinessStep(
-    userId: string,
-    businessType: HostBusinessType,
-    businessName: string,
-    primaryAccommodationSlug: string,
-    taxIdType: string,
-    taxIdNumber: string,
-    supportPhone: string,
-    supportEmail: string
-  ): Promise<void> {
-    const taxIdLast4 = taxIdNumber.slice(-4).padStart(4, '*');
-    const accommodationTypeId = primaryAccommodationSlug
-      ? await this.repository.getAccommodationTypeIdBySlug(
-          primaryAccommodationSlug
-        )
-      : undefined;
-
-    await this.repository.upsertHostProfile(userId, {
-      business_type: businessType,
-      business_name: businessName,
-      ...(accommodationTypeId !== undefined
-        ? { primary_accommodation_type_id: accommodationTypeId }
-        : {}),
-      tax_id_type: taxIdType,
-      tax_id_last4: taxIdLast4,
-      support_phone: supportPhone || null,
-      support_email: supportEmail || null,
-      status: 'ONBOARDING',
-    });
-  }
-
-  /**
    * Step 4 Submission: Records operational SLA and anti-discrimination policy agreement timestamp.
    */
   public async submitPoliciesStep(userId: string): Promise<void> {
@@ -140,7 +103,7 @@ export class HostingService {
     const userContext = await this.repository.getUserIdentityContext(userId);
     const audit = HostingEligibilityPolicy.evaluate(hostProfile, userContext);
 
-    if (!audit.isEligible || !hostProfile?.business_name) {
+    if (!audit.isEligible) {
       return {
         success: false,
         message:

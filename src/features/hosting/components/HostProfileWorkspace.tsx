@@ -174,48 +174,11 @@ export const HostProfileWorkspace: React.FC<HostProfileWorkspaceProps> = ({
                 <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
                   <Briefcase className="w-5 h-5 text-amber-500" />
                   <h3 className="text-lg font-bold text-slate-900">
-                    Governed Business Entity & Tax Credentials
+                    Host Operating Profile & Specialization
                   </h3>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-2">
-                      Governed Business Entity Classification
-                    </label>
-                    <select
-                      name="businessType"
-                      defaultValue={viewModel.businessSummary.businessType}
-                      className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm focus:outline-none focus:bg-white focus:border-rose-500 transition-colors"
-                    >
-                      <option value="individual">
-                        Individual / Sole Proprietor
-                      </option>
-                      <option value="company">
-                        Registered Company / Corporation
-                      </option>
-                      <option value="property_manager">
-                        Professional Property Management Agency
-                      </option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-2">
-                      Business Operating Name
-                    </label>
-                    <input
-                      type="text"
-                      name="businessName"
-                      defaultValue={
-                        viewModel.businessSummary.businessName ?? ''
-                      }
-                      required
-                      placeholder="e.g., Sharma Living Residences"
-                      className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm focus:outline-none focus:bg-white focus:border-rose-500 transition-colors"
-                    />
-                  </div>
-
                   <div className="sm:col-span-2 p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                       <div>

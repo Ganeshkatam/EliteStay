@@ -66,10 +66,10 @@ export default function PoliciesStepPage() {
 
         <div className="flex justify-between items-center pt-4">
           <Link
-            href="/host/onboarding/business"
+            href="/host/onboarding/bank"
             className="text-xs font-bold text-slate-500 hover:text-slate-900"
           >
-            Back to Business Profile
+            Back to Payout Account
           </Link>
           <button
             type="submit"

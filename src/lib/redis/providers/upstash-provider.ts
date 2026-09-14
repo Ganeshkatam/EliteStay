@@ -11,7 +11,14 @@ export class UpstashProvider implements CacheProvider {
   private readonly client: Redis;
 
   constructor(url: string, token: string) {
-    this.client = new Redis({ url, token });
+    this.client = new Redis({
+      url,
+      token,
+      retry: {
+        retries: 1, // Fail fast to let circuit breaker take over
+        backoff: (retryCount) => Math.min(Math.exp(retryCount) * 100, 3000),
+      },
+    });
   }
 
   async get(key: string): Promise<string | null> {

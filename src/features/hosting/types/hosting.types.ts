@@ -6,8 +6,6 @@
 export type HostStatus =
   'NOT_STARTED' | 'ONBOARDING' | 'READY' | 'ACTIVE' | 'PAUSED' | 'SUSPENDED';
 
-export type HostBusinessType = 'individual' | 'company' | 'property_manager';
-
 export type HostSpecializationSlug = 'pg' | 'hostel' | 'apartment' | 'other';
 
 /**
@@ -17,9 +15,7 @@ export interface HostProfileRow {
   id: string;
   user_id: string;
   status: HostStatus;
-  business_type: HostBusinessType;
   primary_accommodation_type_id: string | null;
-  business_name: string | null;
   bank_account_id: string | null;
   bank_name: string | null;
   bank_account_last4: string | null;
@@ -63,7 +59,7 @@ export interface EligibilityFactAudit {
  * Configuration-driven onboarding step representing a stage in the transformation journey.
  */
 export interface OnboardingStep {
-  id: 'eligibility' | 'identity' | 'bank' | 'business' | 'policies' | 'ready';
+  id: 'eligibility' | 'identity' | 'bank' | 'policies' | 'ready';
   title: string;
   description: string;
   required: boolean;
@@ -88,8 +84,6 @@ export interface OnboardingWorkspaceViewModel {
     phone: string;
     bankName: string;
     accountLast4: string;
-    businessType: HostBusinessType;
-    businessName: string;
     primaryAccommodationSlug: HostSpecializationSlug | string;
     taxIdLast4: string;
     taxIdType: string;
@@ -113,8 +107,6 @@ export interface HostProfileWorkspaceViewModel {
     verifiedAt: string | null;
   };
   businessSummary: {
-    businessType: HostBusinessType;
-    businessName: string | null;
     primaryAccommodationSlug: HostSpecializationSlug | string | null;
     primaryAccommodationName: string;
     isSpecializationLocked: boolean;

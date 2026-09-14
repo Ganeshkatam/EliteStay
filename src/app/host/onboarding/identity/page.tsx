@@ -1,63 +1,80 @@
 import React from 'react';
-import Link from 'next/link';
 import { HostAccessService } from '@/features/hosting/services/host-access.service';
 import { HostingService } from '@/features/hosting';
 import { submitIdentityStepAction } from '@/features/hosting/actions/hosting.actions';
-import { UserCheck, ArrowRight } from 'lucide-react';
+import { CheckCircle2, ArrowRight } from 'lucide-react';
+
+function formatPhone(phone: string) {
+  if (phone && phone.startsWith('+91') && phone.length === 13) {
+    return `+91 ${phone.slice(3, 8)} ${phone.slice(8)}`;
+  }
+  return phone;
+}
 
 export default async function IdentityStepPage() {
   const { user } = await HostAccessService.getHostContext();
   const hostingService = new HostingService();
   const viewModel = await hostingService.getOnboardingWorkspace(user.id);
 
+  const formattedPhone = formatPhone(viewModel.formData.phone);
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div>
         <h2 className="text-2xl font-bold text-slate-900 mb-2">
-          Identity Verification
+          Verify your identity
         </h2>
         <p className="text-slate-500 text-sm">
-          EliteStay requires all hosts to operate under verified identities to
-          maintain trust and safety within the resident ecosystem.
+          We verify every host so residents can know who they&apos;re renting
+          from.
         </p>
       </div>
 
       <form action={submitIdentityStepAction} className="space-y-6">
-        <div className="p-5 rounded-xl bg-white border border-slate-200 shadow-sm space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
-            <div className="flex items-center gap-3 text-slate-700">
-              <UserCheck className="w-5 h-5 text-slate-400" />
-              <span className="text-sm font-semibold">
-                Primary Account Holder
-              </span>
-            </div>
+        <input
+          type="hidden"
+          name="fullName"
+          value={viewModel.formData.fullName}
+        />
+        <input type="hidden" name="phone" value={viewModel.formData.phone} />
+
+        <div className="rounded-xl border border-slate-200 overflow-hidden bg-white shadow-sm">
+          <div className="bg-slate-50 px-5 py-4 border-b border-slate-200">
+            <h3 className="text-sm font-bold text-slate-800">Your identity</h3>
           </div>
-          <div className="grid grid-cols-1 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-2">
-                Legal Full Name
-              </label>
-              <input
-                type="text"
-                name="fullName"
-                required
-                defaultValue={viewModel.formData.fullName}
-                placeholder="e.g., Arjun Sharma"
-                className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm focus:outline-none focus:bg-white focus:border-rose-500 focus:ring-1 focus:ring-rose-500 transition-all"
-              />
+          <div className="p-5 space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <span className="block text-xs font-medium text-slate-500 mb-1">
+                  Legal name
+                </span>
+                <span className="text-slate-900 font-medium">
+                  {viewModel.formData.fullName || 'Not provided'}
+                </span>
+              </div>
+              {viewModel.formData.fullName && (
+                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-bold w-fit">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Verified
+                </div>
+              )}
             </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-2">
-                Verified Phone Number
-              </label>
-              <input
-                type="tel"
-                name="phone"
-                required
-                defaultValue={viewModel.formData.phone}
-                placeholder="e.g., +91 98765 43210"
-                className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm focus:outline-none focus:bg-white focus:border-rose-500 focus:ring-1 focus:ring-rose-500 transition-all"
-              />
+
+            <div className="w-full h-px bg-slate-100" />
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <span className="block text-xs font-medium text-slate-500 mb-1">
+                  Phone number
+                </span>
+                <span className="text-slate-900 font-medium">
+                  {formattedPhone || 'Not provided'}
+                </span>
+              </div>
+              {viewModel.formData.phone && (
+                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-bold w-fit">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Verified
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -67,7 +84,7 @@ export default async function IdentityStepPage() {
             type="submit"
             className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-sm transition-all shadow-lg shadow-rose-500/20"
           >
-            Save & Continue <ArrowRight className="w-4 h-4" />
+            Confirm & Continue <ArrowRight className="w-4 h-4" />
           </button>
         </div>
       </form>

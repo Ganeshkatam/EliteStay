@@ -23,15 +23,9 @@ export class HostingOnboardingPolicy {
   } {
     const isIdentityDone = eligibilityAudit.hasIdentityVerifiedFact;
     const isBankDone = eligibilityAudit.hasBankLinkedFact;
-    const isBusinessDone = Boolean(
-      eligibilityAudit.hasTaxRegisteredFact &&
-      eligibilityAudit.hasSpecializationFact &&
-      hostProfile?.business_name
-    );
     const isPoliciesDone = eligibilityAudit.hasPoliciesAgreedFact;
 
-    const allRequiredCompleted =
-      isIdentityDone && isBankDone && isBusinessDone && isPoliciesDone;
+    const allRequiredCompleted = isIdentityDone && isBankDone && isPoliciesDone;
     const isAlreadyReadyOrActive =
       hostProfile?.status === 'READY' || hostProfile?.status === 'ACTIVE';
 
@@ -61,15 +55,6 @@ export class HostingOnboardingPolicy {
           'Link a bank account where resident reservation settlements will be disbursed.',
         required: true,
         isCompleted: isBankDone,
-        nextStepId: 'business',
-      },
-      {
-        id: 'business',
-        title: 'Business & Accommodation Model',
-        description:
-          'Specify your operating entity and select exclusively one accommodation specialization (PG, Hostel, Home, or Other).',
-        required: true,
-        isCompleted: isBusinessDone,
         nextStepId: 'policies',
       },
       {
@@ -132,10 +117,7 @@ export class HostingOnboardingPolicy {
     return (
       eligibilityAudit.hasIdentityVerifiedFact &&
       eligibilityAudit.hasBankLinkedFact &&
-      eligibilityAudit.hasTaxRegisteredFact &&
-      eligibilityAudit.hasPoliciesAgreedFact &&
-      eligibilityAudit.hasSpecializationFact &&
-      Boolean(hostProfile.business_name)
+      eligibilityAudit.hasPoliciesAgreedFact
     );
   }
 }

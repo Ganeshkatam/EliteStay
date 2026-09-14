@@ -5,7 +5,7 @@ import { Sparkles, CheckCircle2, ArrowRight } from 'lucide-react';
 export default function ReadyStepPage() {
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="text-center py-8 space-y-6 max-w-lg mx-auto">
+      <div className="text-center py-8 space-y-6 mx-auto">
         <div className="w-16 h-16 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center mx-auto shadow-sm">
           <Sparkles className="w-8 h-8" />
         </div>

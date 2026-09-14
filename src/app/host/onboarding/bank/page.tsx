@@ -70,7 +70,7 @@ export default async function BankStepPage() {
               Back to Identity
             </Link>
             <Link
-              href="/host/onboarding/business"
+              href="/host/onboarding/policies"
               className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white hover:bg-slate-50 text-slate-600 font-bold text-sm transition-colors border border-slate-200 shadow-sm"
             >
               Skip for Now

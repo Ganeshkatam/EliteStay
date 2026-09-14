@@ -48,8 +48,7 @@ export function buildOnboardingWizardViewModel(
       phone: userContext?.phone ?? '',
       bankName: hostProfile?.bank_name ?? '',
       accountLast4: hostProfile?.bank_account_last4 ?? '',
-      businessType: hostProfile?.business_type ?? 'individual',
-      businessName: hostProfile?.business_name ?? '',
+
       primaryAccommodationSlug: accommodationInfo?.slug ?? '',
       taxIdLast4: hostProfile?.tax_id_last4 ?? '',
       taxIdType: hostProfile?.tax_id_type ?? 'PAN',
@@ -60,7 +59,7 @@ export function buildOnboardingWizardViewModel(
 }
 
 /**
- * Builds the permanent Host Profile Workspace ViewModel (/host/profile) displaying verified business entity settings.
+ * Builds the permanent Host Profile Workspace ViewModel (/host/profile) displaying verified identity and settings.
  */
 export function buildHostProfileWorkspaceViewModel(
   userId: string,
@@ -90,8 +89,6 @@ export function buildHostProfileWorkspaceViewModel(
       verifiedAt: hostProfile?.identity_verified_at ?? null,
     },
     businessSummary: {
-      businessType: hostProfile?.business_type ?? 'individual',
-      businessName: hostProfile?.business_name ?? null,
       primaryAccommodationSlug: accommodationInfo?.slug ?? null,
       primaryAccommodationName: accommodationInfo?.name ?? 'Not designated',
       isSpecializationLocked,

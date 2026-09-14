@@ -6,10 +6,18 @@ export class IoRedisProvider implements CacheProvider {
 
   constructor(url: string) {
     this.client = new Redis(url, {
-      maxRetriesPerRequest: 1, // Prevent long blocking retries on missing local redis
+      maxRetriesPerRequest: 1,
+      enableOfflineQueue: true,
+      connectTimeout: 5000,
+      commandTimeout: 5000,
+      retryStrategy(times) {
+        return Math.min(times * 100, 3000);
+      },
     });
+
     this.client.on('error', (err) => {
-      console.warn('[Redis] IoRedis connection error:', err.message);
+      // Log connection failures as warnings so they don't crash the server
+      console.warn('[Redis] Connection error:', err.message);
     });
   }
 

@@ -1,8 +1,5 @@
 import { HostingRepository } from '../repositories/hosting.repository';
-import {
-  HostBusinessType,
-  HostProfileWorkspaceViewModel,
-} from '../types/hosting.types';
+import { HostProfileWorkspaceViewModel } from '../types/hosting.types';
 import { buildHostProfileWorkspaceViewModel } from '../view-models/hosting.viewmodels';
 
 /**
@@ -34,12 +31,10 @@ export class HostProfileService {
   }
 
   /**
-   * Updates governed business entity settings on the host profile. Enforces immutability of specialization post-activation.
+   * Updates host profile support and accommodation settings. Enforces immutability of specialization post-activation.
    */
-  public async updateBusinessDetails(
+  public async updateHostDetails(
     userId: string,
-    businessType: HostBusinessType,
-    businessName: string,
     supportPhone?: string,
     supportEmail?: string,
     primaryAccommodationSlug?: string
@@ -58,18 +53,16 @@ export class HostProfileService {
     } else if (primaryAccommodationSlug && isLocked) {
       // Ignore alteration attempt if specialization is locked post-activation
       console.warn(
-        '[HostProfileService] Ignored attempt to modify primary accommodation specialization on an ACTIVE profile.'
+        `[HostProfileService] Ignored attempt to modify locked accommodation specialization for host ${userId}`
       );
     }
 
     await this.repository.upsertHostProfile(userId, {
-      business_type: businessType,
-      business_name: businessName,
-      support_phone: supportPhone || null,
-      support_email: supportEmail || null,
       ...(accommodationTypeId !== undefined
         ? { primary_accommodation_type_id: accommodationTypeId }
         : {}),
+      support_phone: supportPhone || null,
+      support_email: supportEmail || null,
     });
   }
 

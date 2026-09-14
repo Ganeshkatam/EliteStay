@@ -40,7 +40,12 @@ function getPolicy(entry: CacheManifestEntry) {
 async function applyTags(key: string, tags: string[]) {
   if (tags.length === 0) return;
   const provider = getProvider();
-  await Promise.all(tags.map((tag) => provider.sadd(`tag:${tag}`, key)));
+  try {
+    await Promise.all(tags.map((tag) => provider.sadd(`tag:${tag}`, key)));
+  } catch (err) {
+    console.warn(`[Redis] Failed to apply tags to key ${key}:`, err);
+    recordFailure();
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -117,6 +122,17 @@ export async function setWithCache<T>(
   }
 }
 
+export async function invalidateKey(key: string): Promise<void> {
+  if (!isCircuitClosed()) return;
+  const provider = getProvider();
+  try {
+    await provider.del(key);
+  } catch (err) {
+    console.warn(`[Redis] Failed to delete key ${key}:`, err);
+    recordFailure();
+  }
+}
+
 export async function deleteKey(key: string): Promise<void> {
   if (!isCircuitClosed()) return;
   const provider = getProvider();
@@ -124,7 +140,12 @@ export async function deleteKey(key: string): Promise<void> {
   // Clean up set memberships where possible (requires scanning tags, but typically
   // explicit deletes are handled by invalidateTag. If this is a direct delete,
   // we just delete the key. Automatic cleanup handles tag pruning).
-  await provider.del(key);
+  try {
+    await provider.del(key);
+  } catch (err) {
+    console.warn(`[Redis] Failed to delete key ${key}:`, err);
+    recordFailure();
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -264,7 +285,9 @@ export async function getMany(
       const envelope = decode(raw);
       return envelope.negative ? null : envelope.payload;
     });
-  } catch {
+  } catch (err) {
+    console.warn('[Redis] Failed in getMany:', err);
+    recordFailure();
     return entries.map(() => null);
   }
 }
@@ -330,10 +353,17 @@ export async function fetchMany<T>(
       }
     });
 
+    // Process misses
+    const failedLookups: { index: number; entry: CacheManifestEntry }[] = [];
     if (misses.length > 0) {
-      // For misses, we use standard fetchWithCache to handle locking and stampede protection properly
       const fetchedResults = await Promise.all(
-        misses.map((miss) => fetchWithCache(miss.entry, miss.fetcher))
+        misses.map(async (miss) => {
+          const res = await fetchWithCache(miss.entry, miss.fetcher);
+          if (res === null) {
+            failedLookups.push({ index: miss.index, entry: miss.entry });
+          }
+          return res;
+        })
       );
 
       misses.forEach((miss, i) => {
@@ -341,11 +371,23 @@ export async function fetchMany<T>(
       });
     }
 
+    // 3. Write back negative cache for completely failed DB lookups if configured
+    await Promise.all(
+      failedLookups.map(async ({ index, entry }) => {
+        const policy = getPolicy(entry);
+        if (policy.negativeCache) {
+          await setWithCache(entry, null);
+        }
+      })
+    );
+
     return results;
-  } catch {
-    // Fallback to fetchWithCache for everything
+  } catch (err) {
+    console.warn('[Redis] Failed in fetchMany:', err);
+    recordFailure();
+    dbFallbackCounter.inc(entries.length);
     return Promise.all(
-      entries.map((entry, i) => fetchWithCache(entry, fetchers[i]))
+      entries.map((entry, i) => executeFetcher(entry.key, fetchers[i]))
     );
   }
 }
