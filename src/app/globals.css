@@ -6,10 +6,6 @@ html {
   height: 100%;
 }
 
-html,
-body {
-}
-
 body {
   min-height: 100%;
   display: flex;
