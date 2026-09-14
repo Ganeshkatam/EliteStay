@@ -58,20 +58,39 @@ export function ImageGallery({ images }: ImageGalleryProps) {
         ))}
       </div>
 
-      {/* Mobile Swipe Layout */}
-      <div className="md:hidden relative aspect-[4/3] w-full bg-gray-200">
-        <Image
-          src={mainImage.url}
-          alt="Listing main view"
-          fill
-          className="object-cover"
-          priority
-          sizes="100vw"
-        />
-        {/* Placeholder for a mobile carousel slider */}
-        <div className="absolute bottom-4 right-4 bg-black/50 text-white px-3 py-1 rounded-full text-sm font-medium">
-          1 / {images.length}
+      {/* Mobile Swipe Carousel */}
+      <div className="md:hidden relative w-full overflow-hidden rounded-2xl bg-gray-200">
+        <div
+          className="flex w-full snap-x snap-mandatory overflow-x-auto overscroll-x-contain scroll-smooth scrollbar-hide"
+          aria-label="Listing photo gallery"
+        >
+          {images.map((img, idx) => (
+            <button
+              key={idx}
+              type="button"
+              onClick={() => setShowAll(true)}
+              className="relative min-w-full shrink-0 snap-center aspect-[4/3] text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-inset"
+              aria-label={`Open listing photo ${idx + 1} of ${images.length}`}
+            >
+              <Image
+                src={img.url}
+                alt={`Listing view ${idx + 1}`}
+                fill
+                className="object-cover"
+                priority={idx === 0}
+                sizes="100vw"
+              />
+            </button>
+          ))}
         </div>
+        <div className="pointer-events-none absolute bottom-3 right-3 rounded-full bg-black/60 px-3 py-1 text-xs font-semibold text-white backdrop-blur-sm">
+          {images.length} {images.length === 1 ? 'photo' : 'photos'}
+        </div>
+        {images.length > 1 && (
+          <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-black/45 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur-sm">
+            Swipe to explore
+          </div>
+        )}
       </div>
 
       {/* Show All Images Button */}
