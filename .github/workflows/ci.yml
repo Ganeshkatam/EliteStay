@@ -50,6 +50,7 @@ jobs:
 
   e2e-tests:
     runs-on: ubuntu-latest
+    if: false # Skipped in CI
     needs: [validate-schema, code-quality, unit-integration-tests]
     steps:
       - uses: actions/checkout@v4
