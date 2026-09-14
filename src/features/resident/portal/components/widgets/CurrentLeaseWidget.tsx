@@ -32,7 +32,7 @@ export function CurrentLeaseWidget({ lease }: Props) {
         </h3>
       </div>
       <div className="px-4 py-5 sm:p-6">
-        <div className="grid grid-cols-2 gap-4 mb-6">
+        <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="flex items-center">
             <Calendar className="h-5 w-5 text-gray-400 mr-2" />
             <div>
@@ -95,7 +95,7 @@ export function CurrentLeaseWidget({ lease }: Props) {
                       type="button"
                       disabled={isPending}
                       onClick={handleSign}
-                      className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-yellow-700 bg-yellow-100 hover:bg-yellow-200 disabled:opacity-50"
+                      className="inline-flex min-h-11 items-center rounded-md border border-transparent bg-yellow-100 px-4 py-2 text-sm font-medium text-yellow-700 hover:bg-yellow-200 disabled:opacity-50"
                     >
                       <CheckCircle className="-ml-1 mr-2 h-4 w-4" />
                       Sign Lease Agreement
