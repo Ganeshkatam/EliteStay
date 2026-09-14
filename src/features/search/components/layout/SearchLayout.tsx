@@ -40,8 +40,10 @@ export function SearchLayout({ viewMode, children }: SearchLayoutProps) {
         {resultsPane}
       </div>
 
-      {/* Map Pane: Takes the remaining width (fills layout height) */}
-      <div className="hidden lg:flex flex-1 min-w-0 h-full">{mapPane}</div>
+      {/* Map Pane: Takes the remaining width (fills layout height, sticky) */}
+      <div className="hidden lg:flex flex-1 min-w-0 h-full sticky top-0 self-start">
+        {mapPane}
+      </div>
     </div>
   );
 }

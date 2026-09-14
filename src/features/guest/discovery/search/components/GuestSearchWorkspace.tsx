@@ -14,7 +14,7 @@ interface GuestSearchWorkspaceProps {
  */
 export function GuestSearchWorkspace({ viewModel }: GuestSearchWorkspaceProps) {
   return (
-    <div className="w-full flex-1 flex flex-col">
+    <div className="w-full flex-1 flex flex-col min-h-0 overflow-hidden">
       <SearchWorkspace viewModel={viewModel} />
     </div>
   );
