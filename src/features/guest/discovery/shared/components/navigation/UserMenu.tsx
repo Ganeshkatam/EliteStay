@@ -84,7 +84,7 @@ export function UserMenu({ user, profile, variant }: UserMenuProps) {
         <button
           id="user-profile-menu-button"
           aria-label="User navigation menu"
-          className="group flex items-center gap-2.5 rounded-full border border-slate-200/90 bg-white p-1.5 pl-3.5 shadow-sm hover:shadow-md hover:border-slate-300 transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-slate-900 active:scale-[0.98]"
+          className="group flex items-center gap-2.5 rounded-full border border-slate-200/90 bg-white p-1.5 pl-3.5 shadow-sm hover:shadow-md hover:border-slate-300 transition-all duration-200 outline-none focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 active:scale-[0.98] data-[state=open]:shadow-md data-[state=open]:border-slate-300"
         >
           <Menu className="h-4 w-4 text-slate-600 group-hover:text-slate-900 transition-colors" />
           <div className="relative">
@@ -106,6 +106,7 @@ export function UserMenu({ user, profile, variant }: UserMenuProps) {
       <DropdownMenuContent
         align="end"
         sideOffset={8}
+        onCloseAutoFocus={(e) => e.preventDefault()}
         className="w-64 rounded-2xl border border-slate-200/80 bg-white p-1.5 shadow-xl shadow-slate-900/10 animate-in fade-in-0 zoom-in-95"
       >
         {/* User Identity Header */}
