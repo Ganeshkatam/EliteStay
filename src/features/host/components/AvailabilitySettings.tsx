@@ -4,6 +4,13 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Copy, Plus, Trash2, CalendarSync } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
@@ -163,18 +170,20 @@ export function AvailabilitySettings({
 
         <div className="flex flex-col sm:flex-row gap-3 items-end">
           <div className="w-full sm:w-1/3">
-            <Label htmlFor="provider">Provider</Label>
-            <select
-              id="provider"
-              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-              value={newProvider}
-              onChange={(e) => setNewProvider(e.target.value)}
-            >
-              <option value="Airbnb">Airbnb</option>
-              <option value="Booking.com">Booking.com</option>
-              <option value="VRBO">VRBO</option>
-              <option value="Other">Other</option>
-            </select>
+            <Label htmlFor="provider" className="mb-1.5 block">
+              Provider
+            </Label>
+            <Select value={newProvider} onValueChange={setNewProvider}>
+              <SelectTrigger id="provider" className="h-9 w-full">
+                <SelectValue placeholder="Select Provider" />
+              </SelectTrigger>
+              <SelectContent className="bg-white">
+                <SelectItem value="Airbnb">Airbnb</SelectItem>
+                <SelectItem value="Booking.com">Booking.com</SelectItem>
+                <SelectItem value="VRBO">VRBO</SelectItem>
+                <SelectItem value="Other">Other</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="w-full sm:w-2/3">
             <Label htmlFor="url">Calendar URL (iCal)</Label>

@@ -1,11 +1,18 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { HostProfileWorkspaceViewModel } from '../types/hosting.types';
 import {
   updateHostProfileSettingsAction,
   toggleHostOperationalStatusAction,
 } from '../actions/hosting.actions';
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select';
 import {
   Briefcase,
   CreditCard,
@@ -28,6 +35,10 @@ interface HostProfileWorkspaceProps {
 export const HostProfileWorkspace: React.FC<HostProfileWorkspaceProps> = ({
   viewModel,
 }) => {
+  const [selectedSlug, setSelectedSlug] = useState(
+    viewModel.businessSummary.primaryAccommodationSlug || 'pg'
+  );
+
   const handleStatusToggle = () => {
     const nextStatus = viewModel.status === 'ACTIVE' ? 'PAUSED' : 'ACTIVE';
     toggleHostOperationalStatusAction(nextStatus as 'ACTIVE' | 'PAUSED');
@@ -206,31 +217,49 @@ export const HostProfileWorkspace: React.FC<HostProfileWorkspaceProps> = ({
                       </p>
                     ) : (
                       <div>
-                        <select
+                        <input
+                          type="hidden"
                           name="primaryAccommodationSlug"
-                          defaultValue={
-                            viewModel.businessSummary
-                              .primaryAccommodationSlug || 'pg'
-                          }
-                          className="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 text-slate-900 text-sm focus:outline-none focus:border-rose-500 transition-colors"
+                          value={selectedSlug}
+                        />
+                        <Select
+                          value={selectedSlug}
+                          onValueChange={setSelectedSlug}
                         >
-                          <option value="pg">
-                            PG (Paying Guest) - Managed stays with meal plans &
-                            cleaning
-                          </option>
-                          <option value="hostel">
-                            Student Hostel - Vibrant student dorms & communal
-                            living
-                          </option>
-                          <option value="apartment">
-                            Home / Apartment - Fully independent private flats &
-                            houses
-                          </option>
-                          <option value="other">
-                            Other Residence - Specialized living facilities and
-                            unique stays
-                          </option>
-                        </select>
+                          <SelectTrigger className="w-full h-12 px-4 rounded-xl bg-white border border-slate-200 text-slate-900 text-sm focus:ring-slate-400">
+                            <SelectValue placeholder="Select Specialization" />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-xl border-slate-200 shadow-lg bg-white">
+                            <SelectItem
+                              value="pg"
+                              className="py-3 px-3 rounded-lg cursor-pointer hover:bg-slate-50"
+                            >
+                              PG (Paying Guest) - Managed stays with meal plans
+                              & cleaning
+                            </SelectItem>
+                            <SelectItem
+                              value="hostel"
+                              className="py-3 px-3 rounded-lg cursor-pointer hover:bg-slate-50"
+                            >
+                              Student Hostel - Vibrant student dorms & communal
+                              living
+                            </SelectItem>
+                            <SelectItem
+                              value="apartment"
+                              className="py-3 px-3 rounded-lg cursor-pointer hover:bg-slate-50"
+                            >
+                              Home / Apartment - Fully independent private flats
+                              & houses
+                            </SelectItem>
+                            <SelectItem
+                              value="other"
+                              className="py-3 px-3 rounded-lg cursor-pointer hover:bg-slate-50"
+                            >
+                              Other Residence - Specialized living facilities
+                              and unique stays
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
                         <p className="text-[11px] text-slate-500 mt-1.5">
                           You can adjust this choice until your first listing is
                           actively published.
