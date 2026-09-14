@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 
 export interface UseInactivityRefreshOptions {
   /**
-   * Inactivity threshold in minutes before prompting the user to refresh.
+   * Inactivity threshold in minutes before auto-refreshing on return
+   * or showing the refresh prompt if still actively viewing.
    * Default: 30 minutes.
    */
   timeoutMinutes?: number;
@@ -29,14 +30,24 @@ export interface UseInactivityRefreshReturn {
 
 const DEFAULT_TIMEOUT_MINUTES = 30;
 const DEFAULT_COOLDOWN_MS = 60_000;
-const ACTIVITY_THROTTLE_MS = 10_000; // Only update last-active timestamp every 10 seconds
+const ACTIVITY_THROTTLE_MS = 10_000; // Throttle timestamp updates to every 10s during continuous interaction
+
+function isElementEditable(el: Element | null): boolean {
+  if (!el) return false;
+  const tag = el.tagName;
+  return (
+    tag === 'INPUT' ||
+    tag === 'TEXTAREA' ||
+    el.getAttribute('contenteditable') === 'true'
+  );
+}
 
 /**
- * Hook to detect prolonged user inactivity and notify when the page needs a refresh.
- *
- * This hook NEVER auto-refreshes the page underneath an active or viewing user.
- * Instead, it tracks idle time and sets `needsRefresh` to true so the UI can present
- * a non-intrusive refresh prompt.
+ * Hook to handle inactivity refresh:
+ * 1. When the user returns directly after the timeout has elapsed (from another tab or window),
+ *    the app is automatically refreshed.
+ * 2. While the user is actively viewing or using the app, it NEVER auto-refreshes underneath them.
+ *    Instead, it alerts the user with a non-intrusive notification that the page has updates available.
  */
 export function useInactivityRefresh(
   options: UseInactivityRefreshOptions = {}
@@ -57,7 +68,11 @@ export function useInactivityRefresh(
   const lastRefreshRef = useRef<number>(0);
   const lastThrottleRef = useRef<number>(0);
 
-  const refresh = useCallback(() => {
+  // Tracking background/away state
+  const wasAwayRef = useRef<boolean>(false);
+  const awaySinceRef = useRef<number>(0);
+
+  const executeRefresh = useCallback(() => {
     const now = Date.now();
 
     if (now - lastRefreshRef.current < cooldownMs) {
@@ -65,10 +80,18 @@ export function useInactivityRefresh(
       return;
     }
 
+    // Do not auto-refresh if user is currently editing a form element
+    if (isElementEditable(document.activeElement)) {
+      setNeedsRefresh(true);
+      return;
+    }
+
     setIsRefreshing(true);
     lastRefreshRef.current = now;
     lastActiveRef.current = now;
     lastThrottleRef.current = now;
+    wasAwayRef.current = false;
+    awaySinceRef.current = 0;
 
     if (onRefresh) {
       onRefresh();
@@ -77,7 +100,6 @@ export function useInactivityRefresh(
     try {
       router.refresh();
     } finally {
-      // Allow brief visual feedback before dismissing prompt
       setTimeout(() => {
         setIsRefreshing(false);
         setNeedsRefresh(false);
@@ -89,6 +111,8 @@ export function useInactivityRefresh(
     const now = Date.now();
     lastActiveRef.current = now;
     lastThrottleRef.current = now;
+    wasAwayRef.current = false;
+    awaySinceRef.current = 0;
     setNeedsRefresh(false);
   }, []);
 
@@ -103,7 +127,8 @@ export function useInactivityRefresh(
 
     const elapsed = now - lastActiveRef.current;
 
-    // If inactivity timeout has elapsed, flag that the page needs a refresh instead of auto-refreshing
+    // If the timeout elapsed while on the page, do not auto-refresh while the user is using it.
+    // Instead, notify the user that fresh updates are available.
     if (elapsed >= timeoutMs) {
       setNeedsRefresh(true);
       return;
@@ -131,36 +156,56 @@ export function useInactivityRefresh(
       window.addEventListener(evt, handleEvent, { passive: true });
     });
 
-    // Check when user returns to the tab
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        const now = Date.now();
-        if (
-          lastActiveRef.current > 0 &&
-          now - lastActiveRef.current >= timeoutMs
-        ) {
-          setNeedsRefresh(true);
-        } else if (lastActiveRef.current === 0) {
+    const markAway = () => {
+      wasAwayRef.current = true;
+      awaySinceRef.current = Date.now();
+    };
+
+    const handleReturn = () => {
+      const now = Date.now();
+      const elapsedActive =
+        lastActiveRef.current > 0 ? now - lastActiveRef.current : 0;
+      const elapsedAway =
+        awaySinceRef.current > 0 ? now - awaySinceRef.current : 0;
+
+      // If user returns directly after the timeout has elapsed, auto-refresh the app
+      if (
+        wasAwayRef.current &&
+        (elapsedActive >= timeoutMs || elapsedAway >= timeoutMs)
+      ) {
+        executeRefresh();
+      } else {
+        // Tab restored before timeout: continue normally
+        wasAwayRef.current = false;
+        awaySinceRef.current = 0;
+        if (lastActiveRef.current === 0) {
           lastActiveRef.current = now;
         }
       }
     };
 
-    // Check when window gains focus
-    const handleFocus = () => {
-      const now = Date.now();
-      if (
-        lastActiveRef.current > 0 &&
-        now - lastActiveRef.current >= timeoutMs
-      ) {
-        setNeedsRefresh(true);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        markAway();
+      } else if (document.visibilityState === 'visible') {
+        handleReturn();
       }
     };
 
+    const handleBlur = () => {
+      markAway();
+    };
+
+    const handleFocus = () => {
+      handleReturn();
+    };
+
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('blur', handleBlur);
     window.addEventListener('focus', handleFocus);
 
-    // Periodic heartbeat check for tabs left open without interaction
+    // Heartbeat check for tabs left open and visible without user interaction
+    // When the user is currently on the page, DO NOT auto-refresh; show the prompt instead.
     const intervalId = window.setInterval(() => {
       if (document.visibilityState === 'visible') {
         const now = Date.now();
@@ -171,22 +216,23 @@ export function useInactivityRefresh(
           setNeedsRefresh(true);
         }
       }
-    }, 60_000);
+    }, 30_000);
 
     return () => {
       activityEvents.forEach((evt) => {
         window.removeEventListener(evt, handleEvent);
       });
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('blur', handleBlur);
       window.removeEventListener('focus', handleFocus);
       window.clearInterval(intervalId);
     };
-  }, [recordActivity, timeoutMs]);
+  }, [executeRefresh, recordActivity, timeoutMs]);
 
   return {
     needsRefresh,
     isRefreshing,
-    refresh,
+    refresh: executeRefresh,
     dismiss,
   };
 }
