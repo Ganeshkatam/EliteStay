@@ -36,7 +36,7 @@ function profile(overrides: Partial<HostProfileRow> = {}): HostProfileRow {
   };
 }
 
-function policies(version = MANDATORY_HOST_POLICIES.ANTI_DISCRIMINATION.version): HostPolicyAcceptanceRow[] {
+function policies(version: string = MANDATORY_HOST_POLICIES.ANTI_DISCRIMINATION.version): HostPolicyAcceptanceRow[] {
   return [
     {
       id: 'policy-1',
