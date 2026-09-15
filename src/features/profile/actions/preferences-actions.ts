@@ -21,7 +21,13 @@ export async function updateUserPreferences<T extends PreferenceCategory>(
   try {
     // 1. Assert AAL2 if enrolled for sensitive security category
     if (category === 'security') {
-      await assertAal2IfEnrolled(supabase);
+      const isTwoFactorToggle =
+        typeof data === 'object' && data !== null && 'two_factor_auth' in data;
+
+      // If not toggling 2FA itself, enforce AAL2 for sensitive operations when MFA is active
+      if (!isTwoFactorToggle) {
+        await assertAal2IfEnrolled(supabase);
+      }
     }
 
     const {

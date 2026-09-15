@@ -14,19 +14,34 @@ AS $$
   );
 $$;
 
--- Enforce AAL2 when modifying security settings if 2FA was already enabled
 CREATE OR REPLACE FUNCTION public.guard_user_preferences_security_aal()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = ''
 AS $$
+DECLARE
+  v_has_verified_factors BOOLEAN;
 BEGIN
-  -- If 2FA is active on the account, modifying the security column requires AAL2
-  IF (OLD.security->>'two_factor_auth')::boolean IS TRUE AND NOT public.is_aal2_authenticated() AND NOT public.is_admin() THEN
+  -- Check if user currently has verified MFA factors in Supabase Auth
+  SELECT EXISTS (
+    SELECT 1 FROM auth.mfa_factors
+    WHERE user_id = NEW.user_id
+      AND status = 'verified'
+  ) INTO v_has_verified_factors;
+
+  -- If verified factors exist, mutating security requires AAL2 or admin
+  -- (If user has unenrolled their factors, this allows updating preference to false)
+  IF v_has_verified_factors AND NOT public.is_aal2_authenticated() AND NOT public.is_admin() THEN
+    -- If user is completing enrollment (factor verified, turning 2fa true), allow syncing preference
+    IF (NEW.security->>'two_factor_auth')::boolean IS TRUE AND (OLD.security->>'two_factor_auth')::boolean IS NOT TRUE THEN
+      RETURN NEW;
+    END IF;
+
     RAISE EXCEPTION 'Two-Factor Authentication (AAL2) required to modify security preferences.'
       USING ERRCODE = '42501';
   END IF;
+
   RETURN NEW;
 END;
 $$;

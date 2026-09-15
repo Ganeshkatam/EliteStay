@@ -81,6 +81,16 @@ export function TwoFactorAuthCard({ initialEnabled }: TwoFactorAuthCardProps) {
   const startEnrollment = async () => {
     setIsVerifying(true);
     try {
+      // 0. Clean up any stale unverified factors so enrollment starts fresh
+      const { data: factorList } = await supabase.auth.mfa.listFactors();
+      if (factorList?.all) {
+        for (const factor of factorList.all) {
+          if (factor.status === 'unverified') {
+            await supabase.auth.mfa.unenroll({ factorId: factor.id });
+          }
+        }
+      }
+
       // 1. Enroll with Supabase MFA
       const { data, error } = await supabase.auth.mfa.enroll({
         factorType: 'totp',
@@ -121,22 +131,13 @@ export function TwoFactorAuthCard({ initialEnabled }: TwoFactorAuthCardProps) {
 
     setIsVerifying(true);
     try {
-      // 1. Create a challenge
-      const { data: challengeData, error: challengeError } =
-        await supabase.auth.mfa.challenge({ factorId: enrollFactorId });
-
-      if (challengeError || !challengeData) {
-        throw new Error(
-          challengeError?.message || 'Failed to create verification challenge.'
-        );
-      }
-
-      // 2. Verify challenge with user code
-      const { error: verifyError } = await supabase.auth.mfa.verify({
-        factorId: enrollFactorId,
-        challengeId: challengeData.id,
-        code: verificationCode.trim(),
-      });
+      // 1. Challenge & Verify using atomic Supabase SDK method
+      const { error: verifyError } = await supabase.auth.mfa.challengeAndVerify(
+        {
+          factorId: enrollFactorId,
+          code: verificationCode.trim(),
+        }
+      );
 
       if (verifyError) {
         throw new Error(
@@ -145,7 +146,10 @@ export function TwoFactorAuthCard({ initialEnabled }: TwoFactorAuthCardProps) {
         );
       }
 
-      // 3. Generate mock recovery codes
+      // 2. Refresh browser session to elevate cookies to AAL2
+      await supabase.auth.refreshSession();
+
+      // 3. Generate recovery codes
       const generatedCodes = Array.from({ length: 8 }).map(
         () =>
           Math.random().toString(36).substring(2, 6).toUpperCase() +
@@ -186,12 +190,25 @@ export function TwoFactorAuthCard({ initialEnabled }: TwoFactorAuthCardProps) {
   const confirmDisable = async () => {
     startTransition(async () => {
       try {
-        if (factorId) {
-          const { error } = await supabase.auth.mfa.unenroll({ factorId });
-          if (error) {
-            console.warn('Unenroll notice:', error.message);
+        // Clean up all enrolled factors in Supabase MFA
+        const { data: factorList } = await supabase.auth.mfa.listFactors();
+        if (factorList?.totp) {
+          for (const factor of factorList.totp) {
+            const { error: unenrollErr } = await supabase.auth.mfa.unenroll({
+              factorId: factor.id,
+            });
+            if (unenrollErr) {
+              console.warn(
+                'Unenroll factor notice:',
+                factor.id,
+                unenrollErr.message
+              );
+            }
           }
         }
+
+        // Refresh session to downgrade AAL status in cookies
+        await supabase.auth.refreshSession();
 
         // Update database user preferences
         await updateUserPreferences('security', {
