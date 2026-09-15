@@ -8,7 +8,13 @@ Purpose: Renders actionable business controls emitted by StayDecisionPolicy with
 */
 
 import React, { useState, useTransition } from 'react';
-import { Loader2, Check, AlertCircle, ArrowUpRight } from 'lucide-react';
+import {
+  Loader2,
+  Check,
+  AlertCircle,
+  ArrowUpRight,
+  AlertTriangle,
+} from 'lucide-react';
 import { type StayAction, type DatabaseStayStatus } from '../types/stay.types';
 import {
   confirmCheckInAction,
@@ -16,6 +22,14 @@ import {
   extendLeaseAction,
   terminateStayAction,
 } from '../actions/stay.actions';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 
 interface StayActionButtonsProps {
   stayId: string;
@@ -32,8 +46,9 @@ export function StayActionButtons({
   const [activeActionId, setActiveActionId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [isTerminateDialogOpen, setIsTerminateDialogOpen] = useState(false);
 
-  const handleExecuteAction = (actionId: string) => {
+  const executeAction = (actionId: string) => {
     setErrorMessage(null);
     setSuccessMessage(null);
     setActiveActionId(actionId);
@@ -48,17 +63,11 @@ export function StayActionButtons({
       } else if (actionId === 'extend-stay') {
         res = await extendLeaseAction(stayId, currentStatus);
       } else if (actionId === 'terminate-stay') {
-        if (
-          !window.confirm(
-            'Are you sure you wish to early terminate this tenancy?'
-          )
-        ) {
-          setActiveActionId(null);
-          return;
-        }
         res = await terminateStayAction(stayId, currentStatus);
+        setIsTerminateDialogOpen(false);
       } else if (actionId === 'transfer-unit') {
-        alert('Room / Unit Transfer initiated for this resident.');
+        setSuccessMessage('Room / Unit Transfer request registered.');
+        setTimeout(() => setSuccessMessage(null), 3000);
         setActiveActionId(null);
         return;
       } else {
@@ -74,6 +83,14 @@ export function StayActionButtons({
       }
       setActiveActionId(null);
     });
+  };
+
+  const handleActionClick = (actionId: string) => {
+    if (actionId === 'terminate-stay') {
+      setIsTerminateDialogOpen(true);
+      return;
+    }
+    executeAction(actionId);
   };
 
   const getVariantClasses = (
@@ -103,7 +120,7 @@ export function StayActionButtons({
               key={act.id}
               type="button"
               disabled={!act.enabled || isPending}
-              onClick={() => handleExecuteAction(act.id)}
+              onClick={() => handleActionClick(act.id)}
               title={act.reasonDisabled || act.label}
               className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs transition-all border disabled:opacity-50 disabled:cursor-not-allowed ${getVariantClasses(
                 act.variant
@@ -133,6 +150,50 @@ export function StayActionButtons({
           <span>{successMessage}</span>
         </div>
       )}
+
+      {/* In-App Early Termination Dialog */}
+      <Dialog
+        open={isTerminateDialogOpen}
+        onOpenChange={setIsTerminateDialogOpen}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="flex items-center gap-3 mb-1">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-50 text-rose-600">
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+              <DialogTitle className="text-lg font-bold text-slate-900">
+                Early Terminate Tenancy?
+              </DialogTitle>
+            </div>
+            <DialogDescription className="text-sm text-slate-600 pt-1">
+              Are you sure you wish to early terminate this tenancy? This action
+              will cancel active stay permissions and trigger the move-out
+              protocol.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex justify-end gap-2.5 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isPending}
+              onClick={() => setIsTerminateDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              disabled={isPending}
+              onClick={() => executeAction('terminate-stay')}
+              className="bg-rose-600 text-white hover:bg-rose-700"
+            >
+              {isPending && <Loader2 className="w-4 h-4 animate-spin mr-1.5" />}
+              Yes, Terminate Tenancy
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

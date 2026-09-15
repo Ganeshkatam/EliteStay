@@ -46,6 +46,9 @@ export function TwoFactorAuthCard({ initialEnabled }: TwoFactorAuthCardProps) {
   const [isVerifying, setIsVerifying] = useState(false);
   const [isPending, startTransition] = useTransition();
 
+  // In-App Disable Confirmation Dialog State
+  const [isDisableDialogOpen, setIsDisableDialogOpen] = useState(false);
+
   const supabase = createClient();
 
   // Check active MFA factors on mount
@@ -178,16 +181,8 @@ export function TwoFactorAuthCard({ initialEnabled }: TwoFactorAuthCardProps) {
     }
   };
 
-  // Disable 2FA
-  const handleDisable = async () => {
-    if (
-      !confirm(
-        'Are you sure you want to disable Two-Factor Authentication? Your account will be less secure.'
-      )
-    ) {
-      return;
-    }
-
+  // Disable 2FA via In-App Confirmation
+  const confirmDisable = async () => {
     startTransition(async () => {
       try {
         if (factorId) {
@@ -206,6 +201,7 @@ export function TwoFactorAuthCard({ initialEnabled }: TwoFactorAuthCardProps) {
 
         setIsEnabled(false);
         setFactorId(null);
+        setIsDisableDialogOpen(false);
 
         toast({
           title: '2FA Disabled',
@@ -283,7 +279,7 @@ export function TwoFactorAuthCard({ initialEnabled }: TwoFactorAuthCardProps) {
               type="button"
               variant="outline"
               size="sm"
-              onClick={handleDisable}
+              onClick={() => setIsDisableDialogOpen(true)}
               disabled={isPending}
               className="text-rose-600 border-rose-200 hover:bg-rose-50 hover:text-rose-700"
             >
@@ -468,6 +464,47 @@ export function TwoFactorAuthCard({ initialEnabled }: TwoFactorAuthCardProps) {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Custom In-App Disable Confirmation Dialog */}
+      <Dialog open={isDisableDialogOpen} onOpenChange={setIsDisableDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="flex items-center gap-3 mb-1">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-50 text-rose-600">
+                <ShieldAlert className="h-5 w-5" />
+              </div>
+              <DialogTitle className="text-lg font-bold text-slate-900">
+                Disable Two-Factor Authentication?
+              </DialogTitle>
+            </div>
+            <DialogDescription className="text-sm text-slate-600 pt-1">
+              Are you sure you want to disable 2FA? Your account will no longer
+              require a 6-digit authenticator code at sign-in and will be
+              significantly less secure.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex justify-end gap-2.5 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isPending}
+              onClick={() => setIsDisableDialogOpen(false)}
+            >
+              Keep 2FA Enabled
+            </Button>
+            <Button
+              type="button"
+              disabled={isPending}
+              onClick={confirmDisable}
+              className="bg-rose-600 text-white hover:bg-rose-700"
+            >
+              {isPending && <Loader2 className="w-4 h-4 animate-spin mr-1.5" />}
+              Yes, Disable 2FA
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
