@@ -46,7 +46,11 @@ export interface HostComplianceSummary {
  * Explicitly separated from the 3-step Onboarding domain.
  */
 export class HostComplianceService {
-  private readonly repository = new HostingRepository();
+  private readonly repository: HostingRepository;
+
+  constructor(repository?: HostingRepository) {
+    this.repository = repository ?? new HostingRepository();
+  }
 
   /**
    * Retrieves an immutable compliance summary projection for the host workspace.

@@ -427,6 +427,8 @@ describe('Phase 4: Host Lifecycle End-to-End & Boundary Hardening', () => {
         status: 'draft',
         city: 'Hyderabad',
         locality: 'Gachibowli',
+        latitude: 17.44,
+        longitude: 78.34,
         images: [
           { id: 'i1' },
           { id: 'i2' },

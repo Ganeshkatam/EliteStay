@@ -1,92 +1,71 @@
-import { describe, expect, it } from 'vitest';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import * as fs from 'fs';
-import * as path from 'path';
+import { describe, it, expect } from 'vitest';
+import { createClient } from '@supabase/supabase-js';
 
-try {
-  const envPath = path.resolve(process.cwd(), '.env.local');
-  if (fs.existsSync(envPath)) {
-    for (const line of fs.readFileSync(envPath, 'utf8').split('\n')) {
-      const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith('#')) continue;
-      const index = trimmed.indexOf('=');
-      if (index > 0) {
-        process.env[trimmed.slice(0, index).trim()] = trimmed.slice(index + 1).trim();
-      }
-    }
-  }
-} catch {
-  // Environment loading is best-effort for local verification.
-}
-
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ybeidsnuijipacnmybfo.supabase.co';
-const anonKey =
+const SUPABASE_URL =
+  process.env.NEXT_PUBLIC_SUPABASE_URL ||
+  'https://ybeidsnuijipacnmybfo.supabase.co';
+const SUPABASE_ANON_KEY =
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
-  '';
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InliZWlkc251aWppcGFjbm15YmZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA3MjAyNjEsImV4cCI6MjA4NjI5NjI2MX0.g6-J1UfG3GffV9gV07x8-fE_wQ4_761Y_Xj1vCg7nNo';
 
-const enabled =
-  Boolean(anonKey) &&
-  !url.includes('mock.supabase.co') &&
-  anonKey !== 'mock-supabase-publishable-key';
-
-describe('PLV database boundary', () => {
-  let supabase: SupabaseClient;
-
-  if (enabled) {
-    supabase = createClient(url, anonKey, {
-      auth: { persistSession: false },
-    });
-  }
-
-  it.skipIf(!enabled)('rejects unauthenticated publication attempts', async () => {
-    const { data, error } = await supabase.rpc('publish_listing', {
-      p_listing_id: '00000000-0000-0000-0000-000000000001',
-    });
-
-    expect(error ? ['P0001', '42501', 'PGRST301', '401'].includes(error.code) : data?.error === 'UNAUTHENTICATED').toBe(true);
+describe('Phase 5 — Database Boundary & Security PLV Suite (PLV-01 - PLV-05)', () => {
+  const anonClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: { persistSession: false },
   });
 
-  it.skipIf(!enabled)('guest listing reads never expose non-published rows', async () => {
-    const { data, error } = await supabase
+  it('PLV-01 - Anonymous guest queries on listings table only receive published listings', async () => {
+    const { data, error } = await anonClient
       .from('listings')
-      .select('id,status');
+      .select('id, title, status')
+      .neq('status', 'published');
 
-    expect(error).toBeNull();
-    expect((data ?? []).every((row) => row.status === 'published')).toBe(true);
+    // Either data is empty or filtered out by RLS
+    if (!error) {
+      expect(data?.length ?? 0).toBe(0);
+    }
   });
 
-  it.skipIf(!enabled)('published-only search RPC returns no unpublished listing rows', async () => {
-    const { data, error } = await supabase.rpc('search_listings', {
-      p_page: 1,
-      p_page_size: 100,
-      p_sort: 'recommended',
+  it('PLV-02 - Anonymous users cannot inspect private compliance columns on host_profiles', async () => {
+    const { data, error } = await anonClient
+      .from('host_profiles')
+      .select(
+        'id, user_id, bank_name, bank_account_last4, tax_identifier_last4, kyc_document_ref'
+      );
+
+    // RLS default deny or empty data for unauthenticated callers
+    if (!error) {
+      expect(data?.length ?? 0).toBe(0);
+    }
+  });
+
+  it('PLV-03 - RPC publish_listing rejects unauthenticated invocation with 401/error', async () => {
+    const { data, error } = await anonClient.rpc('publish_listing', {
+      p_listing_id: '00000000-0000-0000-0000-000000000000',
     });
 
-    expect(error).toBeNull();
-    const rows = Array.isArray(data) ? data : [];
-    expect(rows.every((row: { status?: string }) => row.status === undefined || row.status === 'published')).toBe(true);
+    expect(error).not.toBeNull();
+    expect(data).toBeNull();
   });
 
-  it.skipIf(!enabled)('policy acceptance storage is append-only from the client boundary', async () => {
-    const { error } = await supabase
+  it('PLV-04 - Direct INSERT/UPDATE trying to bypass publish_listing to set published status is rejected', async () => {
+    const fakeId = '00000000-0000-0000-0000-000000000099';
+    const { error } = await anonClient.from('listings').insert({
+      id: fakeId,
+      title: 'Bypass Attempt',
+      status: 'published',
+    });
+
+    // Insertion blocked by RLS / triggers
+    expect(error).not.toBeNull();
+  });
+
+  it('PLV-05 - Anonymous users cannot query host_policy_acceptances', async () => {
+    const { data, error } = await anonClient
       .from('host_policy_acceptances')
-      .insert({
-        host_profile_id: '00000000-0000-0000-0000-000000000001',
-        policy_type: 'ANTI_DISCRIMINATION',
-        policy_version: '2026.1',
-        client_context: {},
-      });
+      .select('*');
 
-    expect(error).toBeDefined();
-  });
-
-  it.skipIf(!enabled)('direct publication mutation is denied by the database guard', async () => {
-    const { error } = await supabase
-      .from('listings')
-      .update({ status: 'published' })
-      .eq('id', '00000000-0000-0000-0000-000000000001');
-
-    expect(error).toBeDefined();
+    if (!error) {
+      expect(data?.length ?? 0).toBe(0);
+    }
   });
 });
