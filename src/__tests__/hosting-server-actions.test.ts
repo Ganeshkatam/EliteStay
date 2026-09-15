@@ -3,12 +3,14 @@ import {
   IdentityStepSchema,
   SpecializationStepSchema,
   PolicyStepSchema,
+  IdentityKycSubmissionSchema,
   PayoutAccountSchema,
   TaxRegistrationSchema,
   HostProfileSettingsSchema,
   OperationalStatusToggleSchema,
 } from '../features/hosting/schemas/hosting.schemas';
 import { HostingService } from '../features/hosting/services/hosting.service';
+import { HostComplianceService } from '../features/hosting/services/host-compliance.service';
 import { HostProfileRow } from '../features/hosting/types/hosting.types';
 
 describe('Hosting Server Action & Schema Boundary Hardening', () => {
@@ -79,6 +81,75 @@ describe('Hosting Server Action & Schema Boundary Hardening', () => {
       });
     });
 
+    describe('IdentityKycSubmissionSchema', () => {
+      it('accepts valid KYC submission details with whitespace normalization', () => {
+        const input = {
+          documentType: 'AADHAAR',
+          documentNumber: '  1234 5678 9012  ',
+          legalFullName: '  Jane Doe  ',
+        };
+        const parsed = IdentityKycSubmissionSchema.parse(input);
+        expect(parsed.documentType).toBe('AADHAAR');
+        expect(parsed.documentNumber).toBe('1234 5678 9012');
+        expect(parsed.legalFullName).toBe('Jane Doe');
+      });
+
+      it('accepts other valid document types (PASSPORT, VOTER_ID, DRIVING_LICENSE)', () => {
+        expect(
+          IdentityKycSubmissionSchema.parse({
+            documentType: 'PASSPORT',
+            documentNumber: 'A1234567',
+            legalFullName: 'Jane Doe',
+          }).documentType
+        ).toBe('PASSPORT');
+
+        expect(
+          IdentityKycSubmissionSchema.parse({
+            documentType: 'VOTER_ID',
+            documentNumber: 'VOT123456',
+            legalFullName: 'Jane Doe',
+          }).documentType
+        ).toBe('VOTER_ID');
+
+        expect(
+          IdentityKycSubmissionSchema.parse({
+            documentType: 'DRIVING_LICENSE',
+            documentNumber: 'DL-12345-2026',
+            legalFullName: 'Jane Doe',
+          }).documentType
+        ).toBe('DRIVING_LICENSE');
+      });
+
+      it('rejects invalid document types or special character injection', () => {
+        expect(() =>
+          IdentityKycSubmissionSchema.parse({
+            documentType: 'INVALID_DOC',
+            documentNumber: '12345678',
+            legalFullName: 'Jane Doe',
+          })
+        ).toThrow();
+
+        expect(() =>
+          IdentityKycSubmissionSchema.parse({
+            documentType: 'AADHAAR',
+            documentNumber: '1234<script>',
+            legalFullName: 'Jane Doe',
+          })
+        ).toThrow();
+      });
+
+      it('rejects unknown/extra fields', () => {
+        expect(() =>
+          IdentityKycSubmissionSchema.parse({
+            documentType: 'AADHAAR',
+            documentNumber: '1234 5678 9012',
+            legalFullName: 'Jane Doe',
+            identity_verification_status: 'VERIFIED', // Escalation attempt
+          })
+        ).toThrow();
+      });
+    });
+
     describe('PayoutAccountSchema', () => {
       it('accepts valid bank name and account number', () => {
         const input = {
@@ -88,6 +159,18 @@ describe('Hosting Server Action & Schema Boundary Hardening', () => {
         const parsed = PayoutAccountSchema.parse(input);
         expect(parsed.bankName).toBe('State Bank of India');
         expect(parsed.accountNumber).toBe('123456789012');
+      });
+
+      it('accepts optional IFSC code and account holder name', () => {
+        const input = {
+          bankName: 'HDFC Bank',
+          accountNumber: '123456789012',
+          ifscCode: '  HDFC0001234  ',
+          accountHolderName: '  Jane Doe  ',
+        };
+        const parsed = PayoutAccountSchema.parse(input);
+        expect(parsed.ifscCode).toBe('HDFC0001234');
+        expect(parsed.accountHolderName).toBe('Jane Doe');
       });
 
       it('rejects accounts with special characters or invalid length', () => {
@@ -108,11 +191,30 @@ describe('Hosting Server Action & Schema Boundary Hardening', () => {
     });
 
     describe('TaxRegistrationSchema', () => {
-      it('accepts valid tax ID', () => {
+      it('accepts valid tax ID with default PAN type', () => {
         const parsed = TaxRegistrationSchema.parse({
           taxId: '  AAAPB1234C  ',
         });
         expect(parsed.taxId).toBe('AAAPB1234C');
+        expect(parsed.taxIdType).toBe('PAN');
+      });
+
+      it('accepts GSTIN tax ID type', () => {
+        const parsed = TaxRegistrationSchema.parse({
+          taxIdType: 'GSTIN',
+          taxId: '22AAAAA0000A1Z5',
+        });
+        expect(parsed.taxIdType).toBe('GSTIN');
+        expect(parsed.taxId).toBe('22AAAAA0000A1Z5');
+      });
+
+      it('rejects invalid tax ID type', () => {
+        expect(() =>
+          TaxRegistrationSchema.parse({
+            taxIdType: 'INVALID_TAX',
+            taxId: 'AAAPB1234C',
+          })
+        ).toThrow();
       });
 
       it('rejects short tax IDs', () => {
@@ -389,6 +491,86 @@ describe('Hosting Server Action & Schema Boundary Hardening', () => {
       await expect(
         service.requireReadyOrActiveHost('usr_1')
       ).resolves.not.toThrow();
+    });
+  });
+
+  describe('4. HostComplianceService Workspace Projections & Masking', () => {
+    it('returns structured summary projection with masked identifiers', async () => {
+      const complianceService = new HostComplianceService();
+      vi.spyOn(
+        complianceService['repository'],
+        'getHostProfileByUserId'
+      ).mockResolvedValue({
+        id: 'hp_comp',
+        user_id: 'usr_comp',
+        status: 'READY',
+        primary_accommodation_type_id: 'acc_pg',
+        bank_account_id: null,
+        bank_name: 'HDFC Bank',
+        bank_account_last4: '1234',
+        tax_profile_id: null,
+        tax_id_last4: '5678',
+        tax_id_type: 'PAN',
+        identity_submitted_at: '2026-09-15T10:00:00Z',
+        identity_verification_status: 'VERIFIED',
+        identity_verification_ref: 'AADHAAR-9012',
+        identity_verified_at: '2026-09-15T11:00:00Z',
+        payout_verification_status: 'VERIFIED',
+        payout_verified_at: '2026-09-15T11:00:00Z',
+        tax_verification_status: 'VERIFIED',
+        tax_verified_at: '2026-09-15T11:00:00Z',
+        agreed_to_policies_at: '2026-09-15T10:00:00Z',
+        support_phone: null,
+        support_email: null,
+        created_at: '',
+        updated_at: '',
+      });
+
+      vi.spyOn(
+        complianceService['repository'],
+        'getPolicyAcceptances'
+      ).mockResolvedValue([
+        {
+          id: 'acc_1',
+          host_profile_id: 'hp_comp',
+          policy_type: 'ANTI_DISCRIMINATION',
+          policy_version: '2026.1',
+          accepted_at: '2026-09-15T10:00:00Z',
+          client_context: {},
+          created_at: '',
+        },
+        {
+          id: 'acc_2',
+          host_profile_id: 'hp_comp',
+          policy_type: 'MAINTENANCE_SLA',
+          policy_version: '2026.1',
+          accepted_at: '2026-09-15T10:00:00Z',
+          client_context: {},
+          created_at: '',
+        },
+      ]);
+
+      vi.spyOn(
+        complianceService['repository'],
+        'getAccommodationTypeInfoById'
+      ).mockResolvedValue({
+        slug: 'pg',
+        name: 'Paying Guest (PG)',
+      });
+
+      const summary = await complianceService.getComplianceSummary('usr_comp');
+
+      expect(summary.userId).toBe('usr_comp');
+      expect(summary.status).toBe('READY');
+      expect(summary.identity.isVerified).toBe(true);
+      expect(summary.identity.reference).toBe('AADHAAR-9012');
+      expect(summary.payout.isVerified).toBe(true);
+      expect(summary.payout.bankName).toBe('HDFC Bank');
+      expect(summary.payout.accountLast4).toBe('1234');
+      expect(summary.tax.isVerified).toBe(true);
+      expect(summary.tax.taxIdLast4).toBe('5678');
+      expect(summary.specialization.name).toBe('Paying Guest (PG)');
+      expect(summary.policies.areAllCurrent).toBe(true);
     });
   });
 });

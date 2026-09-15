@@ -13,13 +13,17 @@ import {
 import { ListingPublicationEligibility } from '@/features/hosting/types/hosting.types';
 import { cn } from '@/lib/utils';
 
+import Link from 'next/link';
+
 interface PublicationReadinessCardProps {
   eligibility: ListingPublicationEligibility;
+  listingId?: string;
   className?: string;
 }
 
 export function PublicationReadinessCard({
   eligibility,
+  listingId,
   className,
 }: PublicationReadinessCardProps) {
   const {
@@ -35,6 +39,8 @@ export function PublicationReadinessCard({
       label: 'Identity Verification (KYC)',
       isComplete: hostRequirements.identityVerified,
       icon: ShieldCheck,
+      href: '/host/compliance#identity',
+      actionLabel: 'Complete KYC',
       description: hostRequirements.identityVerified
         ? 'Government ID verified'
         : 'Official ID verification required before live hosting',
@@ -44,6 +50,8 @@ export function PublicationReadinessCard({
       label: 'Payout Bank Account',
       isComplete: hostRequirements.payoutVerified,
       icon: CreditCard,
+      href: '/host/compliance#payout',
+      actionLabel: 'Set Up Payout',
       description: hostRequirements.payoutVerified
         ? 'Bank account verified for direct deposits'
         : 'Connect verified bank account to receive rent',
@@ -53,6 +61,8 @@ export function PublicationReadinessCard({
       label: 'Tax Registration (PAN / GST)',
       isComplete: hostRequirements.taxVerified,
       icon: FileText,
+      href: '/host/compliance#tax',
+      actionLabel: 'Register Tax',
       description: hostRequirements.taxVerified
         ? 'Tax identifier recorded'
         : 'Statutory tax registration required',
@@ -65,6 +75,10 @@ export function PublicationReadinessCard({
       label: 'Basic Listing Information',
       isComplete: listingRequirements.contentComplete,
       icon: FileText,
+      href: listingId
+        ? `/host/listings/${listingId}/build/accommodation`
+        : undefined,
+      actionLabel: 'Edit Details',
       description: listingRequirements.contentComplete
         ? 'Title and details completed'
         : 'Provide listing title and room description',
@@ -74,6 +88,10 @@ export function PublicationReadinessCard({
       label: 'Location & Map Coordinates',
       isComplete: listingRequirements.locationComplete,
       icon: MapPin,
+      href: listingId
+        ? `/host/listings/${listingId}/build/location`
+        : undefined,
+      actionLabel: 'Set Location',
       description: listingRequirements.locationComplete
         ? 'Address & GPS coordinates verified'
         : 'Add full address and property pin',
@@ -83,6 +101,8 @@ export function PublicationReadinessCard({
       label: 'Pricing & Deposit Terms',
       isComplete: listingRequirements.pricingConfigured,
       icon: DollarSign,
+      href: listingId ? `/host/listings/${listingId}/build/pricing` : undefined,
+      actionLabel: 'Set Pricing',
       description: listingRequirements.pricingConfigured
         ? 'Monthly rent & security deposit configured'
         : 'Set monthly rent structure',
@@ -92,6 +112,8 @@ export function PublicationReadinessCard({
       label: 'Property Photos',
       isComplete: listingRequirements.photosPresent,
       icon: Camera,
+      href: listingId ? `/host/listings/${listingId}/build/images` : undefined,
+      actionLabel: 'Upload Photos',
       description: listingRequirements.photosPresent
         ? 'Property photos uploaded'
         : 'Upload high-resolution property photos',
@@ -173,7 +195,7 @@ export function PublicationReadinessCard({
                   </div>
 
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-2">
                       <h4 className="text-xs font-bold text-slate-900">
                         {item.label}
                       </h4>
@@ -182,9 +204,12 @@ export function PublicationReadinessCard({
                           Verified
                         </span>
                       ) : (
-                        <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded">
-                          Required
-                        </span>
+                        <Link
+                          href={item.href}
+                          className="text-[10px] font-bold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded transition-colors shrink-0"
+                        >
+                          {item.actionLabel} &rarr;
+                        </Link>
                       )}
                     </div>
                     <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">
@@ -233,7 +258,7 @@ export function PublicationReadinessCard({
                   </div>
 
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-2">
                       <h4 className="text-xs font-bold text-slate-900">
                         {item.label}
                       </h4>
@@ -241,6 +266,13 @@ export function PublicationReadinessCard({
                         <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">
                           Complete
                         </span>
+                      ) : item.href ? (
+                        <Link
+                          href={item.href}
+                          className="text-[10px] font-bold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded transition-colors shrink-0"
+                        >
+                          {item.actionLabel} &rarr;
+                        </Link>
                       ) : (
                         <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded">
                           Pending

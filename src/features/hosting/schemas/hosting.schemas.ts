@@ -52,6 +52,40 @@ export const SpecializationStepSchema = z
 export type SpecializationStepInput = z.infer<typeof SpecializationStepSchema>;
 
 /**
+ * Host Workspace Compliance: Identity KYC Submission Schema
+ */
+export const IdentityKycSubmissionSchema = z
+  .object({
+    documentType: z.enum(
+      ['AADHAAR', 'PASSPORT', 'VOTER_ID', 'DRIVING_LICENSE'],
+      { message: 'Select a valid government identification document type' }
+    ),
+    documentNumber: z
+      .string({
+        message: 'Document reference / identification number is required',
+      })
+      .trim()
+      .min(4, 'Document reference must be at least 4 characters')
+      .max(50, 'Document reference cannot exceed 50 characters')
+      .regex(
+        /^[A-Za-z0-9\s\-]+$/,
+        'Document reference must contain only alphanumeric characters, dashes, and spaces'
+      ),
+    legalFullName: z
+      .string({
+        message: 'Legal full name as appearing on official ID is required',
+      })
+      .trim()
+      .min(2, 'Full name must be at least 2 characters')
+      .max(100, 'Full name cannot exceed 100 characters'),
+  })
+  .strict();
+
+export type IdentityKycSubmissionInput = z.infer<
+  typeof IdentityKycSubmissionSchema
+>;
+
+/**
  * Host Workspace Compliance: Payout Setup Schema
  */
 export const PayoutAccountSchema = z
@@ -70,6 +104,18 @@ export const PayoutAccountSchema = z
         /^[A-Za-z0-9]+$/,
         'Account number must contain only alphanumeric characters'
       ),
+    ifscCode: z
+      .string()
+      .trim()
+      .max(20, 'IFSC / Branch routing code cannot exceed 20 characters')
+      .optional()
+      .or(z.literal('')),
+    accountHolderName: z
+      .string()
+      .trim()
+      .max(100, 'Account holder name cannot exceed 100 characters')
+      .optional()
+      .or(z.literal('')),
   })
   .strict();
 
@@ -80,11 +126,20 @@ export type PayoutAccountInput = z.infer<typeof PayoutAccountSchema>;
  */
 export const TaxRegistrationSchema = z
   .object({
+    taxIdType: z
+      .enum(['PAN', 'GSTIN'], {
+        message: 'Select a valid tax identifier type (PAN or GSTIN)',
+      })
+      .default('PAN'),
     taxId: z
       .string({ message: 'Tax identification number is required' })
       .trim()
       .min(4, 'Tax ID must be at least 4 characters')
-      .max(50, 'Tax ID cannot exceed 50 characters'),
+      .max(50, 'Tax ID cannot exceed 50 characters')
+      .regex(
+        /^[A-Za-z0-9]+$/,
+        'Tax ID must contain only alphanumeric characters'
+      ),
   })
   .strict();
 

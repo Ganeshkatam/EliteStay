@@ -159,17 +159,58 @@ export class HostingRepository {
   }
 
   /**
+   * Records identity KYC verification submission.
+   */
+  public async recordIdentityKycSubmission(
+    userId: string,
+    documentType: string,
+    documentNumber: string,
+    legalFullName: string
+  ): Promise<void> {
+    const supabase = await createClient();
+    const last4 =
+      documentNumber.length > 4 ? documentNumber.slice(-4) : documentNumber;
+    const ref = `${documentType}-${last4}`;
+
+    // 1. Update full legal name in profiles
+    await supabase
+      .from('profiles')
+      .update({
+        full_name: legalFullName,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', userId);
+
+    // 2. Update host profile KYC facts
+    const { error } = await supabase
+      .from('host_profiles')
+      .update({
+        identity_submitted_at: new Date().toISOString(),
+        identity_verification_ref: ref,
+        identity_verification_status: 'PENDING',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('user_id', userId);
+
+    if (error && error.code !== '42501') {
+      console.warn('[HostingRepository] Note on KYC recording:', error.message);
+    }
+  }
+
+  /**
    * Records payout bank account information.
    */
   public async recordPayoutInstrument(
     userId: string,
     bankName: string,
-    accountNumberOrLast4: string
+    accountNumberOrLast4: string,
+    _ifscCode?: string,
+    _accountHolderName?: string
   ): Promise<void> {
     const supabase = await createClient();
     const last4 =
       accountNumberOrLast4.length > 4
-        ? accountNumberOrLast4.slice(-4).padStart(4, '*')
+        ? accountNumberOrLast4.slice(-4)
         : accountNumberOrLast4;
 
     const { error } = await supabase
@@ -177,6 +218,7 @@ export class HostingRepository {
       .update({
         bank_name: bankName,
         bank_account_last4: last4,
+        payout_verification_status: 'PENDING',
         updated_at: new Date().toISOString(),
       })
       .eq('user_id', userId);
@@ -184,6 +226,35 @@ export class HostingRepository {
     if (error && error.code !== '42501') {
       console.warn(
         '[HostingRepository] Note on payout instrument recording:',
+        error.message
+      );
+    }
+  }
+
+  /**
+   * Records statutory tax registration (PAN / GSTIN).
+   */
+  public async recordTaxRegistration(
+    userId: string,
+    taxIdType: string,
+    taxId: string
+  ): Promise<void> {
+    const supabase = await createClient();
+    const last4 = taxId.length > 4 ? taxId.slice(-4) : taxId;
+
+    const { error } = await supabase
+      .from('host_profiles')
+      .update({
+        tax_id_type: taxIdType,
+        tax_id_last4: last4,
+        tax_verification_status: 'PENDING',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('user_id', userId);
+
+    if (error && error.code !== '42501') {
+      console.warn(
+        '[HostingRepository] Note on tax registration recording:',
         error.message
       );
     }

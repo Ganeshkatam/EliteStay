@@ -4,6 +4,7 @@ import {
   Inbox,
   Users,
   Settings,
+  ShieldCheck,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -16,6 +17,7 @@ export interface HostNavItem {
 export const HOST_NAVIGATION: HostNavItem[] = [
   { name: 'Dashboard', href: '/host', icon: LayoutDashboard },
   { name: 'Properties', href: '/host/listings', icon: List },
+  { name: 'Compliance', href: '/host/compliance', icon: ShieldCheck },
   { name: 'Applications', href: '/host/applications', icon: Inbox },
   { name: 'Residents', href: '/host/residents', icon: Users },
   { name: 'Settings', href: '/host/profile', icon: Settings },
@@ -27,6 +29,9 @@ export function getHostRouteTitle(pathname: string): string {
   }
   if (pathname.startsWith('/host/onboarding')) {
     return 'Host Onboarding';
+  }
+  if (pathname.startsWith('/host/compliance')) {
+    return 'Host Compliance';
   }
   if (pathname.startsWith('/host/profile')) {
     return 'Host Profile';

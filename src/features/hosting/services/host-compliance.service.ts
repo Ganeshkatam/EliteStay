@@ -139,17 +139,38 @@ export class HostComplianceService {
   }
 
   /**
+   * Submits identity KYC details for compliance verification.
+   */
+  public async submitIdentityKyc(
+    userId: string,
+    documentType: string,
+    documentNumber: string,
+    legalFullName: string
+  ): Promise<void> {
+    await this.repository.recordIdentityKycSubmission(
+      userId,
+      documentType,
+      documentNumber,
+      legalFullName
+    );
+  }
+
+  /**
    * Records workspace payout account bank details.
    */
   public async savePayoutAccount(
     userId: string,
     bankName: string,
-    accountNumber: string
+    accountNumber: string,
+    ifscCode?: string,
+    accountHolderName?: string
   ): Promise<void> {
     await this.repository.recordPayoutInstrument(
       userId,
       bankName,
-      accountNumber
+      accountNumber,
+      ifscCode,
+      accountHolderName
     );
   }
 
@@ -158,12 +179,9 @@ export class HostComplianceService {
    */
   public async saveTaxRegistration(
     userId: string,
+    taxIdType: 'PAN' | 'GSTIN',
     taxId: string
   ): Promise<void> {
-    await this.repository.recordPayoutInstrument(
-      userId,
-      'TAX_REGISTRATION',
-      taxId
-    );
+    await this.repository.recordTaxRegistration(userId, taxIdType, taxId);
   }
 }

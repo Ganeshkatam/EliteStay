@@ -34,10 +34,39 @@ export class PublishingService {
     // 1. Evaluate Health
     const { health, missingItems } = ListingHealthService.evaluate(rawListing);
 
-    // 2. Evaluate Publishing Readiness
+    // 2. Evaluate Host Compliance Requirements
+    const { HostingRepository } =
+      await import('@/features/hosting/repositories/hosting.repository');
+    const hostingRepo = new HostingRepository();
+    const hostProfileData = await hostingRepo.getHostProfileByUserId(hostId);
+
+    if (hostProfileData?.identity_verification_status !== 'VERIFIED') {
+      missingItems.push({
+        category: 'required',
+        sectionId: PublishingSectionId.ACCOMMODATION,
+        message:
+          'Host identity verification (KYC) required in Compliance Center',
+      });
+    }
+    if (hostProfileData?.payout_verification_status !== 'VERIFIED') {
+      missingItems.push({
+        category: 'required',
+        sectionId: PublishingSectionId.PRICING,
+        message: 'Verified payout bank account required in Compliance Center',
+      });
+    }
+    if (hostProfileData?.tax_verification_status !== 'VERIFIED') {
+      missingItems.push({
+        category: 'required',
+        sectionId: PublishingSectionId.PRICING,
+        message: 'Statutory tax registration required in Compliance Center',
+      });
+    }
+
+    // 3. Evaluate Publishing Readiness
     const publishingDecision = PublishingPolicy.evaluate(missingItems);
 
-    // 3. Compute Sidebar Navigation
+    // 4. Compute Sidebar Navigation
     const sidebar = this.computeSidebar(publishingDecision);
 
     return {

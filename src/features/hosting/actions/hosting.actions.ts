@@ -7,20 +7,22 @@ import { redirect } from 'next/navigation';
 import { HostingService } from '../services/hosting.service';
 import { HostProfileService } from '../services/host-profile.service';
 import { createDraftListing } from '@/features/host/actions/listing-actions';
+import { HostComplianceService } from '../services/host-compliance.service';
+import { PublishingService } from '@/features/host/publishing/services/publishing.service';
 import {
   IdentityStepSchema,
   SpecializationStepSchema,
   PolicyStepSchema,
+  IdentityKycSubmissionSchema,
   PayoutAccountSchema,
   TaxRegistrationSchema,
   HostProfileSettingsSchema,
   OperationalStatusToggleSchema,
 } from '../schemas/hosting.schemas';
 import { AuditContext } from '../types/hosting.types';
-import { HostReadinessService } from '../services/host-readiness.service';
 
 const hostingService = new HostingService();
-const readinessService = new HostReadinessService();
+const complianceService = new HostComplianceService();
 const profileService = new HostProfileService();
 
 async function getAuthenticatedUser() {
@@ -31,7 +33,7 @@ async function getAuthenticatedUser() {
   if (!user) {
     throw new Error('Unauthorized: Authentication required');
   }
-  return user;
+  return { user, supabase };
 }
 
 async function getAuditContext(): Promise<AuditContext> {
@@ -59,7 +61,7 @@ export async function startHostingAction() {
  * Submits verified identity details (Step 1) and navigates to accommodation specialization (Step 2).
  */
 export async function submitIdentityStepAction(formData: FormData) {
-  const user = await getAuthenticatedUser();
+  const { user } = await getAuthenticatedUser();
 
   const parsed = IdentityStepSchema.parse({
     fullName: formData.get('fullName'),
@@ -80,7 +82,7 @@ export async function submitIdentityStepAction(formData: FormData) {
  * Submits accommodation specialization selection (Step 2) and navigates to mandatory policies (Step 3).
  */
 export async function submitSpecializationStepAction(formData: FormData) {
-  const user = await getAuthenticatedUser();
+  const { user } = await getAuthenticatedUser();
 
   const parsed = SpecializationStepSchema.parse({
     primaryAccommodationSlug: formData.get('primaryAccommodationSlug'),
@@ -96,23 +98,53 @@ export async function submitSpecializationStepAction(formData: FormData) {
 }
 
 /**
+ * Host Compliance Center Action: Submits identity KYC documents.
+ * Persists submission facts and marks verification PENDING.
+ */
+export async function submitIdentityKycAction(formData: FormData) {
+  const { user } = await getAuthenticatedUser();
+
+  const parsed = IdentityKycSubmissionSchema.parse({
+    documentType: formData.get('documentType'),
+    documentNumber: formData.get('documentNumber'),
+    legalFullName: formData.get('legalFullName'),
+  });
+
+  await complianceService.submitIdentityKyc(
+    user.id,
+    parsed.documentType,
+    parsed.documentNumber,
+    parsed.legalFullName
+  );
+
+  revalidatePath('/host/compliance');
+  revalidatePath('/host/profile');
+  revalidatePath('/host');
+}
+
+/**
  * Workspace Compliance Action: Saves payout bank details from within host workspace.
  * Does not alter or gate onboarding state.
  */
 export async function savePayoutAccountAction(formData: FormData) {
-  const user = await getAuthenticatedUser();
+  const { user } = await getAuthenticatedUser();
 
   const parsed = PayoutAccountSchema.parse({
     bankName: formData.get('bankName'),
     accountNumber: formData.get('accountNumber'),
+    ifscCode: formData.get('ifscCode') || undefined,
+    accountHolderName: formData.get('accountHolderName') || undefined,
   });
 
-  await readinessService.savePayoutAccount(
+  await complianceService.savePayoutAccount(
     user.id,
     parsed.bankName,
-    parsed.accountNumber
+    parsed.accountNumber,
+    parsed.ifscCode,
+    parsed.accountHolderName
   );
 
+  revalidatePath('/host/compliance');
   revalidatePath('/host/profile');
   revalidatePath('/host');
 }
@@ -122,20 +154,36 @@ export async function savePayoutAccountAction(formData: FormData) {
  * Does not alter or gate onboarding state.
  */
 export async function saveTaxRegistrationAction(formData: FormData) {
-  const user = await getAuthenticatedUser();
+  const { user } = await getAuthenticatedUser();
 
   const parsed = TaxRegistrationSchema.parse({
+    taxIdType: formData.get('taxIdType') || 'PAN',
     taxId: formData.get('taxId'),
   });
 
-  await profileService.updatePayoutDetails(
+  await complianceService.saveTaxRegistration(
     user.id,
-    'TAX_REGISTRATION',
+    parsed.taxIdType,
     parsed.taxId
   );
 
+  revalidatePath('/host/compliance');
   revalidatePath('/host/profile');
   revalidatePath('/host');
+}
+
+/**
+ * Thin Route Action: Publishes a listing via transactional publish_listing RPC.
+ */
+export async function publishListingAction(listingId: string) {
+  const { user, supabase } = await getAuthenticatedUser();
+
+  await PublishingService.publish(supabase, listingId, user.id);
+
+  revalidatePath('/s');
+  revalidatePath('/host/listings');
+  revalidatePath(`/host/listings/${listingId}`);
+  revalidatePath(`/host/listings/${listingId}/build`);
 }
 
 /**
@@ -150,7 +198,7 @@ export async function submitBankStepAction(formData: FormData) {
  * Strictly validates checkbox agreements and ensures READY status was persisted before redirecting.
  */
 export async function submitPoliciesStepAction(formData: FormData) {
-  const user = await getAuthenticatedUser();
+  const { user } = await getAuthenticatedUser();
 
   PolicyStepSchema.parse({
     agreeAntiDiscrimination: formData.get('agreeAntiDiscrimination'),
@@ -178,7 +226,7 @@ export async function submitPoliciesStepAction(formData: FormData) {
  * Verifies that host has achieved READY or ACTIVE status before proceeding.
  */
 export async function launchFirstListingAction() {
-  const user = await getAuthenticatedUser();
+  const { user } = await getAuthenticatedUser();
 
   await hostingService.requireReadyOrActiveHost(user.id);
   await createDraftListing();
@@ -188,7 +236,7 @@ export async function launchFirstListingAction() {
  * Updates permanent Host Profile settings in /host/profile.
  */
 export async function updateHostProfileSettingsAction(formData: FormData) {
-  const user = await getAuthenticatedUser();
+  const { user } = await getAuthenticatedUser();
 
   const parsed = HostProfileSettingsSchema.parse({
     primaryAccommodationSlug:
@@ -222,7 +270,7 @@ export async function updateHostProfileSettingsAction(formData: FormData) {
  * Toggles operational hosting capabilities between ACTIVE and PAUSED.
  */
 export async function toggleHostOperationalStatusAction(newStatus: unknown) {
-  const user = await getAuthenticatedUser();
+  const { user } = await getAuthenticatedUser();
   const validStatus = OperationalStatusToggleSchema.parse(newStatus);
 
   await profileService.toggleOperationalStatus(user.id, validStatus);
