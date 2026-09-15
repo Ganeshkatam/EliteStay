@@ -10,42 +10,270 @@ import {
   signupSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
+  mfaVerifySchema,
   type LoginInput,
   type SignupInput,
   type ForgotPasswordInput,
   type ResetPasswordInput,
+  type MfaVerifyInput,
 } from '../schemas/auth-schemas';
 
-export async function login(data: LoginInput): Promise<AuthResult> {
+export interface MfaFactorSummary {
+  id: string;
+  friendlyName: string;
+  factorType: string;
+  createdAt: string;
+}
+
+export type LoginResultData =
+  | {
+      mfaRequired: false;
+      destination: string;
+    }
+  | {
+      mfaRequired: true;
+      factors: MfaFactorSummary[];
+      selectedFactorId?: string;
+      destination: string;
+    };
+
+export interface MfaVerifyResultData {
+  destination: string;
+}
+
+/**
+ * Initiates user login with password.
+ * Checks authoritative Supabase assurance level (AAL1 -> AAL2).
+ * If MFA is required, validates and returns verified factor(s).
+ */
+export async function login(
+  data: LoginInput
+): Promise<AuthResult<LoginResultData>> {
   const parsed = loginSchema.safeParse(data);
 
   if (!parsed.success) {
     return {
       error: {
         code: 'validation_error',
-        message: 'Invalid email or password format',
+        message:
+          parsed.error.issues[0]?.message ||
+          'Invalid email, password, or destination format',
         details: parsed.error.flatten(),
       },
     };
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({
+  const { error: signInError } = await supabase.auth.signInWithPassword({
     email: parsed.data.email,
     password: parsed.data.password,
   });
 
-  if (error) {
+  if (signInError) {
     return {
       error: {
         code: 'unauthenticated',
-        message: error.message,
+        message: signInError.message,
+      },
+    };
+  }
+
+  // Authoritative AAL Check: currentLevel === 'aal1' && nextLevel === 'aal2'
+  const { data: aalData, error: aalError } =
+    await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+
+  if (aalError) {
+    return {
+      error: {
+        code: 'server_error',
+        message:
+          aalError.message ||
+          'Failed to verify authentication assurance level.',
+      },
+    };
+  }
+
+  const destination = parsed.data.destination || '/';
+
+  if (aalData.currentLevel === 'aal1' && aalData.nextLevel === 'aal2') {
+    const { data: factorsData, error: factorsError } =
+      await supabase.auth.mfa.listFactors();
+
+    if (factorsError) {
+      return {
+        error: {
+          code: 'server_error',
+          message:
+            factorsError.message || 'Failed to retrieve authenticator factors.',
+        },
+      };
+    }
+
+    const verifiedTotp = (factorsData?.totp || []).filter(
+      (f) => f.status === 'verified'
+    );
+
+    // Rule: 0 verified factors -> fail safely, sign out partial AAL1 session
+    if (verifiedTotp.length === 0) {
+      await supabase.auth.signOut();
+      return {
+        error: {
+          code: 'forbidden',
+          message:
+            'Two-Factor Authentication is required for your account, but no verified authenticator factor is configured. Please use backup recovery codes or contact support.',
+        },
+      };
+    }
+
+    const factorSummaries: MfaFactorSummary[] = verifiedTotp.map((f) => ({
+      id: f.id,
+      friendlyName: f.friendly_name || 'Authenticator App',
+      factorType: f.factor_type,
+      createdAt: f.created_at,
+    }));
+
+    // Rule: 1 verified factor -> auto-select; >1 verified factors -> prompt user choice
+    return {
+      data: {
+        mfaRequired: true,
+        factors: factorSummaries,
+        selectedFactorId:
+          factorSummaries.length === 1 ? factorSummaries[0].id : undefined,
+        destination,
+      },
+    };
+  }
+
+  // Standard non-MFA login: revalidate cache and return destination
+  revalidatePath('/', 'layout');
+  return {
+    data: {
+      mfaRequired: false,
+      destination,
+    },
+  };
+}
+
+/**
+ * Verifies a 6-digit TOTP code against an authenticated user's verified factor.
+ * Zero-trust validation: factorId must exist in user's verified factors.
+ * Asserts post-challenge elevation to AAL2 before completing authentication.
+ */
+export async function verifyLoginMfa(
+  data: MfaVerifyInput
+): Promise<AuthResult<MfaVerifyResultData>> {
+  const parsed = mfaVerifySchema.safeParse(data);
+
+  if (!parsed.success) {
+    return {
+      error: {
+        code: 'validation_error',
+        message:
+          parsed.error.issues[0]?.message ||
+          'Invalid verification code or factor identifier',
+        details: parsed.error.flatten(),
+      },
+    };
+  }
+
+  const supabase = await createClient();
+
+  // 1. Assert active session exists
+  const { data: aalData, error: aalError } =
+    await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+
+  if (aalError || !aalData) {
+    return {
+      error: {
+        code: 'unauthenticated',
+        message:
+          'No active authentication session found. Please sign in again.',
+      },
+    };
+  }
+
+  if (aalData.currentLevel !== 'aal1' && aalData.currentLevel !== 'aal2') {
+    return {
+      error: {
+        code: 'unauthenticated',
+        message: 'Invalid session state. Please sign in again.',
+      },
+    };
+  }
+
+  // 2. Zero-trust factor validation: verify factorId belongs to user and is verified
+  const { data: factorsData, error: factorsError } =
+    await supabase.auth.mfa.listFactors();
+
+  if (factorsError || !factorsData?.totp) {
+    return {
+      error: {
+        code: 'server_error',
+        message: 'Failed to retrieve registered authentication factors.',
+      },
+    };
+  }
+
+  const verifiedFactor = factorsData.totp.find(
+    (f) => f.id === parsed.data.factorId && f.status === 'verified'
+  );
+
+  if (!verifiedFactor) {
+    return {
+      error: {
+        code: 'forbidden',
+        message: 'Unauthorized or invalid authenticator factor identifier.',
+      },
+    };
+  }
+
+  // 3. Challenge and verify TOTP code
+  const { error: verifyError } = await supabase.auth.mfa.challengeAndVerify({
+    factorId: verifiedFactor.id,
+    code: parsed.data.code,
+  });
+
+  if (verifyError) {
+    return {
+      error: {
+        code: 'unauthenticated',
+        message:
+          verifyError.message ||
+          'Invalid or expired 6-digit verification code. Please try again.',
+      },
+    };
+  }
+
+  // 4. Invariant assertion: Verify resulting session is elevated to AAL2
+  const { data: postAalData, error: postAalError } =
+    await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+
+  if (postAalError || postAalData?.currentLevel !== 'aal2') {
+    return {
+      error: {
+        code: 'forbidden',
+        message:
+          'MFA verification failed to elevate session to AAL2. Please sign in again.',
       },
     };
   }
 
   revalidatePath('/', 'layout');
-  redirect('/');
+  return {
+    data: {
+      destination: parsed.data.destination || '/',
+    },
+  };
+}
+
+/**
+ * Cancels pending MFA login challenge by terminating the temporary AAL1 session.
+ */
+export async function cancelMfaLogin(): Promise<AuthResult> {
+  const supabase = await createClient();
+  await supabase.auth.signOut();
+  revalidatePath('/', 'layout');
+  return { data: undefined };
 }
 
 export async function signup(data: SignupInput): Promise<AuthResult> {
@@ -81,9 +309,6 @@ export async function signup(data: SignupInput): Promise<AuthResult> {
     };
   }
 
-  // We can only trigger this if user was created and we have the session/user.
-  // SignUp doesn't guarantee an immediate user object if email confirmation is required.
-  // But we can try to fire it if we have the user ID.
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -91,7 +316,6 @@ export async function signup(data: SignupInput): Promise<AuthResult> {
     NotificationService.notifyWelcome(user.id).catch(console.error);
   }
 
-  // Redirect to a verification page or login
   redirect('/verify-email');
 }
 
@@ -110,8 +334,6 @@ export async function forgotPassword(
   }
 
   const supabase = await createClient();
-  // Using an explicit base URL would be safer, but Next.js server actions
-  // don't easily give the origin. Supabase uses SITE_URL from dashboard.
   const { error } = await supabase.auth.resetPasswordForEmail(
     parsed.data.email,
     {
