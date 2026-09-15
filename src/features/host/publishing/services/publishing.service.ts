@@ -126,9 +126,11 @@ export class PublishingService {
       rawListing.listing_prices?.[0]?.amount ||
       0;
     const hasLocation = Boolean(
-      rawListing.city ||
-      rawListing.locality ||
-      (rawListing.listing_locations && rawListing.listing_locations.length > 0)
+      (rawListing.city || rawListing.formatted_address) &&
+        rawListing.latitude !== null &&
+        rawListing.latitude !== undefined &&
+        rawListing.longitude !== null &&
+        rawListing.longitude !== undefined
     );
 
     const publicationEligibility = ListingPublicationEligibilityPolicy.evaluate(
