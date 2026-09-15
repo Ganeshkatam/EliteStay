@@ -91,25 +91,18 @@ export class PublishingService {
       throw new Error('Failed to publish listing: ' + error.message);
     }
 
-    // Automatically transition host capability status from READY to ACTIVE upon first live listing
-    const dbClient = supabase as unknown as {
-      from: (table: string) => {
-        update: (values: Record<string, unknown>) => {
-          eq: (
-            key: string,
-            val: string
-          ) => {
-            eq: (key: string, val: string) => Promise<{ error: unknown }>;
-          };
-        };
-      };
-    };
-
-    await dbClient
-      .from('host_profiles')
-      .update({ status: 'ACTIVE', updated_at: new Date().toISOString() })
-      .eq('user_id', hostId)
-      .eq('status', 'READY');
+    // Automatically transition host capability status from READY to ACTIVE upon first live listing via controlled transition RPC
+    const { error: transitionError } = await (
+      supabase.rpc as unknown as (
+        name: string
+      ) => Promise<{ error: { message: string } | null }>
+    )('transition_host_to_active');
+    if (transitionError) {
+      console.warn(
+        '[PublishingService] Note on host activation transition:',
+        transitionError.message
+      );
+    }
   }
 
   static async unpublish(

@@ -6,6 +6,11 @@
 export type HostStatus =
   'NOT_STARTED' | 'ONBOARDING' | 'READY' | 'ACTIVE' | 'PAUSED' | 'SUSPENDED';
 
+export type VerificationStatus =
+  'UNVERIFIED' | 'PENDING' | 'VERIFIED' | 'REJECTED';
+
+export type HostPolicyType = 'ANTI_DISCRIMINATION' | 'MAINTENANCE_SLA';
+
 export type HostSpecializationSlug = 'pg' | 'hostel' | 'apartment' | 'other';
 
 /**
@@ -22,12 +27,38 @@ export interface HostProfileRow {
   tax_profile_id: string | null;
   tax_id_last4: string | null;
   tax_id_type: string | null;
+  identity_submitted_at: string | null;
+  identity_verification_status: VerificationStatus;
+  identity_verification_ref: string | null;
   identity_verified_at: string | null;
+  payout_verification_status: VerificationStatus;
+  payout_verified_at: string | null;
+  tax_verification_status: VerificationStatus;
+  tax_verified_at: string | null;
   agreed_to_policies_at: string | null;
   support_phone: string | null;
   support_email: string | null;
   created_at: string;
   updated_at: string;
+}
+
+/**
+ * Database Row Model representing immutable policy acceptance records in public.host_policy_acceptances.
+ */
+export interface HostPolicyAcceptanceRow {
+  id: string;
+  host_profile_id: string;
+  policy_type: HostPolicyType;
+  policy_version: string;
+  accepted_at: string;
+  client_context: {
+    declared?: Record<string, unknown>;
+    request?: {
+      user_agent?: string | null;
+      x_forwarded_for?: string | null;
+    };
+  };
+  created_at: string;
 }
 
 /**
@@ -40,6 +71,57 @@ export interface UserIdentityContext {
   fullName: string | null;
   phone: string | null;
   avatarStoragePath: string | null;
+}
+
+/**
+ * Authoritative Fact: Host Identity Verification
+ */
+export interface HostIdentityFact {
+  submittedAt: string | null;
+  verificationStatus: VerificationStatus;
+  verifiedAt: string | null;
+  verificationRef: string | null;
+}
+
+/**
+ * Authoritative Fact: Payout Instrument & Banking
+ */
+export interface HostPayoutFact {
+  instrumentId: string | null;
+  bankName: string | null;
+  accountLast4: string | null;
+  verificationStatus: VerificationStatus;
+  verifiedAt: string | null;
+}
+
+/**
+ * Authoritative Fact: Tax Registration & Compliance
+ */
+export interface HostTaxFact {
+  profileId: string | null;
+  taxIdType: string | null;
+  taxIdLast4: string | null;
+  verificationStatus: VerificationStatus;
+  verifiedAt: string | null;
+}
+
+/**
+ * Authoritative Fact: Accommodation Specialization
+ */
+export interface HostSpecializationFact {
+  accommodationTypeId: string | null;
+  accommodationSlug: string | null;
+  accommodationName: string | null;
+  isLocked: boolean;
+}
+
+/**
+ * Authoritative Fact: Policy Acceptances
+ */
+export interface HostPolicyFact {
+  acceptances: HostPolicyAcceptanceRow[];
+  hasAcceptedAllMandatory: boolean;
+  missingPolicies: string[];
 }
 
 /**

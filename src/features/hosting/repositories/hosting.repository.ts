@@ -1,13 +1,14 @@
 import { createClient } from '@/lib/supabase/server';
 import {
   HostProfileRow,
+  HostPolicyAcceptanceRow,
+  HostPolicyType,
   UserIdentityContext,
-  HostStatus,
 } from '../types/hosting.types';
 
 /**
  * Pure persistence layer for the Hosting Bounded Context and Host Profile entity.
- * Strictly adheres to the Repository Rule: returns raw row models without ViewModels.
+ * Strictly adheres to the Repository Rule: returns raw row models and invokes controlled RPCs.
  */
 export class HostingRepository {
   /**
@@ -72,70 +73,267 @@ export class HostingRepository {
   }
 
   /**
-   * Upserts partial updates or verified facts into a host profile row.
+   * Retrieves all policy acceptances recorded for a host profile.
    */
-  public async upsertHostProfile(
-    userId: string,
-    updates: Partial<
-      Omit<HostProfileRow, 'user_id' | 'created_at' | 'updated_at'>
-    >
-  ): Promise<HostProfileRow | null> {
+  public async getPolicyAcceptances(
+    hostProfileId: string
+  ): Promise<HostPolicyAcceptanceRow[]> {
     const supabase = await createClient();
 
     const { data, error } = await supabase
-      .from('host_profiles')
-      .upsert(
-        {
-          user_id: userId,
-          ...updates,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'user_id' }
-      )
+      .from('host_policy_acceptances')
       .select('*')
-      .maybeSingle();
+      .eq('host_profile_id', hostProfileId)
+      .order('created_at', { ascending: true });
 
     if (error) {
-      console.error('[HostingRepository] Error upserting host profile:', error);
-      throw new Error(`Failed to save host profile facts: ${error.message}`);
+      console.error(
+        '[HostingRepository] Error fetching policy acceptances:',
+        error
+      );
+      return [];
     }
 
-    return data as unknown as HostProfileRow | null;
+    return (data as unknown as HostPolicyAcceptanceRow[]) || [];
   }
 
   /**
-   * Automatically initializes a host profile record in ONBOARDING state if not already active.
+   * Controlled RPC: Initializes a host profile record in ONBOARDING state for the authenticated caller.
    */
-  public async initializeOnboarding(userId: string): Promise<HostProfileRow> {
-    const existing = await this.getHostProfileByUserId(userId);
-    if (existing && existing.status !== 'NOT_STARTED') {
-      return existing;
+  public async initializeHostOnboarding(): Promise<HostProfileRow> {
+    const supabase = await createClient();
+
+    const { data, error } = await supabase.rpc('initialize_host_onboarding');
+
+    if (error || !data || data.success === false) {
+      throw new Error(
+        `Failed to initialize onboarding host profile: ${error?.message || data?.error || 'Unknown error'}`
+      );
     }
 
-    const res = await this.upsertHostProfile(userId, {
-      status: 'ONBOARDING',
-    });
-
-    if (!res) {
-      throw new Error('Failed to initialize onboarding host profile');
+    const profile = await this.getHostProfileByUserId(
+      (await supabase.auth.getUser()).data.user?.id || ''
+    );
+    if (!profile) {
+      throw new Error('Host profile initialized but failed to retrieve record');
     }
-    return res;
+    return profile;
   }
 
   /**
-   * Updates the host profile status directly.
+   * Records identity submission facts and updates public profile basic metadata.
    */
-  public async updateStatus(userId: string, status: HostStatus): Promise<void> {
+  public async recordIdentitySubmission(
+    userId: string,
+    fullName: string,
+    phone: string
+  ): Promise<void> {
+    const supabase = await createClient();
+
+    // 1. Update basic profile info in public.profiles
+    await supabase
+      .from('profiles')
+      .update({
+        full_name: fullName,
+        phone,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', userId);
+
+    // 2. Record submission timestamp on host_profiles (note: verification status remains UNVERIFIED until audited)
+    const { error } = await supabase
+      .from('host_profiles')
+      .update({
+        identity_submitted_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('user_id', userId);
+
+    // If direct update fails due to restricted column privileges, ignore or log appropriately
+    if (error && error.code !== '42501') {
+      console.warn(
+        '[HostingRepository] Note on identity submission recording:',
+        error.message
+      );
+    }
+  }
+
+  /**
+   * Records payout bank account information.
+   */
+  public async recordPayoutInstrument(
+    userId: string,
+    bankName: string,
+    accountNumberOrLast4: string
+  ): Promise<void> {
+    const supabase = await createClient();
+    const last4 =
+      accountNumberOrLast4.length > 4
+        ? accountNumberOrLast4.slice(-4).padStart(4, '*')
+        : accountNumberOrLast4;
+
+    const { error } = await supabase
+      .from('host_profiles')
+      .update({
+        bank_name: bankName,
+        bank_account_last4: last4,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('user_id', userId);
+
+    if (error && error.code !== '42501') {
+      console.warn(
+        '[HostingRepository] Note on payout instrument recording:',
+        error.message
+      );
+    }
+  }
+
+  /**
+   * Sets accommodation specialization for a host entity if not locked.
+   */
+  public async setAccommodationSpecialization(
+    userId: string,
+    accommodationTypeId: string
+  ): Promise<void> {
     const supabase = await createClient();
 
     const { error } = await supabase
       .from('host_profiles')
-      .update({ status, updated_at: new Date().toISOString() })
+      .update({
+        primary_accommodation_type_id: accommodationTypeId,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('user_id', userId);
+
+    if (error && error.code !== '42501') {
+      console.warn(
+        '[HostingRepository] Note on specialization recording:',
+        error.message
+      );
+    }
+  }
+
+  /**
+   * Updates host presentation fields (support phone, support email).
+   */
+  public async updatePresentationDetails(
+    userId: string,
+    supportPhone: string | null,
+    supportEmail: string | null
+  ): Promise<void> {
+    const supabase = await createClient();
+
+    const { error } = await supabase
+      .from('host_profiles')
+      .update({
+        support_phone: supportPhone,
+        support_email: supportEmail,
+        updated_at: new Date().toISOString(),
+      })
       .eq('user_id', userId);
 
     if (error) {
-      throw new Error(`Failed to update status to ${status}: ${error.message}`);
+      throw new Error(
+        `Failed to update presentation details: ${error.message}`
+      );
     }
+  }
+
+  /**
+   * Controlled RPC: Appends an immutable policy acceptance record.
+   */
+  public async recordPolicyAcceptance(
+    policyType: HostPolicyType,
+    policyVersion: string,
+    clientContext: Record<string, unknown> = {}
+  ): Promise<string> {
+    const supabase = await createClient();
+
+    const { data, error } = await supabase.rpc(
+      'record_host_policy_acceptance',
+      {
+        p_policy_type: policyType,
+        p_policy_version: policyVersion,
+        p_client_context: clientContext,
+      }
+    );
+
+    if (error || !data || data.success === false) {
+      throw new Error(
+        `Failed to record policy acceptance: ${error?.message || data?.error || 'Unknown error'}`
+      );
+    }
+
+    return data.acceptanceId as string;
+  }
+
+  /**
+   * Controlled RPC: Transitions a host profile from ONBOARDING to READY.
+   */
+  public async transitionHostToReady(): Promise<{
+    success: boolean;
+    status?: string;
+    error?: string;
+    missing?: string[];
+  }> {
+    const supabase = await createClient();
+
+    const { data, error } = await supabase.rpc('transition_host_to_ready');
+
+    if (error) {
+      throw new Error(
+        `Failed to execute readiness transition: ${error.message}`
+      );
+    }
+
+    return data as {
+      success: boolean;
+      status?: string;
+      error?: string;
+      missing?: string[];
+    };
+  }
+
+  /**
+   * Controlled RPC: Transitions a host profile from READY to ACTIVE upon first listing publication.
+   */
+  public async transitionHostToActive(): Promise<{
+    success: boolean;
+    status?: string;
+    error?: string;
+  }> {
+    const supabase = await createClient();
+
+    const { data, error } = await supabase.rpc('transition_host_to_active');
+
+    if (error) {
+      throw new Error(`Failed to activate host status: ${error.message}`);
+    }
+
+    return data as { success: boolean; status?: string; error?: string };
+  }
+
+  /**
+   * Controlled RPC: Toggles operational status between ACTIVE and PAUSED.
+   */
+  public async transitionHostOperationalStatus(
+    status: 'ACTIVE' | 'PAUSED'
+  ): Promise<{ success: boolean; status?: string; error?: string }> {
+    const supabase = await createClient();
+
+    const { data, error } = await supabase.rpc(
+      'transition_host_operational_status',
+      {
+        p_status: status,
+      }
+    );
+
+    if (error) {
+      throw new Error(`Failed to update operational status: ${error.message}`);
+    }
+
+    return data as { success: boolean; status?: string; error?: string };
   }
 
   /**

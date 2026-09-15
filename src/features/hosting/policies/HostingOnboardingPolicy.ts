@@ -6,9 +6,60 @@ import {
 
 /**
  * Domain Policy governing configuration-driven host onboarding step transitions and completion.
- * Derives completion state without storing redundant flags in the database.
+ * Derives completion state and enforces prerequisite transition rules.
  */
 export class HostingOnboardingPolicy {
+  /**
+   * Evaluates whether a host can legally enter or submit a given step based on completed prerequisites.
+   */
+  public static canEnterStep(
+    stepId: string,
+    hostProfile: HostProfileRow | null,
+    eligibilityAudit: EligibilityFactAudit
+  ): boolean {
+    if (!hostProfile) {
+      return stepId === 'eligibility' || stepId === 'identity';
+    }
+
+    if (hostProfile.status === 'READY' || hostProfile.status === 'ACTIVE') {
+      return true;
+    }
+
+    switch (stepId) {
+      case 'eligibility':
+      case 'identity':
+        return true;
+      case 'bank':
+        // Requires identity submitted
+        return Boolean(
+          hostProfile.identity_submitted_at ||
+          eligibilityAudit.hasIdentityVerifiedFact
+        );
+      case 'tax':
+        // Requires identity and bank submitted
+        return Boolean(
+          hostProfile.identity_submitted_at &&
+          (hostProfile.bank_name || eligibilityAudit.hasBankLinkedFact)
+        );
+      case 'specialization':
+        return Boolean(
+          hostProfile.identity_submitted_at &&
+          (hostProfile.bank_name || eligibilityAudit.hasBankLinkedFact)
+        );
+      case 'policies':
+        // Requires previous steps submitted
+        return Boolean(
+          hostProfile.identity_submitted_at &&
+          (hostProfile.bank_name || eligibilityAudit.hasBankLinkedFact) &&
+          hostProfile.primary_accommodation_type_id
+        );
+      case 'ready':
+        return eligibilityAudit.isEligible;
+      default:
+        return false;
+    }
+  }
+
   /**
    * Generates the dynamic step configuration sequence based on verified underlying facts.
    */
@@ -21,11 +72,16 @@ export class HostingOnboardingPolicy {
     currentStepId: string;
     isOnboardingComplete: boolean;
   } {
-    const isIdentityDone = eligibilityAudit.hasIdentityVerifiedFact;
-    const isBankDone = eligibilityAudit.hasBankLinkedFact;
+    const isIdentityDone = Boolean(
+      hostProfile?.identity_submitted_at ||
+      eligibilityAudit.hasIdentityVerifiedFact
+    );
+    const isBankDone = Boolean(
+      hostProfile?.bank_name || eligibilityAudit.hasBankLinkedFact
+    );
     const isPoliciesDone = eligibilityAudit.hasPoliciesAgreedFact;
 
-    const allRequiredCompleted = isIdentityDone && isBankDone && isPoliciesDone;
+    const allRequiredCompleted = eligibilityAudit.isEligible;
     const isAlreadyReadyOrActive =
       hostProfile?.status === 'READY' || hostProfile?.status === 'ACTIVE';
 
@@ -83,7 +139,6 @@ export class HostingOnboardingPolicy {
     } else if (isAlreadyReadyOrActive || allRequiredCompleted) {
       currentStepId = 'ready';
     } else {
-      // Find the first uncompleted required step, or default to eligibility
       const firstUncompleted = baseSteps.find(
         (s) => s.required && !s.isCompleted
       );
@@ -105,7 +160,8 @@ export class HostingOnboardingPolicy {
   }
 
   /**
-   * Validates whether a host profile can legally advance to READY status.
+   * Validates whether a host profile can advance to READY status.
+   * Requires all 5 categories evaluated by HostingEligibilityPolicy to be true.
    */
   public static canTransitionToReady(
     hostProfile: HostProfileRow | null,
@@ -115,9 +171,8 @@ export class HostingOnboardingPolicy {
       return false;
     }
     return (
-      eligibilityAudit.hasIdentityVerifiedFact &&
-      eligibilityAudit.hasBankLinkedFact &&
-      eligibilityAudit.hasPoliciesAgreedFact
+      hostProfile.status === 'ONBOARDING' &&
+      eligibilityAudit.isEligible === true
     );
   }
 }

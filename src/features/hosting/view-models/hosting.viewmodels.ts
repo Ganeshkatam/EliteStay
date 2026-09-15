@@ -1,5 +1,6 @@
 import {
   HostProfileRow,
+  HostPolicyAcceptanceRow,
   UserIdentityContext,
   OnboardingWorkspaceViewModel,
   HostProfileWorkspaceViewModel,
@@ -20,10 +21,12 @@ export function buildOnboardingWizardViewModel(
   hostProfile: HostProfileRow | null,
   userContext: UserIdentityContext | null,
   stepParam?: string | null,
-  accommodationInfo?: { slug: string | null; name: string }
+  accommodationInfo?: { slug: string | null; name: string },
+  policyAcceptances: HostPolicyAcceptanceRow[] = []
 ): OnboardingWorkspaceViewModel {
   const eligibilityAudit = HostingEligibilityPolicy.evaluate(
     hostProfile,
+    policyAcceptances,
     userContext
   );
   const { steps, currentStepId, isOnboardingComplete } =
@@ -65,10 +68,12 @@ export function buildHostProfileWorkspaceViewModel(
   userId: string,
   hostProfile: HostProfileRow | null,
   userContext: UserIdentityContext | null,
-  accommodationInfo?: { slug: string | null; name: string }
+  accommodationInfo?: { slug: string | null; name: string },
+  policyAcceptances: HostPolicyAcceptanceRow[] = []
 ): HostProfileWorkspaceViewModel {
   const eligibilityAudit = HostingEligibilityPolicy.evaluate(
     hostProfile,
+    policyAcceptances,
     userContext
   );
   const status = hostProfile?.status ?? 'NOT_STARTED';
@@ -76,6 +81,11 @@ export function buildHostProfileWorkspaceViewModel(
   // Immutability rule: specialization is permanently locked once active operational status is reached
   const isSpecializationLocked =
     status === 'ACTIVE' || status === 'PAUSED' || status === 'SUSPENDED';
+
+  const latestPolicyAcceptance =
+    policyAcceptances.length > 0
+      ? policyAcceptances[policyAcceptances.length - 1].created_at
+      : null;
 
   return {
     id: hostProfile?.id ?? null,
@@ -100,7 +110,8 @@ export function buildHostProfileWorkspaceViewModel(
       bankAccountLast4: hostProfile?.bank_account_last4 ?? null,
       taxIdType: hostProfile?.tax_id_type ?? null,
       taxIdLast4: hostProfile?.tax_id_last4 ?? null,
-      policiesAgreedAt: hostProfile?.agreed_to_policies_at ?? null,
+      policiesAgreedAt:
+        hostProfile?.agreed_to_policies_at ?? latestPolicyAcceptance,
     },
   };
 }

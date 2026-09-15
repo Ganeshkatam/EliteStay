@@ -72,7 +72,14 @@ export async function submitBankStepAction(formData: FormData) {
 export async function submitPoliciesStepAction() {
   const user = await getAuthenticatedUser();
   await hostingService.submitPoliciesStep(user.id);
-  await hostingService.confirmReadyToHost(user.id);
+  const result = await hostingService.confirmReadyToHost(user.id);
+
+  if (!result.success) {
+    throw new Error(
+      result.message ||
+        'Host profile is not eligible to advance to READY status.'
+    );
+  }
 
   revalidatePath('/host/onboarding', 'layout');
   redirect('/host/onboarding/ready');

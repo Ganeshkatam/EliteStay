@@ -16,6 +16,9 @@ export class HostProfileService {
     userId: string
   ): Promise<HostProfileWorkspaceViewModel> {
     const hostProfile = await this.repository.getHostProfileByUserId(userId);
+    const policyAcceptances = hostProfile
+      ? await this.repository.getPolicyAcceptances(hostProfile.id)
+      : [];
     const userContext = await this.repository.getUserIdentityContext(userId);
     const accommodationInfo =
       await this.repository.getAccommodationTypeInfoById(
@@ -26,7 +29,8 @@ export class HostProfileService {
       userId,
       hostProfile,
       userContext,
-      accommodationInfo
+      accommodationInfo,
+      policyAcceptances
     );
   }
 
@@ -45,25 +49,28 @@ export class HostProfileService {
       hostProfile?.status === 'PAUSED' ||
       hostProfile?.status === 'SUSPENDED';
 
-    let accommodationTypeId: string | null | undefined = undefined;
     if (primaryAccommodationSlug && !isLocked) {
-      accommodationTypeId = await this.repository.getAccommodationTypeIdBySlug(
-        primaryAccommodationSlug
-      );
+      const accommodationTypeId =
+        await this.repository.getAccommodationTypeIdBySlug(
+          primaryAccommodationSlug
+        );
+      if (accommodationTypeId) {
+        await this.repository.setAccommodationSpecialization(
+          userId,
+          accommodationTypeId
+        );
+      }
     } else if (primaryAccommodationSlug && isLocked) {
-      // Ignore alteration attempt if specialization is locked post-activation
       console.warn(
         `[HostProfileService] Ignored attempt to modify locked accommodation specialization for host ${userId}`
       );
     }
 
-    await this.repository.upsertHostProfile(userId, {
-      ...(accommodationTypeId !== undefined
-        ? { primary_accommodation_type_id: accommodationTypeId }
-        : {}),
-      support_phone: supportPhone || null,
-      support_email: supportEmail || null,
-    });
+    await this.repository.updatePresentationDetails(
+      userId,
+      supportPhone || null,
+      supportEmail || null
+    );
   }
 
   /**
@@ -74,24 +81,26 @@ export class HostProfileService {
     bankName: string,
     accountNumberOrLast4: string
   ): Promise<void> {
-    const last4 =
-      accountNumberOrLast4.length > 4
-        ? accountNumberOrLast4.slice(-4).padStart(4, '*')
-        : accountNumberOrLast4;
-
-    await this.repository.upsertHostProfile(userId, {
-      bank_name: bankName,
-      bank_account_last4: last4,
-    });
+    await this.repository.recordPayoutInstrument(
+      userId,
+      bankName,
+      accountNumberOrLast4
+    );
   }
 
   /**
-   * Toggles operational status between active and paused (when a host intentionally halts operations).
+   * Toggles operational status between active and paused via controlled RPC.
    */
   public async toggleOperationalStatus(
     userId: string,
-    newStatus: 'ACTIVE' | 'PAUSED' | 'READY'
+    newStatus: 'ACTIVE' | 'PAUSED'
   ): Promise<void> {
-    await this.repository.updateStatus(userId, newStatus);
+    const result =
+      await this.repository.transitionHostOperationalStatus(newStatus);
+    if (!result.success) {
+      throw new Error(
+        `Failed to update operational status: ${result.error || 'Unknown error'}`
+      );
+    }
   }
 }

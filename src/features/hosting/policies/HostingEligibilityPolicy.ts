@@ -1,20 +1,25 @@
 import {
   HostProfileRow,
-  UserIdentityContext,
+  HostPolicyAcceptanceRow,
   EligibilityFactAudit,
+  UserIdentityContext,
 } from '../types/hosting.types';
+import { MANDATORY_HOST_POLICIES } from '../constants/hosting.constants';
 
 /**
  * Domain Policy governing runtime host eligibility calculation.
- * Follows the rule: Never persist what can be derived at runtime from underlying facts.
+ * Follows the rule: Never persist what can be derived at runtime from underlying authoritative facts.
  */
 export class HostingEligibilityPolicy {
   /**
    * Evaluates the host profile against required operational facts to determine eligibility.
+   * Grounded strictly in authoritative verification statuses and versioned policy acceptances.
    */
   public static evaluate(
     hostProfile: HostProfileRow | null,
-    userContext?: UserIdentityContext | null
+    policyAcceptances: HostPolicyAcceptanceRow[] = [],
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _userContext?: UserIdentityContext | null
   ): EligibilityFactAudit {
     if (!hostProfile) {
       return {
@@ -26,43 +31,54 @@ export class HostingEligibilityPolicy {
         hasSpecializationFact: false,
         missingRequirements: [
           'Verify official identity and contact details',
-          'Link a valid payout bank account',
+          'Link a verified payout bank account',
           'Declare primary accommodation specialization (PG, Hostel, Home, or Other)',
-          'Register tax identification profile (PAN/GSTIN or SSN/EIN)',
-          'Agree to EliteStay Host Platform & Resident Trust SLAs',
+          'Register verified tax identification profile (PAN/GSTIN or SSN/EIN)',
+          'Agree to active EliteStay Host Platform & Resident Trust SLAs',
         ],
       };
     }
 
-    // 1. Evaluate underlying verification facts
-    const hasIdentityVerifiedFact = Boolean(
-      hostProfile.identity_verified_at ||
-      (userContext &&
-        userContext.phone &&
-        (userContext.fullName || userContext.displayName))
-    );
+    // 1. Evaluate underlying authoritative verification facts
+    const hasIdentityVerifiedFact =
+      hostProfile.identity_verification_status === 'VERIFIED' &&
+      Boolean(hostProfile.identity_verified_at);
 
-    const hasBankLinkedFact = Boolean(
-      hostProfile.bank_account_id || hostProfile.bank_account_last4
-    );
+    const hasBankLinkedFact =
+      hostProfile.payout_verification_status === 'VERIFIED' &&
+      Boolean(hostProfile.payout_verified_at);
 
-    const hasTaxRegisteredFact = Boolean(
-      hostProfile.tax_profile_id || hostProfile.tax_id_last4
-    );
-
-    const hasPoliciesAgreedFact = Boolean(hostProfile.agreed_to_policies_at);
+    const hasTaxRegisteredFact =
+      hostProfile.tax_verification_status === 'VERIFIED' &&
+      Boolean(hostProfile.tax_verified_at);
 
     const hasSpecializationFact = Boolean(
       hostProfile.primary_accommodation_type_id
     );
 
-    // 2. Compile missing items
+    // 2. Evaluate mandatory policy acceptances with exact version match
+    const hasAcceptedAntiDiscrimination = policyAcceptances.some(
+      (a) =>
+        a.policy_type === 'ANTI_DISCRIMINATION' &&
+        a.policy_version === MANDATORY_HOST_POLICIES.ANTI_DISCRIMINATION.version
+    );
+
+    const hasAcceptedMaintenanceSla = policyAcceptances.some(
+      (a) =>
+        a.policy_type === 'MAINTENANCE_SLA' &&
+        a.policy_version === MANDATORY_HOST_POLICIES.MAINTENANCE_SLA.version
+    );
+
+    const hasPoliciesAgreedFact =
+      hasAcceptedAntiDiscrimination && hasAcceptedMaintenanceSla;
+
+    // 3. Compile missing items
     const missingRequirements: string[] = [];
     if (!hasIdentityVerifiedFact) {
       missingRequirements.push('Verify official identity and contact details');
     }
     if (!hasBankLinkedFact) {
-      missingRequirements.push('Link a valid payout bank account');
+      missingRequirements.push('Link a verified payout bank account');
     }
     if (!hasSpecializationFact) {
       missingRequirements.push(
@@ -70,15 +86,22 @@ export class HostingEligibilityPolicy {
       );
     }
     if (!hasTaxRegisteredFact) {
-      missingRequirements.push('Register tax identification profile');
+      missingRequirements.push('Register verified tax identification profile');
     }
     if (!hasPoliciesAgreedFact) {
-      missingRequirements.push(
-        'Agree to EliteStay Host Platform & Resident Trust SLAs'
-      );
+      if (!hasAcceptedAntiDiscrimination) {
+        missingRequirements.push(
+          `Agree to ${MANDATORY_HOST_POLICIES.ANTI_DISCRIMINATION.title} (v${MANDATORY_HOST_POLICIES.ANTI_DISCRIMINATION.version})`
+        );
+      }
+      if (!hasAcceptedMaintenanceSla) {
+        missingRequirements.push(
+          `Agree to ${MANDATORY_HOST_POLICIES.MAINTENANCE_SLA.title} (v${MANDATORY_HOST_POLICIES.MAINTENANCE_SLA.version})`
+        );
+      }
     }
 
-    // 3. Derive runtime eligibility status
+    // 4. Derive runtime eligibility status
     const isEligible =
       hasIdentityVerifiedFact &&
       hasBankLinkedFact &&

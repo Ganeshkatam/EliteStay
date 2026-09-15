@@ -1,67 +1,55 @@
-/*
-==================================================
-Domain: Hosting Bounded Context & Host Profile Entity
-Purpose: Permanent record for host entity business settings, verified facts, and capabilities without replacing guest roles.
-==================================================
-*/
+-- Migration: Host Onboarding Security Boundary & Controlled State Transitions
+-- Purpose: Add authoritative verification columns to host_profiles, create immutable host_policy_acceptances,
+-- restrict column-level privileges, and implement locked SECURITY DEFINER RPCs for state transitions.
 
-CREATE TABLE IF NOT EXISTS public.host_profiles (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-    status public.host_status NOT NULL DEFAULT 'NOT_STARTED'::public.host_status,
-    primary_accommodation_type_id UUID REFERENCES public.accommodation_types(id) ON DELETE SET NULL,
-    bank_account_id UUID,
-    bank_name TEXT,
-    bank_account_last4 TEXT,
-    tax_profile_id UUID,
-    tax_id_last4 TEXT,
-    tax_id_type TEXT,
-    identity_submitted_at TIMESTAMPTZ,
-    identity_verification_status TEXT NOT NULL DEFAULT 'UNVERIFIED' CHECK (identity_verification_status IN ('UNVERIFIED', 'PENDING', 'VERIFIED', 'REJECTED')),
-    identity_verification_ref TEXT,
-    identity_verified_at TIMESTAMPTZ,
-    payout_verification_status TEXT NOT NULL DEFAULT 'UNVERIFIED' CHECK (payout_verification_status IN ('UNVERIFIED', 'PENDING', 'VERIFIED', 'REJECTED')),
-    payout_verified_at TIMESTAMPTZ,
-    tax_verification_status TEXT NOT NULL DEFAULT 'UNVERIFIED' CHECK (tax_verification_status IN ('UNVERIFIED', 'PENDING', 'VERIFIED', 'REJECTED')),
-    tax_verified_at TIMESTAMPTZ,
-    agreed_to_policies_at TIMESTAMPTZ,
-    support_phone TEXT,
-    support_email TEXT,
-    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-    updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
-);
+-- 1. Extend host_profiles with authoritative verification facts and constraints
+ALTER TABLE public.host_profiles
+    ADD COLUMN IF NOT EXISTS identity_submitted_at TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS identity_verification_status TEXT NOT NULL DEFAULT 'UNVERIFIED',
+    ADD COLUMN IF NOT EXISTS identity_verification_ref TEXT,
+    ADD COLUMN IF NOT EXISTS payout_verification_status TEXT NOT NULL DEFAULT 'UNVERIFIED',
+    ADD COLUMN IF NOT EXISTS payout_verified_at TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS tax_verification_status TEXT NOT NULL DEFAULT 'UNVERIFIED',
+    ADD COLUMN IF NOT EXISTS tax_verified_at TIMESTAMPTZ;
 
-CREATE INDEX IF NOT EXISTS host_profiles_status_idx ON public.host_profiles(status);
-CREATE INDEX IF NOT EXISTS idx_host_profiles_accommodation_type ON public.host_profiles(primary_accommodation_type_id);
+-- Ensure valid verification states
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'chk_host_profiles_identity_status'
+    ) THEN
+        ALTER TABLE public.host_profiles
+            ADD CONSTRAINT chk_host_profiles_identity_status
+            CHECK (identity_verification_status IN ('UNVERIFIED', 'PENDING', 'VERIFIED', 'REJECTED'));
+    END IF;
 
-ALTER TABLE public.host_profiles ENABLE ROW LEVEL SECURITY;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'chk_host_profiles_payout_status'
+    ) THEN
+        ALTER TABLE public.host_profiles
+            ADD CONSTRAINT chk_host_profiles_payout_status
+            CHECK (payout_verification_status IN ('UNVERIFIED', 'PENDING', 'VERIFIED', 'REJECTED'));
+    END IF;
 
--- Least privilege RLS Policies
-CREATE POLICY "Users can view their own host profile"
-    ON public.host_profiles
-    FOR SELECT
-    USING (auth.uid() = user_id);
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'chk_host_profiles_tax_status'
+    ) THEN
+        ALTER TABLE public.host_profiles
+            ADD CONSTRAINT chk_host_profiles_tax_status
+            CHECK (tax_verification_status IN ('UNVERIFIED', 'PENDING', 'VERIFIED', 'REJECTED'));
+    END IF;
+END $$;
 
--- Restrict direct client UPDATE/DELETE privileges
-REVOKE ALL ON public.host_profiles FROM PUBLIC, anon;
-REVOKE UPDATE, DELETE ON public.host_profiles FROM authenticated;
-
--- Grant column-level UPDATE only on presentation fields
-GRANT UPDATE (support_phone, support_email) ON public.host_profiles TO authenticated;
-GRANT SELECT ON public.host_profiles TO authenticated;
-
--- ==================================================
--- Domain: Host Policy Acceptances (Append-Only)
--- ==================================================
-
+-- 2. Create append-only host_policy_acceptances table
 CREATE TABLE IF NOT EXISTS public.host_policy_acceptances (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     host_profile_id UUID REFERENCES public.host_profiles(id) ON DELETE CASCADE NOT NULL,
-    policy_type TEXT NOT NULL CHECK (policy_type IN ('ANTI_DISCRIMINATION', 'MAINTENANCE_SLA')),
+    policy_type TEXT NOT NULL,
     policy_version TEXT NOT NULL,
     accepted_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
     client_context JSONB NOT NULL DEFAULT '{}'::jsonb,
-    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    CONSTRAINT chk_host_policy_type CHECK (policy_type IN ('ANTI_DISCRIMINATION', 'MAINTENANCE_SLA'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_host_policy_acceptances_host_type
@@ -69,6 +57,8 @@ CREATE INDEX IF NOT EXISTS idx_host_policy_acceptances_host_type
 
 ALTER TABLE public.host_policy_acceptances ENABLE ROW LEVEL SECURITY;
 
+-- Owner-only SELECT
+DROP POLICY IF EXISTS "Hosts can read own policy acceptances" ON public.host_policy_acceptances;
 CREATE POLICY "Hosts can read own policy acceptances"
     ON public.host_policy_acceptances
     FOR SELECT
@@ -78,13 +68,19 @@ CREATE POLICY "Hosts can read own policy acceptances"
         )
     );
 
+-- Strict privilege boundary for host_policy_acceptances: No direct INSERT/UPDATE/DELETE
 REVOKE ALL ON public.host_policy_acceptances FROM PUBLIC, anon;
 GRANT SELECT ON public.host_policy_acceptances TO authenticated;
 
--- ==================================================
--- Domain: Controlled Host Transition RPCs
--- ==================================================
+-- 3. Restrict host_profiles privileges
+REVOKE ALL ON public.host_profiles FROM PUBLIC, anon;
+REVOKE UPDATE, DELETE ON public.host_profiles FROM authenticated;
 
+-- Grant column-level UPDATE only on presentation fields
+GRANT UPDATE (support_phone, support_email) ON public.host_profiles TO authenticated;
+GRANT SELECT ON public.host_profiles TO authenticated;
+
+-- 4. Controlled RPC: initialize_host_onboarding
 CREATE OR REPLACE FUNCTION public.initialize_host_onboarding()
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -128,6 +124,7 @@ BEGIN
 END;
 $$;
 
+-- 5. Controlled RPC: record_host_policy_acceptance
 CREATE OR REPLACE FUNCTION public.record_host_policy_acceptance(
   p_policy_type text,
   p_policy_version text,
@@ -221,6 +218,7 @@ BEGIN
 END;
 $$;
 
+-- 6. Controlled RPC: transition_host_to_ready
 CREATE OR REPLACE FUNCTION public.transition_host_to_ready()
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -335,6 +333,7 @@ BEGIN
 END;
 $$;
 
+-- 7. Execute grants for the controlled RPCs
 REVOKE ALL ON FUNCTION public.initialize_host_onboarding() FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.record_host_policy_acceptance(text, text, jsonb) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.transition_host_to_ready() FROM PUBLIC, anon;
