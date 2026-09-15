@@ -11,6 +11,8 @@ import React, {
 } from 'react';
 import { SearchWorkspaceViewModel, SearchViewMode } from '../types';
 
+const VIEW_MODE_STORAGE_KEY = 'elitestay:search_view_mode';
+
 // 1. Immutable Data Context
 const SearchDataContext = createContext<SearchWorkspaceViewModel | null>(null);
 
@@ -60,10 +62,24 @@ interface SearchProviderProps {
 }
 
 export function SearchProvider({ viewModel, children }: SearchProviderProps) {
-  // Default to SPLIT for desktop, but guarded by viewport >= 1000px
-  const [viewMode, setViewMode] = useState<SearchViewMode>(
-    SearchViewMode.SPLIT
-  );
+  // Read persisted viewMode preference from localStorage, default to SPLIT on desktop
+  const [viewMode, setViewMode] = useState<SearchViewMode>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = window.localStorage.getItem(VIEW_MODE_STORAGE_KEY);
+      if (
+        saved === SearchViewMode.LIST ||
+        saved === SearchViewMode.SPLIT ||
+        saved === SearchViewMode.MAP
+      ) {
+        if (window.innerWidth < 1000) {
+          return SearchViewMode.LIST;
+        }
+        return saved as SearchViewMode;
+      }
+    }
+    return SearchViewMode.SPLIT;
+  });
+
   const [hoveredListingId, setHoveredListingId] = useState<string | null>(null);
   const [selectedListingId, setSelectedListingId] = useState<string | null>(
     null
@@ -96,16 +112,23 @@ export function SearchProvider({ viewModel, children }: SearchProviderProps) {
     [startTransition]
   );
 
-  // Disable Map view on viewports < 1000px
+  // Adapt to screen size & restore user preference when screen is wide enough
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
     const mediaQuery = window.matchMedia('(min-width: 1000px)');
     const handleMediaChange = (e: MediaQueryListEvent | MediaQueryList) => {
       if (!e.matches) {
-        setViewMode((current) =>
-          current !== SearchViewMode.LIST ? SearchViewMode.LIST : current
-        );
+        setViewMode(SearchViewMode.LIST);
+      } else {
+        const saved = window.localStorage.getItem(VIEW_MODE_STORAGE_KEY);
+        if (
+          saved === SearchViewMode.LIST ||
+          saved === SearchViewMode.SPLIT ||
+          saved === SearchViewMode.MAP
+        ) {
+          setViewMode(saved as SearchViewMode);
+        }
       }
     };
 
@@ -123,6 +146,9 @@ export function SearchProvider({ viewModel, children }: SearchProviderProps) {
       return;
     }
     setViewMode(mode);
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(VIEW_MODE_STORAGE_KEY, mode);
+    }
   }, []);
 
   const uiState = useMemo<SearchUIState>(

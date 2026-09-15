@@ -5,6 +5,7 @@ import { Plus_Jakarta_Sans } from 'next/font/google';
 import './globals.css';
 import '@/config/env';
 import { InactivityRefresh } from '@/components/common/InactivityRefresh';
+import { AppUpdatePrompt } from '@/components/common/AppUpdatePrompt';
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   variable: '--font-sans',
@@ -47,6 +48,7 @@ export default function RootLayout({
       </head>
       <body className="flex min-h-screen flex-col antialiased">
         <InactivityRefresh />
+        <AppUpdatePrompt />
         <Suspense>{children}</Suspense>
         <Analytics />
       </body>
