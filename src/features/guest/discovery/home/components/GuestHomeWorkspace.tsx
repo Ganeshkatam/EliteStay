@@ -1,5 +1,6 @@
 import { Suspense } from 'react';
 import { homepageConfig } from '@/features/guest/discovery/home/config/sections';
+import { HomeHero } from '@/features/guest/discovery/home/components/HomeHero';
 import { HomeSection } from '@/features/guest/discovery/home/components/HomeSection';
 import { Categories } from '@/features/guest/discovery/home/components/Categories';
 import { PopularLocations } from '@/features/guest/discovery/home/components/PopularLocations';
@@ -73,6 +74,9 @@ export function GuestHomeWorkspace({ viewModel }: GuestHomeWorkspaceProps) {
   return (
     <div className="flex flex-col pb-16 pt-0 gap-6 w-full">
       <h1 className="sr-only">EliteStay - Premium Accommodation & Living</h1>
+
+      <HomeHero />
+
       <Suspense fallback={<CategoriesSkeleton />}>
         <Categories categories={viewModel.categories} />
       </Suspense>

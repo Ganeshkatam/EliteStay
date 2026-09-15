@@ -16,7 +16,6 @@ import { useToast } from '@/hooks/use-toast';
 import {
   ShieldCheck,
   ShieldAlert,
-  Key,
   Copy,
   Check,
   Loader2,
