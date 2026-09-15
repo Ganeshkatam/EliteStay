@@ -3,7 +3,8 @@ import Link from 'next/link';
 import { HostAccessService } from '@/features/hosting/services/host-access.service';
 import { HostingService } from '@/features/hosting';
 import { submitBankStepAction } from '@/features/hosting/actions/hosting.actions';
-import { CreditCard, Shield, ArrowRight } from 'lucide-react';
+import { CreditCard, Shield } from 'lucide-react';
+import { OnboardingSubmitButton } from '@/features/hosting/components/OnboardingSubmitButton';
 
 export default async function BankStepPage() {
   const { user } = await HostAccessService.getHostContext();
@@ -76,12 +77,11 @@ export default async function BankStepPage() {
               Skip for Now
             </Link>
           </div>
-          <button
-            type="submit"
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-sm transition-all shadow-lg shadow-rose-500/20"
-          >
-            Save Payout Details <ArrowRight className="w-4 h-4" />
-          </button>
+          <OnboardingSubmitButton
+            label="Save Payout Details"
+            loadingLabel="Saving Account..."
+            className="w-full sm:w-auto"
+          />
         </div>
       </form>
     </div>

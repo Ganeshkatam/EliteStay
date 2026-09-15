@@ -2,7 +2,8 @@ import React from 'react';
 import { HostAccessService } from '@/features/hosting/services/host-access.service';
 import { HostingService } from '@/features/hosting';
 import { submitIdentityStepAction } from '@/features/hosting/actions/hosting.actions';
-import { CheckCircle2, ArrowRight } from 'lucide-react';
+import { CheckCircle2 } from 'lucide-react';
+import { OnboardingSubmitButton } from '@/features/hosting/components/OnboardingSubmitButton';
 
 function formatPhone(phone: string) {
   if (phone && phone.startsWith('+91') && phone.length === 13) {
@@ -80,12 +81,10 @@ export default async function IdentityStepPage() {
         </div>
 
         <div className="flex justify-end pt-4">
-          <button
-            type="submit"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-sm transition-all shadow-lg shadow-rose-500/20"
-          >
-            Confirm & Continue <ArrowRight className="w-4 h-4" />
-          </button>
+          <OnboardingSubmitButton
+            label="Confirm & Continue"
+            loadingLabel="Verifying & Saving..."
+          />
         </div>
       </form>
     </div>

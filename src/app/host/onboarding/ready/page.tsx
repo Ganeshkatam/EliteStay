@@ -1,6 +1,7 @@
 import React from 'react';
 import { launchFirstListingAction } from '@/features/hosting/actions/hosting.actions';
-import { Sparkles, CheckCircle2, ArrowRight } from 'lucide-react';
+import { Sparkles, CheckCircle2 } from 'lucide-react';
+import { OnboardingSubmitButton } from '@/features/hosting/components/OnboardingSubmitButton';
 
 export default function ReadyStepPage() {
   return (
@@ -35,13 +36,12 @@ export default function ReadyStepPage() {
         </div>
 
         <form action={launchFirstListingAction} className="pt-4">
-          <button
-            type="submit"
-            className="w-full py-4 rounded-xl bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-500 hover:to-rose-400 text-white font-bold text-lg shadow-xl shadow-rose-500/20 hover:shadow-rose-500/30 transition-all duration-200 flex items-center justify-center gap-3 group"
-          >
-            <span>Create Your First Listing</span>
-            <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-          </button>
+          <OnboardingSubmitButton
+            label="Create Your First Listing"
+            loadingLabel="Launching Workspace..."
+            fullWidth
+            className="py-4 text-lg"
+          />
         </form>
       </div>
     </div>

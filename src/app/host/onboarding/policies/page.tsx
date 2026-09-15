@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { submitPoliciesStepAction } from '@/features/hosting/actions/hosting.actions';
-import { ShieldCheck, Briefcase, ArrowRight } from 'lucide-react';
+import { ShieldCheck, Briefcase } from 'lucide-react';
+import { OnboardingSubmitButton } from '@/features/hosting/components/OnboardingSubmitButton';
 
 export default function PoliciesStepPage() {
   return (
@@ -71,13 +72,10 @@ export default function PoliciesStepPage() {
           >
             Back to Payout Account
           </Link>
-          <button
-            type="submit"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-sm transition-all shadow-lg shadow-rose-500/20"
-          >
-            Agree to SLAs & Unlock Capabilities{' '}
-            <ArrowRight className="w-4 h-4" />
-          </button>
+          <OnboardingSubmitButton
+            label="Agree to SLAs & Unlock Capabilities"
+            loadingLabel="Activating Capabilities..."
+          />
         </div>
       </form>
     </div>
