@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { HostingOnboardingPolicy } from '@/features/hosting/policies/HostingOnboardingPolicy';
 import { HostOnboardingEligibilityPolicy } from '@/features/hosting/policies/HostingEligibilityPolicy';
 import { ListingPublicationEligibilityPolicy } from '@/features/hosting/policies/ListingPublicationEligibilityPolicy';
@@ -179,14 +179,50 @@ describe('Product-Level Verification: Host -> Workspace -> Publication -> Discov
     expect(result.missingRequirements).toHaveLength(0);
   });
 
-  it('7. treats discovery as a published-state concern, never as an onboarding concern', () => {
-    const draft = ListingPublicationEligibilityPolicy.evaluate(
-      profile(),
-      policies(),
-      { id: 'listing-1', title: 'Draft Listing', images_count: 3, price: 25000, has_location: true }
-    );
+  it('7. guest discovery consumes the published-only search boundary', async () => {
+    vi.resetModules();
+    vi.doMock('@/lib/supabase/server', () => ({
+      createStaticClient: () => ({
+        rpc: vi.fn().mockResolvedValue({
+          data: [{
+            public_id: 'pub-1',
+            title: 'Published Listing',
+            accommodation_type_name: 'Paying Guest',
+            furnishing: 'furnished',
+            gender_preference: 'any',
+            occupancy_type: 'private',
+            locality: 'Koramangala',
+            city: 'Bengaluru',
+            formatted_address: 'Koramangala, Bengaluru',
+            latitude: 12.9352,
+            longitude: 77.6245,
+            price_amount: 18000,
+            price_currency: 'INR',
+            price_billing_period: 'month',
+            price_minimum_duration: 1,
+            image_url: null,
+          }],
+          error: null,
+        }),
+      }),
+    }));
+    vi.doMock('@/lib/redis', () => ({
+      Cache: { fetch: vi.fn((_: string, loader: () => unknown) => loader()) },
+      CacheManifest: {},
+    }));
 
-    expect(draft.eligible).toBe(true);
-    expect(draft.eligible).not.toBe(false);
+    const { fetchSectionListings } = await import(
+      '@/features/guest/discovery/home/api/queries'
+    );
+    const result = await fetchSectionListings({
+      id: 'plv-discovery',
+      title: 'PLV Discovery',
+      limit: 10,
+      filter: { sort: 'recommended' },
+    } as never);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].publicId).toBe('pub-1');
+    expect(result[0].title).toBe('Published Listing');
   });
 });
