@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   useForm,
   type DefaultValues,
@@ -9,7 +9,6 @@ import {
 } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useToast } from '@/hooks/use-toast';
-import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import {
@@ -19,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Check, AlertCircle } from 'lucide-react';
 import {
   UserPreferences,
   PreferenceCategory,
@@ -58,7 +57,9 @@ function ToggleRow({
   );
 }
 
-// Reusable Form Section wrapper
+type AutoSaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+
+// Reusable Form Section wrapper with quiet 3-second debounced auto-save
 function FormSection<T extends PreferenceCategory>({
   title,
   description,
@@ -75,7 +76,9 @@ function FormSection<T extends PreferenceCategory>({
   ) => React.ReactNode;
 }) {
   const { toast } = useToast();
-  const [isSaving, setIsSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<AutoSaveStatus>('idle');
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const lastSavedRef = useRef<string>(JSON.stringify(defaultValues));
 
   const form = useForm<PreferenceFormMap[T], unknown, PreferenceFormMap[T]>({
     resolver: zodResolver(PreferenceSchemas[category]) as unknown as Resolver<
@@ -84,50 +87,94 @@ function FormSection<T extends PreferenceCategory>({
     defaultValues,
   });
 
-  const onSubmit = async (data: PreferenceFormMap[T]) => {
-    setIsSaving(true);
-    const { success, error } = await updateUserPreferences(category, data);
-    setIsSaving(false);
+  const onSubmit = useCallback(
+    async (data: PreferenceFormMap[T]) => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
 
-    if (success) {
-      // Reset form with new values so it's considered pristine
-      form.reset(data as DefaultValues<PreferenceFormMap[T]>);
-      toast({
-        title: 'Settings saved',
-        description: `Your ${title.toLowerCase()} preferences have been updated.`,
-      });
-    } else {
-      toast({
-        variant: 'destructive',
-        title: 'Failed to save',
-        description: error || 'An unknown error occurred.',
-      });
-    }
-  };
+      setSaveStatus('saving');
+      const { success, error } = await updateUserPreferences(category, data);
 
-  const isDirty = Object.keys(form.formState.dirtyFields).length > 0;
+      if (success) {
+        lastSavedRef.current = JSON.stringify(data);
+        form.reset(data as DefaultValues<PreferenceFormMap[T]>);
+        setSaveStatus('saved');
+
+        setTimeout(() => {
+          setSaveStatus((prev) => (prev === 'saved' ? 'idle' : prev));
+        }, 2500);
+      } else {
+        setSaveStatus('error');
+        toast({
+          variant: 'destructive',
+          title: 'Failed to save',
+          description: error || 'An unknown error occurred.',
+        });
+      }
+    },
+    [category, form, toast]
+  );
+
+  // Subscribe to form value changes for 3-second debounced auto-save
+  useEffect(() => {
+    const subscription = form.watch((values) => {
+      const currentSerialized = JSON.stringify(values);
+      const isChanged = currentSerialized !== lastSavedRef.current;
+
+      if (!isChanged) {
+        return;
+      }
+
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+
+      // Auto-save after 3 seconds of inactivity
+      timerRef.current = setTimeout(() => {
+        form.handleSubmit((validData) => onSubmit(validData))();
+      }, 3000);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+    };
+  }, [form, onSubmit]);
 
   return (
     <div className="py-8 border-b border-slate-100 last:border-0 first:pt-0">
-      <div className="mb-6">
-        <h3 className="text-xl font-semibold text-slate-900">{title}</h3>
-        <p className="text-sm text-slate-500">{description}</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+        <div>
+          <h3 className="text-xl font-semibold text-slate-900">{title}</h3>
+          <p className="text-sm text-slate-500">{description}</p>
+        </div>
+        <div className="flex items-center gap-2 self-start sm:self-auto min-h-[28px]">
+          {saveStatus === 'saving' && (
+            <span className="text-xs font-medium text-slate-500 flex items-center gap-1.5">
+              <Loader2 className="w-3 h-3 animate-spin" />
+              Saving...
+            </span>
+          )}
+          {saveStatus === 'saved' && (
+            <span className="text-xs font-medium text-emerald-600 flex items-center gap-1.5">
+              <Check className="w-3.5 h-3.5 text-emerald-600" />
+              Saved
+            </span>
+          )}
+          {saveStatus === 'error' && (
+            <span className="text-xs font-medium text-rose-600 flex items-center gap-1.5">
+              <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
+              Failed to save
+            </span>
+          )}
+        </div>
       </div>
 
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        {children(form)}
-
-        <div className="flex justify-end pt-6">
-          <Button
-            type="submit"
-            disabled={!isDirty || isSaving}
-            className="bg-slate-900 text-white hover:bg-slate-800"
-          >
-            {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Save Changes
-          </Button>
-        </div>
-      </form>
+      <div className="space-y-6">{children(form)}</div>
     </div>
   );
 }

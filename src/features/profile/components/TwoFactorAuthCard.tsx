@@ -30,7 +30,6 @@ interface TwoFactorAuthCardProps {
 export function TwoFactorAuthCard({ initialEnabled }: TwoFactorAuthCardProps) {
   const { toast } = useToast();
   const [isEnabled, setIsEnabled] = useState(initialEnabled);
-  const [factorId, setFactorId] = useState<string | null>(null);
   const [isCheckingStatus, setIsCheckingStatus] = useState(true);
 
   // Setup Modal State
@@ -60,10 +59,8 @@ export function TwoFactorAuthCard({ initialEnabled }: TwoFactorAuthCardProps) {
           const activeTotp = data.totp.find((f) => f.status === 'verified');
           if (activeTotp) {
             setIsEnabled(true);
-            setFactorId(activeTotp.id);
           } else {
             setIsEnabled(false);
-            setFactorId(null);
           }
         } else {
           setIsEnabled(initialEnabled);
@@ -166,7 +163,6 @@ export function TwoFactorAuthCard({ initialEnabled }: TwoFactorAuthCardProps) {
       });
 
       setIsEnabled(true);
-      setFactorId(enrollFactorId);
       setStep('recovery');
 
       toast({
@@ -218,7 +214,6 @@ export function TwoFactorAuthCard({ initialEnabled }: TwoFactorAuthCardProps) {
         });
 
         setIsEnabled(false);
-        setFactorId(null);
         setIsDisableDialogOpen(false);
 
         toast({
