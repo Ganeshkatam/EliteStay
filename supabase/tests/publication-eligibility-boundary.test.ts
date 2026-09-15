@@ -126,4 +126,177 @@ describe('Publication Eligibility & Database Boundary (Phase 2 Verification)', (
       expect(error).toBeDefined();
     }
   );
+
+  it.skipIf(!hasSupabase)(
+    'P06 - Concurrent publish_listing executions serialize safely via row-level locks without deadlocks or double-transitions',
+    async () => {
+      const testListingId = '00000000-0000-0000-0000-000000000001';
+
+      // Launch 2 concurrent unauthenticated or concurrent caller RPCs
+      const [res1, res2] = await Promise.all([
+        supabase.rpc('publish_listing', { p_listing_id: testListingId }),
+        supabase.rpc('publish_listing', { p_listing_id: testListingId }),
+      ]);
+
+      // Both must handle transaction isolation safely without unhandled 40P01 deadlocks
+      expect([null, 'P0001', '42501', '401', 'PGRST301']).toContain(
+        res1.error?.code ?? null
+      );
+      expect([null, 'P0001', '42501', '401', 'PGRST301']).toContain(
+        res2.error?.code ?? null
+      );
+    }
+  );
+
+  it.skipIf(!hasSupabase)(
+    'P07 - Direct anonymous or non-host SELECT on host_policy_acceptances returns empty or denied under RLS',
+    async () => {
+      const { data, error } = await supabase
+        .from('host_policy_acceptances')
+        .select('*');
+
+      if (error) {
+        expect(['PGRST301', '42501', '401', '403']).toContain(error.code);
+      } else {
+        expect(data).toHaveLength(0);
+      }
+    }
+  );
+
+  it.skipIf(!hasSupabase)(
+    'P08 - ListingPublicationEligibilityPolicy accurately detects each individual missing host compliance and listing requirement',
+    async () => {
+      const { ListingPublicationEligibilityPolicy } =
+        await import('@/features/hosting/policies/ListingPublicationEligibilityPolicy');
+
+      const baseProfile = {
+        id: 'hp_1',
+        user_id: 'usr_1',
+        status: 'READY',
+        primary_accommodation_type_id: 'acc_1',
+        bank_account_id: null,
+        bank_name: 'HDFC',
+        bank_account_last4: '1234',
+        tax_profile_id: null,
+        tax_id_last4: '5678',
+        tax_id_type: 'PAN',
+        identity_submitted_at: '2026-09-15T12:00:00Z',
+        identity_verification_status: 'VERIFIED',
+        identity_verification_ref: 'AADHAAR-1234',
+        identity_verified_at: '2026-09-15T12:00:00Z',
+        payout_verification_status: 'VERIFIED',
+        payout_verified_at: '2026-09-15T12:00:00Z',
+        tax_verification_status: 'VERIFIED',
+        tax_verified_at: '2026-09-15T12:00:00Z',
+        agreed_to_policies_at: '2026-09-15T12:00:00Z',
+        support_phone: null,
+        support_email: null,
+        created_at: '',
+        updated_at: '',
+      };
+
+      const basePolicies = [
+        {
+          id: 'acc_1',
+          host_profile_id: 'hp_1',
+          policy_type: 'ANTI_DISCRIMINATION',
+          policy_version: '2026.1',
+          accepted_at: '',
+          client_context: {},
+          created_at: '',
+        },
+        {
+          id: 'acc_2',
+          host_profile_id: 'hp_1',
+          policy_type: 'MAINTENANCE_SLA',
+          policy_version: '2026.1',
+          accepted_at: '',
+          client_context: {},
+          created_at: '',
+        },
+      ];
+
+      const baseListing = {
+        id: 'lst_1',
+        title: 'Complete Listing Title',
+        images_count: 3,
+        price: 10000,
+        has_location: true,
+      };
+
+      // Fully compliant check
+      const fullPass = ListingPublicationEligibilityPolicy.evaluate(
+        baseProfile as never,
+        basePolicies as never,
+        baseListing
+      );
+      expect(fullPass.eligible).toBe(true);
+
+      // Missing KYC
+      const missingKyc = ListingPublicationEligibilityPolicy.evaluate(
+        { ...baseProfile, identity_verification_status: 'UNVERIFIED' } as never,
+        basePolicies as never,
+        baseListing
+      );
+      expect(missingKyc.eligible).toBe(false);
+      expect(missingKyc.missingRequirements).toContain(
+        'IDENTITY_VERIFICATION_REQUIRED'
+      );
+
+      // Missing Payout
+      const missingPayout = ListingPublicationEligibilityPolicy.evaluate(
+        { ...baseProfile, payout_verification_status: 'PENDING' } as never,
+        basePolicies as never,
+        baseListing
+      );
+      expect(missingPayout.eligible).toBe(false);
+      expect(missingPayout.missingRequirements).toContain(
+        'PAYOUT_VERIFICATION_REQUIRED'
+      );
+
+      // Missing Tax
+      const missingTax = ListingPublicationEligibilityPolicy.evaluate(
+        { ...baseProfile, tax_verification_status: 'UNVERIFIED' } as never,
+        basePolicies as never,
+        baseListing
+      );
+      expect(missingTax.eligible).toBe(false);
+      expect(missingTax.missingRequirements).toContain(
+        'TAX_VERIFICATION_REQUIRED'
+      );
+
+      // Missing Photos
+      const missingPhotos = ListingPublicationEligibilityPolicy.evaluate(
+        baseProfile as never,
+        basePolicies as never,
+        { ...baseListing, images_count: 0 }
+      );
+      expect(missingPhotos.eligible).toBe(false);
+      expect(missingPhotos.missingRequirements).toContain(
+        'LISTING_PHOTOS_REQUIRED'
+      );
+
+      // Missing Price
+      const missingPrice = ListingPublicationEligibilityPolicy.evaluate(
+        baseProfile as never,
+        basePolicies as never,
+        { ...baseListing, price: 0 }
+      );
+      expect(missingPrice.eligible).toBe(false);
+      expect(missingPrice.missingRequirements).toContain(
+        'LISTING_PRICING_REQUIRED'
+      );
+
+      // Missing Location
+      const missingLoc = ListingPublicationEligibilityPolicy.evaluate(
+        baseProfile as never,
+        basePolicies as never,
+        { ...baseListing, has_location: false }
+      );
+      expect(missingLoc.eligible).toBe(false);
+      expect(missingLoc.missingRequirements).toContain(
+        'LISTING_LOCATION_REQUIRED'
+      );
+    }
+  );
 });

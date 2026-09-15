@@ -207,6 +207,8 @@ export class HostingRepository {
     _ifscCode?: string,
     _accountHolderName?: string
   ): Promise<void> {
+    void _ifscCode;
+    void _accountHolderName;
     const supabase = await createClient();
     const last4 =
       accountNumberOrLast4.length > 4
