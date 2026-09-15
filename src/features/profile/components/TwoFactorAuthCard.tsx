@@ -331,10 +331,22 @@ export function TwoFactorAuthCard({ initialEnabled }: TwoFactorAuthCardProps) {
               {/* QR Code Container */}
               <div className="flex flex-col items-center justify-center p-4 bg-slate-50 rounded-2xl border border-slate-200/80">
                 {qrCodeSvg ? (
-                  <div
-                    className="w-48 h-48 bg-white p-2 rounded-xl shadow-xs flex items-center justify-center"
-                    dangerouslySetInnerHTML={{ __html: qrCodeSvg }}
-                  />
+                  <div className="w-48 h-48 bg-white p-3 rounded-xl shadow-xs border border-slate-200/60 flex items-center justify-center overflow-hidden">
+                    {qrCodeSvg.startsWith('data:') ||
+                    qrCodeSvg.startsWith('http') ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={qrCodeSvg}
+                        alt="Authenticator QR Code"
+                        className="w-full h-full object-contain select-none"
+                      />
+                    ) : (
+                      <div
+                        className="w-full h-full flex items-center justify-center [&>svg]:w-full [&>svg]:h-full"
+                        dangerouslySetInnerHTML={{ __html: qrCodeSvg }}
+                      />
+                    )}
+                  </div>
                 ) : (
                   <div className="w-48 h-48 bg-slate-200 animate-pulse rounded-xl" />
                 )}
