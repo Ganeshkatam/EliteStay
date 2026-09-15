@@ -222,10 +222,11 @@ function ListingRow({
 
         {!isHealthy && health.warnings.length > 0 && (
           <span
-            className="text-xs text-amber-600 font-medium truncate"
+            className="text-xs text-amber-600 font-medium truncate flex items-center gap-1"
             title={health.warnings[0]}
           >
-            ⚠ {health.warnings[0]}
+            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+            <span>{health.warnings[0]}</span>
           </span>
         )}
         {!isHealthy && health.warnings.length === 0 && (

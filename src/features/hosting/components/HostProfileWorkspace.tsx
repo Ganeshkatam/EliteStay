@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useTransition } from 'react';
 import { HostProfileWorkspaceViewModel } from '../types/hosting.types';
 import {
   updateHostProfileSettingsAction,
@@ -22,6 +22,8 @@ import {
   PauseCircle,
   PlayCircle,
   Save,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react';
 
 interface HostProfileWorkspaceProps {
@@ -38,10 +40,49 @@ export const HostProfileWorkspace: React.FC<HostProfileWorkspaceProps> = ({
   const [selectedSlug, setSelectedSlug] = useState(
     viewModel.businessSummary.primaryAccommodationSlug || 'pg'
   );
+  const [isStatusPending, startStatusTransition] = useTransition();
+  const [isFormPending, startFormTransition] = useTransition();
+  const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
+  const [feedbackError, setFeedbackError] = useState<string | null>(null);
 
   const handleStatusToggle = () => {
+    setFeedbackMessage(null);
+    setFeedbackError(null);
     const nextStatus = viewModel.status === 'ACTIVE' ? 'PAUSED' : 'ACTIVE';
-    toggleHostOperationalStatusAction(nextStatus as 'ACTIVE' | 'PAUSED');
+
+    startStatusTransition(async () => {
+      try {
+        await toggleHostOperationalStatusAction(
+          nextStatus as 'ACTIVE' | 'PAUSED'
+        );
+        setFeedbackMessage(
+          nextStatus === 'ACTIVE'
+            ? 'Operational capability resumed.'
+            : 'Operations paused.'
+        );
+        setTimeout(() => setFeedbackMessage(null), 4000);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Status update failed';
+        setFeedbackError(msg);
+      }
+    });
+  };
+
+  const handleFormSubmit = (formData: FormData) => {
+    setFeedbackMessage(null);
+    setFeedbackError(null);
+
+    startFormTransition(async () => {
+      try {
+        await updateHostProfileSettingsAction(formData);
+        setFeedbackMessage('Entity settings saved successfully.');
+        setTimeout(() => setFeedbackMessage(null), 4000);
+      } catch (err: unknown) {
+        const msg =
+          err instanceof Error ? err.message : 'Failed to save settings';
+        setFeedbackError(msg);
+      }
+    });
   };
 
   return (
@@ -61,7 +102,7 @@ export const HostProfileWorkspace: React.FC<HostProfileWorkspaceProps> = ({
             <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-xl border border-slate-200 text-xs text-slate-600">
               <span>Capability Status:</span>
               <span
-                className={`font-bold uppercase px-2 py-0.5 rounded ${
+                className={`font-bold uppercase px-2 py-0.5 rounded transition-colors ${
                   viewModel.status === 'ACTIVE'
                     ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
                     : viewModel.status === 'PAUSED'
@@ -78,14 +119,19 @@ export const HostProfileWorkspace: React.FC<HostProfileWorkspaceProps> = ({
               viewModel.status === 'READY') && (
               <button
                 type="button"
+                disabled={isStatusPending}
                 onClick={handleStatusToggle}
-                className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl border text-xs font-bold transition-all ${
+                className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl border text-xs font-bold transition-all disabled:opacity-60 disabled:cursor-not-allowed ${
                   viewModel.status === 'ACTIVE'
                     ? 'bg-amber-50 border-amber-200 text-amber-600 hover:bg-amber-100'
                     : 'bg-emerald-50 border-emerald-200 text-emerald-600 hover:bg-emerald-100'
                 }`}
               >
-                {viewModel.status === 'ACTIVE' ? (
+                {isStatusPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" /> Updating...
+                  </>
+                ) : viewModel.status === 'ACTIVE' ? (
                   <>
                     <PauseCircle className="w-4 h-4" /> Pause Operations
                   </>
@@ -98,6 +144,20 @@ export const HostProfileWorkspace: React.FC<HostProfileWorkspaceProps> = ({
             )}
           </div>
         </div>
+
+        {feedbackMessage && (
+          <div className="mb-6 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-semibold flex items-center gap-2 animate-in fade-in-0 duration-200">
+            <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+            <span>{feedbackMessage}</span>
+          </div>
+        )}
+
+        {feedbackError && (
+          <div className="mb-6 p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-sm font-semibold flex items-center gap-2 animate-in fade-in-0 duration-200">
+            <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+            <span>{feedbackError}</span>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
           {/* Verified Facts & Identity Summary Column */}
@@ -163,7 +223,7 @@ export const HostProfileWorkspace: React.FC<HostProfileWorkspaceProps> = ({
 
             <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-3 text-xs text-slate-500 shadow-sm">
               <div className="font-bold text-slate-800 flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-rose-500" />{' '}
+                <ShieldCheck className="w-4 h-4 text-rose-500" />
                 Multi-Capability Governance
               </div>
               <p className="leading-relaxed">
@@ -176,10 +236,7 @@ export const HostProfileWorkspace: React.FC<HostProfileWorkspaceProps> = ({
 
           {/* Business Settings & Payout Configuration Form */}
           <main className="lg:col-span-8 bg-white border border-slate-200 rounded-2xl p-6 sm:p-10 shadow-sm space-y-10">
-            <form
-              action={updateHostProfileSettingsAction}
-              className="space-y-10"
-            >
+            <form action={handleFormSubmit} className="space-y-10">
               {/* Section 1: Business Operating Entity */}
               <div className="space-y-6">
                 <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
@@ -248,89 +305,80 @@ export const HostProfileWorkspace: React.FC<HostProfileWorkspaceProps> = ({
                               value="apartment"
                               className="py-3 px-3 rounded-lg cursor-pointer hover:bg-slate-50"
                             >
-                              Home / Apartment - Fully independent private flats
-                              & houses
+                              Independent Apartment - Fully furnished
+                              residential units
                             </SelectItem>
                             <SelectItem
-                              value="other"
+                              value="house"
                               className="py-3 px-3 rounded-lg cursor-pointer hover:bg-slate-50"
                             >
-                              Other Residence - Specialized living facilities
-                              and unique stays
+                              Independent House / Villa - Private standalone
+                              homes
                             </SelectItem>
                           </SelectContent>
                         </Select>
-                        <p className="text-[11px] text-slate-500 mt-1.5">
-                          You can adjust this choice until your first listing is
-                          actively published.
-                        </p>
                       </div>
                     )}
                   </div>
 
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-2">
-                      Resident Support Phone
+                      Operational Support Phone
                     </label>
                     <input
                       type="tel"
                       name="supportPhone"
                       defaultValue={
-                        viewModel.businessSummary.supportPhone ?? ''
+                        viewModel.businessSummary.supportPhone || ''
                       }
-                      placeholder="+91 80 2233 4455"
+                      placeholder="+91 98765 43210"
                       className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm focus:outline-none focus:bg-white focus:border-rose-500 transition-colors"
                     />
                   </div>
 
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-2">
-                      Resident Support Email
+                      Operational Support Email
                     </label>
                     <input
                       type="email"
                       name="supportEmail"
                       defaultValue={
-                        viewModel.businessSummary.supportEmail ?? ''
+                        viewModel.businessSummary.supportEmail || ''
                       }
-                      placeholder="support@sharmaresidences.in"
+                      placeholder="support@primeliving.com"
                       className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm focus:outline-none focus:bg-white focus:border-rose-500 transition-colors"
                     />
                   </div>
                 </div>
               </div>
 
-              {/* Section 2: Payout Bank Reference Facts */}
-              <div className="space-y-6 pt-4 border-t border-slate-100">
-                <div className="flex items-center justify-between pb-2">
-                  <div className="flex items-center gap-3">
-                    <CreditCard className="w-5 h-5 text-emerald-500" />
-                    <h3 className="text-lg font-bold text-slate-900">
-                      Settlement Payout References
-                    </h3>
-                  </div>
-                  <span className="text-xs text-slate-500 font-mono">
-                    Tokenized Fact Storage
-                  </span>
+              {/* Section 2: Financial Governance & Payouts */}
+              <div className="space-y-6">
+                <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
+                  <CreditCard className="w-5 h-5 text-emerald-500" />
+                  <h3 className="text-lg font-bold text-slate-900">
+                    Payout Settlements & Banking
+                  </h3>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-2">
-                      Bank Institution Name
+                      Settlement Bank Name
                     </label>
                     <input
                       type="text"
                       name="bankName"
-                      defaultValue={viewModel.payoutSummary.bankName ?? ''}
-                      placeholder="e.g., HDFC Bank / ICICI Bank"
+                      defaultValue={viewModel.payoutSummary.bankName || ''}
+                      placeholder="e.g., HDFC Bank"
                       className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm focus:outline-none focus:bg-white focus:border-rose-500 transition-colors"
                     />
                   </div>
 
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-2">
-                      Account Suffix / New Account String
+                      Disbursement Account Number Suffix
                     </label>
                     <input
                       type="text"
@@ -371,9 +419,20 @@ export const HostProfileWorkspace: React.FC<HostProfileWorkspaceProps> = ({
               <div className="flex justify-end pt-6 border-t border-slate-100">
                 <button
                   type="submit"
-                  className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-500 hover:to-rose-400 text-white font-bold text-sm shadow-xl shadow-rose-500/20 transition-all duration-200"
+                  disabled={isFormPending}
+                  className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-500 hover:to-rose-400 text-white font-bold text-sm shadow-xl shadow-rose-500/20 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  <Save className="w-4 h-4" /> Save Permanent Entity Settings
+                  {isFormPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" /> Saving
+                      Settings...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4" /> Save Permanent Entity
+                      Settings
+                    </>
+                  )}
                 </button>
               </div>
             </form>
