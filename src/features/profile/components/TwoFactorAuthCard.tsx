@@ -85,6 +85,7 @@ export function TwoFactorAuthCard({ initialEnabled }: TwoFactorAuthCardProps) {
       const { data, error } = await supabase.auth.mfa.enroll({
         factorType: 'totp',
         friendlyName: 'EliteStay Authenticator',
+        issuer: 'EliteStay',
       });
 
       if (error || !data) {
