@@ -79,7 +79,7 @@ export class PublishingService {
 
     const rawListing = listingRow as unknown as RawListingData;
 
-    // 1. Fetch host profile and policy acceptances via HostingRepository
+    // 1. Evaluate Listing Publication Eligibility Policy for early explanation & pre-check
     const { HostingRepository } =
       await import('@/features/hosting/repositories/hosting.repository');
     const hostingRepo = new HostingRepository();
@@ -88,7 +88,6 @@ export class PublishingService {
       ? await hostingRepo.getPolicyAcceptances(hostProfileData.id)
       : [];
 
-    // 2. Evaluate Listing Publication Eligibility Policy (Host Compliance + Listing Health)
     const { ListingPublicationEligibilityPolicy } =
       await import('@/features/hosting/policies/ListingPublicationEligibilityPolicy');
     const imagesCount =
@@ -121,29 +120,34 @@ export class PublishingService {
       );
     }
 
-    const { error } = await supabase
-      .from('listings')
-      .update({
-        status: 'published',
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', listingId)
-      .eq('host_id', hostId);
+    // 2. Sole Publication Authority: Execute transactional, row-locked publish_listing RPC
+    const { data: rpcData, error: rpcError } = await (
+      supabase.rpc as unknown as (
+        name: string,
+        params: { p_listing_id: string }
+      ) => Promise<{
+        data: {
+          success: boolean;
+          status?: string;
+          error?: string;
+          missing?: string[];
+        } | null;
+        error: { message: string } | null;
+      }>
+    )('publish_listing', {
+      p_listing_id: listingId,
+    });
 
-    if (error) {
-      throw new Error('Failed to publish listing: ' + error.message);
+    if (rpcError) {
+      throw new Error('Failed to publish listing: ' + rpcError.message);
     }
 
-    // Automatically transition host capability status from READY to ACTIVE upon first live listing via controlled transition RPC
-    const { error: transitionError } = await (
-      supabase.rpc as unknown as (
-        name: string
-      ) => Promise<{ error: { message: string } | null }>
-    )('transition_host_to_active');
-    if (transitionError) {
-      console.warn(
-        '[PublishingService] Note on host activation transition:',
-        transitionError.message
+    if (!rpcData || !rpcData.success) {
+      const missingDetails = rpcData?.missing?.length
+        ? ` (${rpcData.missing.join(', ')})`
+        : '';
+      throw new Error(
+        `Publication rejected: ${rpcData?.error || 'Requirements not met'}${missingDetails}`
       );
     }
   }
