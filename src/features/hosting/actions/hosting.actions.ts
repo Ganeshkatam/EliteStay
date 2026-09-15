@@ -1,11 +1,20 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
+import { headers } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { HostingService } from '../services/hosting.service';
 import { HostProfileService } from '../services/host-profile.service';
 import { createDraftListing } from '@/features/host/actions/listing-actions';
+import {
+  IdentityStepSchema,
+  BankStepSchema,
+  PolicyStepSchema,
+  HostProfileSettingsSchema,
+  OperationalStatusToggleSchema,
+} from '../schemas/hosting.schemas';
+import { AuditContext } from '../types/hosting.types';
 
 const hostingService = new HostingService();
 const profileService = new HostProfileService();
@@ -21,12 +30,22 @@ async function getAuthenticatedUser() {
   return user;
 }
 
+async function getAuditContext(): Promise<AuditContext> {
+  const headerList = await headers();
+  return {
+    userAgent: headerList.get('user-agent'),
+    ipAddress:
+      headerList.get('x-forwarded-for') || headerList.get('x-real-ip') || null,
+    submittedAt: new Date().toISOString(),
+  };
+}
+
 /**
  * Initializes hosting capability onboarding from the marketing landing page (/host/start).
  */
 export async function startHostingAction() {
-  const user = await getAuthenticatedUser();
-  await hostingService.initializeOnboarding(user.id);
+  await getAuthenticatedUser();
+  await hostingService.initializeOnboarding();
 
   revalidatePath('/host/onboarding', 'layout');
   redirect('/host/onboarding/identity');
@@ -37,14 +56,18 @@ export async function startHostingAction() {
  */
 export async function submitIdentityStepAction(formData: FormData) {
   const user = await getAuthenticatedUser();
-  const fullName = String(formData.get('fullName') || '');
-  const phone = String(formData.get('phone') || '');
 
-  if (!fullName || !phone) {
-    throw new Error('Full name and verified phone number are required');
-  }
+  const parsed = IdentityStepSchema.parse({
+    fullName: formData.get('fullName'),
+    phone: formData.get('phone'),
+  });
 
-  await hostingService.submitIdentityStep(user.id, fullName, phone);
+  await hostingService.submitIdentityStep(
+    user.id,
+    parsed.fullName,
+    parsed.phone
+  );
+
   revalidatePath('/host/onboarding', 'layout');
   redirect('/host/onboarding/bank');
 }
@@ -54,24 +77,37 @@ export async function submitIdentityStepAction(formData: FormData) {
  */
 export async function submitBankStepAction(formData: FormData) {
   const user = await getAuthenticatedUser();
-  const bankName = String(formData.get('bankName') || '');
-  const accountNumber = String(formData.get('accountNumber') || '');
 
-  if (!bankName || !accountNumber) {
-    throw new Error('Bank name and account details are required');
-  }
+  const parsed = BankStepSchema.parse({
+    bankName: formData.get('bankName'),
+    accountNumber: formData.get('accountNumber'),
+  });
 
-  await hostingService.submitBankStep(user.id, bankName, accountNumber);
+  await hostingService.submitBankStep(
+    user.id,
+    parsed.bankName,
+    parsed.accountNumber
+  );
+
   revalidatePath('/host/onboarding', 'layout');
   redirect('/host/onboarding/policies');
 }
 
 /**
  * Confirms SLA agreements (Step 4), promotes status to READY, and navigates to completion screen.
+ * Strictly validates checkbox agreements and ensures READY status was persisted before redirecting.
  */
-export async function submitPoliciesStepAction() {
+export async function submitPoliciesStepAction(formData: FormData) {
   const user = await getAuthenticatedUser();
-  await hostingService.submitPoliciesStep(user.id);
+
+  PolicyStepSchema.parse({
+    agreeAntiDiscrimination: formData.get('agreeAntiDiscrimination'),
+    agreeMaintenanceSla: formData.get('agreeMaintenanceSla'),
+  });
+
+  const auditContext = await getAuditContext();
+
+  await hostingService.submitPoliciesStep(user.id, auditContext);
   const result = await hostingService.confirmReadyToHost(user.id);
 
   if (!result.success) {
@@ -86,11 +122,13 @@ export async function submitPoliciesStepAction() {
 }
 
 /**
- * Concludes hosting onboarding by invoking the publishing workspace draft creator.
+ * Concludes hosting onboarding by creating the first draft listing.
+ * Verifies that host has achieved READY or ACTIVE status before proceeding.
  */
 export async function launchFirstListingAction() {
-  await getAuthenticatedUser();
-  // Call established listing builder server action
+  const user = await getAuthenticatedUser();
+
+  await hostingService.requireReadyOrActiveHost(user.id);
   await createDraftListing();
 }
 
@@ -99,23 +137,29 @@ export async function launchFirstListingAction() {
  */
 export async function updateHostProfileSettingsAction(formData: FormData) {
   const user = await getAuthenticatedUser();
-  const primaryAccommodationSlug = String(
-    formData.get('primaryAccommodationSlug') || ''
-  );
-  const supportPhone = String(formData.get('supportPhone') || '');
-  const supportEmail = String(formData.get('supportEmail') || '');
-  const bankName = String(formData.get('bankName') || '');
-  const accountLast4 = String(formData.get('accountLast4') || '');
+
+  const parsed = HostProfileSettingsSchema.parse({
+    primaryAccommodationSlug:
+      formData.get('primaryAccommodationSlug') || undefined,
+    supportPhone: formData.get('supportPhone') || undefined,
+    supportEmail: formData.get('supportEmail') || undefined,
+    bankName: formData.get('bankName') || undefined,
+    accountLast4: formData.get('accountLast4') || undefined,
+  });
 
   await profileService.updateHostDetails(
     user.id,
-    supportPhone,
-    supportEmail,
-    primaryAccommodationSlug
+    parsed.supportPhone,
+    parsed.supportEmail,
+    parsed.primaryAccommodationSlug
   );
 
-  if (bankName || accountLast4) {
-    await profileService.updatePayoutDetails(user.id, bankName, accountLast4);
+  if (parsed.bankName || parsed.accountLast4) {
+    await profileService.updatePayoutDetails(
+      user.id,
+      parsed.bankName || '',
+      parsed.accountLast4 || ''
+    );
   }
 
   revalidatePath('/host/profile');
@@ -125,11 +169,11 @@ export async function updateHostProfileSettingsAction(formData: FormData) {
 /**
  * Toggles operational hosting capabilities between ACTIVE and PAUSED.
  */
-export async function toggleHostOperationalStatusAction(
-  newStatus: 'ACTIVE' | 'PAUSED'
-) {
+export async function toggleHostOperationalStatusAction(newStatus: unknown) {
   const user = await getAuthenticatedUser();
-  await profileService.toggleOperationalStatus(user.id, newStatus);
+  const validStatus = OperationalStatusToggleSchema.parse(newStatus);
+
+  await profileService.toggleOperationalStatus(user.id, validStatus);
 
   revalidatePath('/host/profile');
   revalidatePath('/host');

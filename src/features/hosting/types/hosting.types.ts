@@ -62,6 +62,16 @@ export interface HostPolicyAcceptanceRow {
 }
 
 /**
+ * Server-side audit context captured by Server Actions and passed to domain services.
+ */
+export interface AuditContext {
+  userAgent?: string | null;
+  ipAddress?: string | null;
+  submittedAt?: string;
+  metadata?: Record<string, unknown>;
+}
+
+/**
  * Basic user profile context from public.profiles and auth session.
  */
 export interface UserIdentityContext {

@@ -31,6 +31,7 @@ export default function PoliciesStepPage() {
             <label className="flex items-center gap-3 pt-2 text-xs text-slate-700 font-semibold cursor-pointer">
               <input
                 type="checkbox"
+                name="agreeAntiDiscrimination"
                 required
                 className="rounded border-slate-300 text-rose-600 focus:ring-rose-500 w-4 h-4"
               />
@@ -54,6 +55,7 @@ export default function PoliciesStepPage() {
             <label className="flex items-center gap-3 pt-2 text-xs text-slate-700 font-semibold cursor-pointer">
               <input
                 type="checkbox"
+                name="agreeMaintenanceSla"
                 required
                 className="rounded border-slate-300 text-rose-600 focus:ring-rose-500 w-4 h-4"
               />
