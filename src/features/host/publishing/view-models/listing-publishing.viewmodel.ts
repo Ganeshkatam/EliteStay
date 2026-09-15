@@ -67,6 +67,9 @@ export interface RawListingData {
   status: string; // The database type is string technically, but conceptually ListingStatus
   city?: string | null;
   locality?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  formatted_address?: string | null;
   title?: string | null;
   description?: string | null;
   accommodation_type_id?: string | null;
