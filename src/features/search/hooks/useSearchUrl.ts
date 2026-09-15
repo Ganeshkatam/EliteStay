@@ -6,11 +6,18 @@ import {
   type SearchFilters,
   buildSearchUrl,
 } from '@/features/search/lib/search-params';
+import { useSearchUIOptional } from '../context/SearchProvider';
 
 export function useSearchUrl(currentFilters: SearchFilters) {
   const router = useRouter();
   const pathname = usePathname();
-  const [isPending, startTransition] = useTransition();
+  const searchUI = useSearchUIOptional();
+  const [localPending, localStartTransition] = useTransition();
+
+  const isPending = searchUI ? searchUI.isSearching : localPending;
+  const startTransition = searchUI
+    ? searchUI.startSearchTransition
+    : localStartTransition;
 
   /**
    * Updates the URL with the provided filters.
@@ -24,8 +31,7 @@ export function useSearchUrl(currentFilters: SearchFilters) {
       // Generate the canonical URL
       const url = buildSearchUrl(merged, pathname);
 
-      // We use startTransition so the UI can show a loading state if we
-      // were to expose isPending, while Next.js fetches the RSC payload.
+      // Trigger transition with searching indicator
       startTransition(() => {
         if (replace) {
           router.replace(url, { scroll: false });
@@ -34,7 +40,7 @@ export function useSearchUrl(currentFilters: SearchFilters) {
         }
       });
     },
-    [currentFilters, pathname, router]
+    [currentFilters, pathname, router, startTransition]
   );
 
   /**
@@ -44,7 +50,7 @@ export function useSearchUrl(currentFilters: SearchFilters) {
     startTransition(() => {
       router.push(pathname, { scroll: false });
     });
-  }, [pathname, router]);
+  }, [pathname, router, startTransition]);
 
   /**
    * Removes a specific filter by its key, reverting it to its default/null state.
@@ -79,7 +85,7 @@ export function useSearchUrl(currentFilters: SearchFilters) {
         router.push(url, { scroll: false });
       });
     },
-    [currentFilters, pathname, router]
+    [currentFilters, pathname, router, startTransition]
   );
 
   /**

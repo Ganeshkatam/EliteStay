@@ -7,6 +7,7 @@ import React, {
   useMemo,
   useEffect,
   useCallback,
+  useTransition,
 } from 'react';
 import { SearchWorkspaceViewModel, SearchViewMode } from '../types';
 
@@ -22,7 +23,7 @@ export function useSearchData() {
 }
 
 // 2. Mutable UI State Context
-interface SearchUIState {
+export interface SearchUIState {
   viewMode: SearchViewMode;
   setViewMode: (mode: SearchViewMode) => void;
   hoveredListingId: string | null;
@@ -33,6 +34,9 @@ interface SearchUIState {
   setSelectedMarkerId: (id: string | null) => void;
   drawerOpen: boolean;
   setDrawerOpen: (open: boolean) => void;
+  isSearching: boolean;
+  setIsSearching: (searching: boolean) => void;
+  startSearchTransition: (callback: () => void) => void;
 }
 
 const SearchUIContext = createContext<SearchUIState | null>(null);
@@ -43,6 +47,10 @@ export function useSearchUI() {
     throw new Error('useSearchUI must be used within a SearchProvider');
   }
   return context;
+}
+
+export function useSearchUIOptional() {
+  return useContext(SearchUIContext);
 }
 
 // 3. Combined Provider Component
@@ -62,6 +70,31 @@ export function SearchProvider({ viewModel, children }: SearchProviderProps) {
   );
   const [selectedMarkerId, setSelectedMarkerId] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // Transitions & Active Search Loading Animations State
+  const [isPending, startTransition] = useTransition();
+  const [prevViewModel, setPrevViewModel] = useState(viewModel);
+  const [isManualSearching, setIsManualSearching] = useState(false);
+
+  // Reset manual searching state when viewModel prop updates
+  if (prevViewModel !== viewModel) {
+    setPrevViewModel(viewModel);
+    if (isManualSearching) {
+      setIsManualSearching(false);
+    }
+  }
+
+  const isSearching = isPending || isManualSearching;
+
+  const startSearchTransition = useCallback(
+    (callback: () => void) => {
+      setIsManualSearching(true);
+      startTransition(() => {
+        callback();
+      });
+    },
+    [startTransition]
+  );
 
   // Disable Map view on viewports < 1000px
   useEffect(() => {
@@ -104,13 +137,19 @@ export function SearchProvider({ viewModel, children }: SearchProviderProps) {
       setSelectedMarkerId,
       drawerOpen,
       setDrawerOpen,
+      isSearching,
+      setIsSearching: setIsManualSearching,
+      startSearchTransition,
     }),
     [
       viewMode,
+      handleSetViewMode,
       hoveredListingId,
       selectedListingId,
       selectedMarkerId,
       drawerOpen,
+      isSearching,
+      startSearchTransition,
     ]
   );
 

@@ -27,10 +27,10 @@ export function MapCanvas({ children, onViewportChange }: MapCanvasProps) {
   const { map } = useSearchData();
   const mapConfig = getMapConfig();
 
-  // Fallback to configured defaults if center not available
-  const initialLat = map.centerLat ?? 0;
-  const initialLng = map.centerLng ?? 0;
-  const initialZoom = map.zoom ?? 1;
+  // Fallback to neutral view if center not available
+  const initialLat = map.centerLat ?? 20.5937;
+  const initialLng = map.centerLng ?? 78.9629;
+  const initialZoom = map.zoom ?? (map.centerLat != null ? 12 : 4);
 
   const handleMapMove = useCallback(
     (evt: ViewStateChangeEvent) => {

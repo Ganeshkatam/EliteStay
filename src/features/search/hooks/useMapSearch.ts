@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useState, useEffect, useRef } from 'react';
-import { useSearchData } from '../context/SearchProvider';
+import { useSearchData, useSearchUIOptional } from '../context/SearchProvider';
 import { useRouter, usePathname } from 'next/navigation';
 
 export interface MapViewport {
@@ -34,6 +34,7 @@ export function isSameViewport(
 
 export function useMapSearch() {
   const { filters } = useSearchData();
+  const searchUI = useSearchUIOptional();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -84,20 +85,28 @@ export function useMapSearch() {
       setLastSearchedViewport(vp);
       setViewportChanged(false);
 
-      if (typeof window !== 'undefined') {
-        const params = new URLSearchParams(window.location.search);
-        params.set('minLat', String(vp.bounds.south));
-        params.set('maxLat', String(vp.bounds.north));
-        params.set('minLng', String(vp.bounds.west));
-        params.set('maxLng', String(vp.bounds.east));
-        params.set('centerLat', String(vp.center.lat));
-        params.set('centerLng', String(vp.center.lng));
-        params.set('page', '1'); // Reset page
+      const executeNavigation = () => {
+        if (typeof window !== 'undefined') {
+          const params = new URLSearchParams(window.location.search);
+          params.set('minLat', String(vp.bounds.south));
+          params.set('maxLat', String(vp.bounds.north));
+          params.set('minLng', String(vp.bounds.west));
+          params.set('maxLng', String(vp.bounds.east));
+          params.set('centerLat', String(vp.center.lat));
+          params.set('centerLng', String(vp.center.lng));
+          params.set('page', '1'); // Reset page
 
-        router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+          router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+        }
+      };
+
+      if (searchUI?.startSearchTransition) {
+        searchUI.startSearchTransition(executeNavigation);
+      } else {
+        executeNavigation();
       }
     },
-    [router, pathname]
+    [router, pathname, searchUI]
   );
 
   // Debounced search trigger when pendingViewport changes and searchAsMapMoves is active

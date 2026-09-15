@@ -1,7 +1,6 @@
 import { ListingCardData } from '@/features/listings/types';
 import { MapViewModel } from '../types';
 import { SearchFilters } from '../lib/search-params';
-import { MARKET_CONFIG } from '@/config/market';
 import { createClient } from '@/lib/supabase/server';
 
 const CITY_COORDINATES: Record<string, { lat: number; lng: number }> = {
@@ -30,13 +29,15 @@ export class MapService {
     listings: ListingCardData[],
     filters?: SearchFilters
   ): Promise<MapViewModel> {
-    let centerLat: number | null = null;
-    let centerLng: number | null = null;
+    let centerLat: number | undefined = undefined;
+    let centerLng: number | undefined = undefined;
+    let zoom: number | undefined = undefined;
 
     // 1. If explicit center coordinates are provided in search parameters
     if (filters?.centerLat != null && filters?.centerLng != null) {
       centerLat = filters.centerLat;
       centerLng = filters.centerLng;
+      zoom = 12;
     }
 
     // 2. If a specific city/locality filter is requested
@@ -48,6 +49,7 @@ export class MapService {
       if (CITY_COORDINATES[normalized]) {
         centerLat = CITY_COORDINATES[normalized].lat;
         centerLng = CITY_COORDINATES[normalized].lng;
+        zoom = 12;
       } else {
         // Query database cities table
         try {
@@ -63,6 +65,7 @@ export class MapService {
           if (data?.latitude != null && data?.longitude != null) {
             centerLat = data.latitude;
             centerLng = data.longitude;
+            zoom = 12;
           }
         } catch (err) {
           console.error('Failed to query city coordinates:', err);
@@ -70,22 +73,51 @@ export class MapService {
       }
     }
 
-    // 3. Fallback to first listing with valid location coordinates
+    // 3. Fallback to computing center and span dynamically from matching listings
     if (centerLat == null || centerLng == null) {
       const withLoc = listings.filter(
-        (l) => l.location.latitude && l.location.longitude
+        (l) => l.location.latitude != null && l.location.longitude != null
       );
-      if (withLoc.length > 0) {
+      if (withLoc.length === 1) {
         centerLat = withLoc[0].location.latitude!;
         centerLng = withLoc[0].location.longitude!;
+        zoom = 13;
+      } else if (withLoc.length > 1) {
+        let minLat = withLoc[0].location.latitude!;
+        let maxLat = withLoc[0].location.latitude!;
+        let minLng = withLoc[0].location.longitude!;
+        let maxLng = withLoc[0].location.longitude!;
+        let sumLat = 0;
+        let sumLng = 0;
+
+        for (const item of withLoc) {
+          const lat = item.location.latitude!;
+          const lng = item.location.longitude!;
+          minLat = Math.min(minLat, lat);
+          maxLat = Math.max(maxLat, lat);
+          minLng = Math.min(minLng, lng);
+          maxLng = Math.max(maxLng, lng);
+          sumLat += lat;
+          sumLng += lng;
+        }
+
+        centerLat = sumLat / withLoc.length;
+        centerLng = sumLng / withLoc.length;
+
+        const maxSpan = Math.max(maxLat - minLat, maxLng - minLng);
+        if (maxSpan < 0.05) zoom = 13;
+        else if (maxSpan < 0.2) zoom = 11;
+        else if (maxSpan < 1) zoom = 9;
+        else if (maxSpan < 5) zoom = 6;
+        else zoom = 4;
       }
     }
 
-    // 4. Default fallback to market default
+    // 4. Return dynamic map data without imposing any default city
     return {
-      centerLat: centerLat ?? MARKET_CONFIG.DEFAULT_MAP_CENTER.lat,
-      centerLng: centerLng ?? MARKET_CONFIG.DEFAULT_MAP_CENTER.lng,
-      zoom: 12,
+      centerLat,
+      centerLng,
+      zoom: zoom ?? 4,
     };
   }
 }
