@@ -25,6 +25,13 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -134,13 +141,45 @@ function InlineForm<TSchema extends z.ZodType<FieldValues>>({
 
 // ---- Personal Info Forms ---- //
 
-export function NameForm({
-  profile,
-  close,
-}: {
-  profile: ExtendedProfile;
-  close?: () => void;
-}) {
+export function DisplayNameForm({ profile }: { profile: ExtendedProfile }) {
+  return (
+    <InlineForm
+      schema={z.object({
+        display_name: z
+          .string()
+          .min(2, 'Display name must be at least 2 characters')
+          .optional()
+          .nullable()
+          .or(z.literal('')),
+      })}
+      defaultValues={{ display_name: profile.display_name || '' }}
+      onSubmitData={(data) =>
+        updateProfile(data as unknown as Parameters<typeof updateProfile>[0])
+      }
+    >
+      {({ register, errors }) => (
+        <div>
+          <label className="block text-sm font-medium mb-1">Display Name</label>
+          <Input
+            {...register('display_name')}
+            placeholder="How you want to be called"
+          />
+          {errors.display_name && (
+            <p className="mt-1 text-sm text-destructive">
+              {errors.display_name.message}
+            </p>
+          )}
+          <p className="text-xs text-slate-500 mt-2">
+            This is how your name will appear to hosts and guests across
+            EliteStay.
+          </p>
+        </div>
+      )}
+    </InlineForm>
+  );
+}
+
+export function NameForm({ profile }: { profile: ExtendedProfile }) {
   return (
     <InlineForm
       schema={z.object({
@@ -150,7 +189,6 @@ export function NameForm({
       onSubmitData={(data) =>
         updateProfile(data as unknown as Parameters<typeof updateProfile>[0])
       }
-      close={close}
     >
       {({ register, errors }) => (
         <div>
@@ -162,8 +200,8 @@ export function NameForm({
             </p>
           )}
           <p className="text-xs text-slate-500 mt-2">
-            This is the name on your travel document, which could be a license
-            or a passport.
+            This is the name on your legal document, which could be a license or
+            a passport.
           </p>
         </div>
       )}
@@ -171,13 +209,7 @@ export function NameForm({
   );
 }
 
-export function DateOfBirthForm({
-  profile,
-  close,
-}: {
-  profile: ExtendedProfile;
-  close?: () => void;
-}) {
+export function DateOfBirthForm({ profile }: { profile: ExtendedProfile }) {
   return (
     <InlineForm
       schema={z.object({ date_of_birth: z.string().optional().nullable() })}
@@ -185,7 +217,6 @@ export function DateOfBirthForm({
       onSubmitData={(data) =>
         updateProfile(data as unknown as Parameters<typeof updateProfile>[0])
       }
-      close={close}
     >
       {({ watch, setValue }) => {
         const dateStr = watch('date_of_birth');
@@ -234,13 +265,7 @@ export function DateOfBirthForm({
   );
 }
 
-export function GenderForm({
-  profile,
-  close,
-}: {
-  profile: ExtendedProfile;
-  close?: () => void;
-}) {
+export function GenderForm({ profile }: { profile: ExtendedProfile }) {
   return (
     <InlineForm
       schema={z.object({
@@ -254,32 +279,55 @@ export function GenderForm({
       onSubmitData={(data) =>
         updateProfile(data as unknown as Parameters<typeof updateProfile>[0])
       }
-      close={close}
     >
-      {({ register }) => (
-        <div>
-          <label className="block text-sm font-medium mb-1">Gender</label>
-          <select
-            {...register('gender')}
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-          >
-            <option value="">Select Gender</option>
-            <option value="male">Male</option>
-            <option value="female">Female</option>
-          </select>
-        </div>
-      )}
+      {({ watch, setValue, errors }) => {
+        const genderValue = watch('gender') || undefined;
+
+        return (
+          <div>
+            <label className="block text-sm font-medium mb-1.5 text-slate-900">
+              Gender
+            </label>
+            <Select
+              value={genderValue}
+              onValueChange={(val) => {
+                setValue('gender', (val || null) as 'male' | 'female' | null, {
+                  shouldDirty: true,
+                  shouldValidate: true,
+                });
+              }}
+            >
+              <SelectTrigger className="h-11 w-full bg-white border-slate-200 focus:ring-slate-400 focus:border-slate-400 rounded-xl text-sm font-medium shadow-2xs">
+                <SelectValue placeholder="Select Gender" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl border-slate-200/80 shadow-lg bg-white">
+                <SelectItem
+                  value="male"
+                  className="rounded-lg py-2.5 cursor-pointer hover:bg-slate-50 focus:bg-slate-50"
+                >
+                  Male
+                </SelectItem>
+                <SelectItem
+                  value="female"
+                  className="rounded-lg py-2.5 cursor-pointer hover:bg-slate-50 focus:bg-slate-50"
+                >
+                  Female
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            {errors.gender && (
+              <p className="mt-1.5 text-sm text-destructive">
+                {errors.gender.message}
+              </p>
+            )}
+          </div>
+        );
+      }}
     </InlineForm>
   );
 }
 
-export function OccupationForm({
-  profile,
-  close,
-}: {
-  profile: ExtendedProfile;
-  close?: () => void;
-}) {
+export function OccupationForm({ profile }: { profile: ExtendedProfile }) {
   return (
     <InlineForm
       schema={z.object({ occupation: z.string().optional().nullable() })}
@@ -287,37 +335,85 @@ export function OccupationForm({
       onSubmitData={(data) =>
         updateProfile(data as unknown as Parameters<typeof updateProfile>[0])
       }
-      close={close}
     >
-      {({ register }) => (
-        <div>
-          <label className="block text-sm font-medium mb-1">Occupation</label>
-          <select
-            {...register('occupation')}
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-          >
-            <option value="">Select Occupation</option>
-            <option value="student">Student</option>
-            <option value="working_professional">Working Professional</option>
-            <option value="business_owner">Business Owner</option>
-            <option value="freelancer">Freelancer</option>
-            <option value="job_seeker">Job Seeker</option>
-            <option value="retired">Retired</option>
-            <option value="other">Other</option>
-          </select>
-        </div>
-      )}
+      {({ watch, setValue, errors }) => {
+        const occupationValue = watch('occupation') || undefined;
+
+        return (
+          <div>
+            <label className="block text-sm font-medium mb-1.5 text-slate-900">
+              Occupation
+            </label>
+            <Select
+              value={occupationValue}
+              onValueChange={(val) => {
+                setValue('occupation', val || null, {
+                  shouldDirty: true,
+                  shouldValidate: true,
+                });
+              }}
+            >
+              <SelectTrigger className="h-11 w-full bg-white border-slate-200 focus:ring-slate-400 focus:border-slate-400 rounded-xl text-sm font-medium shadow-2xs">
+                <SelectValue placeholder="Select Occupation" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl border-slate-200/80 shadow-lg bg-white">
+                <SelectItem
+                  value="student"
+                  className="rounded-lg py-2.5 cursor-pointer hover:bg-slate-50 focus:bg-slate-50"
+                >
+                  Student
+                </SelectItem>
+                <SelectItem
+                  value="working_professional"
+                  className="rounded-lg py-2.5 cursor-pointer hover:bg-slate-50 focus:bg-slate-50"
+                >
+                  Working Professional
+                </SelectItem>
+                <SelectItem
+                  value="business_owner"
+                  className="rounded-lg py-2.5 cursor-pointer hover:bg-slate-50 focus:bg-slate-50"
+                >
+                  Business Owner
+                </SelectItem>
+                <SelectItem
+                  value="freelancer"
+                  className="rounded-lg py-2.5 cursor-pointer hover:bg-slate-50 focus:bg-slate-50"
+                >
+                  Freelancer
+                </SelectItem>
+                <SelectItem
+                  value="job_seeker"
+                  className="rounded-lg py-2.5 cursor-pointer hover:bg-slate-50 focus:bg-slate-50"
+                >
+                  Job Seeker
+                </SelectItem>
+                <SelectItem
+                  value="retired"
+                  className="rounded-lg py-2.5 cursor-pointer hover:bg-slate-50 focus:bg-slate-50"
+                >
+                  Retired
+                </SelectItem>
+                <SelectItem
+                  value="other"
+                  className="rounded-lg py-2.5 cursor-pointer hover:bg-slate-50 focus:bg-slate-50"
+                >
+                  Other
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            {errors.occupation && (
+              <p className="mt-1.5 text-sm text-destructive">
+                {errors.occupation.message}
+              </p>
+            )}
+          </div>
+        );
+      }}
     </InlineForm>
   );
 }
 
-export function BioForm({
-  profile,
-  close,
-}: {
-  profile: ExtendedProfile;
-  close?: () => void;
-}) {
+export function BioForm({ profile }: { profile: ExtendedProfile }) {
   return (
     <InlineForm
       schema={z.object({
@@ -331,7 +427,6 @@ export function BioForm({
       onSubmitData={(data) =>
         updateProfile(data as unknown as Parameters<typeof updateProfile>[0])
       }
-      close={close}
     >
       {({ register, errors }) => (
         <div>
@@ -355,13 +450,7 @@ export function BioForm({
 
 // ---- Contact Forms ---- //
 
-export function PhoneForm({
-  profile,
-  close,
-}: {
-  profile: ExtendedProfile;
-  close?: () => void;
-}) {
+export function PhoneForm({ profile }: { profile: ExtendedProfile }) {
   return (
     <InlineForm
       schema={z.object({
@@ -371,7 +460,6 @@ export function PhoneForm({
       onSubmitData={(data) =>
         updateProfile(data as unknown as Parameters<typeof updateProfile>[0])
       }
-      close={close}
     >
       {({ register, errors }) => (
         <div>

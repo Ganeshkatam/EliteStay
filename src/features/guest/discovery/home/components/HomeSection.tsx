@@ -6,13 +6,20 @@ import { ListingCard } from '@/features/guest/discovery/shared/components/Listin
 import { Container } from '@/components/layout/Container';
 import { observeServerComponent } from '@/lib/observability/instrumentation/react-observer';
 
+import { ListingCardData } from '@/features/listings/types';
+
 interface HomeSectionProps {
   config: HomeSectionConfig;
+  listings?: ListingCardData[];
 }
 
-export async function HomeSection({ config }: HomeSectionProps) {
+export async function HomeSection({
+  config,
+  listings: initialListings,
+}: HomeSectionProps) {
   return observeServerComponent(`HomeSection.${config.id}`, async () => {
-    const listings = (await getSectionListings(config)) || [];
+    const listings =
+      initialListings ?? ((await getSectionListings(config)) || []);
 
     // Generate the "View all" URL with filters
     const params = new URLSearchParams();

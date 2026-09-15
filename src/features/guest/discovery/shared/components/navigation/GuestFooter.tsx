@@ -6,7 +6,11 @@ import { Container } from '@/components/layout/Container';
 export function GuestFooter() {
   const pathname = usePathname();
 
-  if (pathname?.startsWith('/users')) {
+  if (
+    pathname === '/s' ||
+    pathname?.startsWith('/s/') ||
+    pathname?.startsWith('/users')
+  ) {
     return null;
   }
 

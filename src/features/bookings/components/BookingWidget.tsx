@@ -169,11 +169,17 @@ export function BookingWidget({ listingId, pricing }: BookingWidgetProps) {
                     <PopoverContent className="w-auto p-0" align="start">
                       <Calendar
                         mode="single"
+                        startMonth={new Date()}
+                        endMonth={addMonths(new Date(), 3)}
                         selected={field.value}
                         onSelect={field.onChange}
-                        disabled={(date) =>
-                          date < new Date() || date < new Date('1900-01-01')
-                        }
+                        disabled={(date) => {
+                          const today = new Date();
+                          today.setHours(0, 0, 0, 0);
+                          const maxDate = addMonths(new Date(), 3);
+                          maxDate.setHours(23, 59, 59, 999);
+                          return date < today || date > maxDate;
+                        }}
                       />
                     </PopoverContent>
                   </Popover>

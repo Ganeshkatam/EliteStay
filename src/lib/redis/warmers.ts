@@ -1,4 +1,3 @@
-import { Cache } from './facade';
 import { LocationService } from '@/features/location/services/location-service';
 import { getAccommodationTypes } from '@/features/guest/discovery/home/api/accommodation-type-cache';
 

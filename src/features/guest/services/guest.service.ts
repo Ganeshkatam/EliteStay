@@ -17,15 +17,15 @@ import {
 } from '@/features/guest/reservation/types/reservation.types';
 import { Database } from '@/types/database.types';
 
+import { HomeService } from '@/features/guest/discovery/home/services/HomeService';
+import { GuestHomeSnapshot } from '@/features/guest/discovery/home/types/home-snapshot.types';
+
 export class GuestService {
   /**
    * Retrieves the view model for the Guest Home Page
    */
-  static async getHomeData() {
-    // TODO: Delegate to HomeService
-    return {
-      title: 'Find your next place to live',
-    };
+  static async getHomeData(): Promise<GuestHomeSnapshot> {
+    return await HomeService.getHomeSnapshot();
   }
 
   /**

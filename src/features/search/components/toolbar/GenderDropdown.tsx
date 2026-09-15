@@ -59,7 +59,8 @@ export function GenderDropdown() {
       </PopoverTrigger>
       <PopoverContent
         align="start"
-        className="w-56 p-2 rounded-2xl bg-white shadow-lg border border-gray-100 z-50"
+        collisionPadding={16}
+        className="w-56 max-w-[calc(100vw-32px)] p-2 rounded-2xl bg-white shadow-lg border border-gray-100 z-50"
       >
         <div className="space-y-0.5">
           {genderOptions.map((item) => {

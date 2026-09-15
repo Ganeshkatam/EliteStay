@@ -41,7 +41,13 @@ async function applyTags(key: string, tags: string[]) {
   if (tags.length === 0) return;
   const provider = getProvider();
   try {
-    await Promise.all(tags.map((tag) => provider.sadd(`tag:${tag}`, key)));
+    if (provider.saddBatch) {
+      await provider.saddBatch(
+        tags.map((tag) => ({ key: `tag:${tag}`, member: key }))
+      );
+    } else {
+      await Promise.all(tags.map((tag) => provider.sadd(`tag:${tag}`, key)));
+    }
   } catch (err) {
     console.warn(`[Redis] Failed to apply tags to key ${key}:`, err);
     recordFailure();
@@ -114,9 +120,11 @@ export async function setWithCache<T>(
       await provider.set(entry.key, encoded, ttl);
     }
 
-    await recordWrite(entry.key, async () => {
-      await applyTags(entry.key, entry.tags);
-    });
+    if (policy.invalidation === 'tags' && entry.tags.length > 0) {
+      await recordWrite(entry.key, async () => {
+        await applyTags(entry.key, entry.tags);
+      });
+    }
   } catch {
     // Ignore cache set failures
   }
@@ -354,15 +362,10 @@ export async function fetchMany<T>(
     });
 
     // Process misses
-    const failedLookups: { index: number; entry: CacheManifestEntry }[] = [];
     if (misses.length > 0) {
       const fetchedResults = await Promise.all(
         misses.map(async (miss) => {
-          const res = await fetchWithCache(miss.entry, miss.fetcher);
-          if (res === null) {
-            failedLookups.push({ index: miss.index, entry: miss.entry });
-          }
-          return res;
+          return await fetchWithCache(miss.entry, miss.fetcher);
         })
       );
 
@@ -370,16 +373,6 @@ export async function fetchMany<T>(
         results[miss.index] = fetchedResults[i];
       });
     }
-
-    // 3. Write back negative cache for completely failed DB lookups if configured
-    await Promise.all(
-      failedLookups.map(async ({ index, entry }) => {
-        const policy = getPolicy(entry);
-        if (policy.negativeCache) {
-          await setWithCache(entry, null);
-        }
-      })
-    );
 
     return results;
   } catch (err) {

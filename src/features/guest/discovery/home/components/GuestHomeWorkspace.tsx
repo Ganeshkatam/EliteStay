@@ -1,12 +1,14 @@
 import { Suspense } from 'react';
 import { homepageConfig } from '@/features/guest/discovery/home/config/sections';
+import { HomeHero } from '@/features/guest/discovery/home/components/HomeHero';
 import { HomeSection } from '@/features/guest/discovery/home/components/HomeSection';
 import { Categories } from '@/features/guest/discovery/home/components/Categories';
 import { PopularLocations } from '@/features/guest/discovery/home/components/PopularLocations';
 import { Container } from '@/components/layout/Container';
+import { GuestHomeSnapshot } from '../types/home-snapshot.types';
 
 interface GuestHomeWorkspaceProps {
-  viewModel: { title: string };
+  viewModel: GuestHomeSnapshot;
 }
 
 function CategoriesSkeleton() {
@@ -60,30 +62,34 @@ function LocationsSkeleton() {
 /**
  * GuestHomeWorkspace
  *
- * Every section is an async Server Component wrapped in its own Suspense boundary.
- * This means:
- * - Zero client-side fetch() calls (no /api/home/sections round-trips)
- * - Zero proxy overhead (direct function calls on the server)
- * - Sections stream independently as they resolve via React Suspense streaming
- * - The page shell renders instantly, sections fill in as data arrives
+ * Renders the homepage from the composite GuestHomeSnapshot read model.
+ * All sections, categories, and featured locations receive pre-populated data
+ * from the single Redis GET snapshot, eliminating fragmented cache waterfalls.
  */
-export function GuestHomeWorkspace({}: GuestHomeWorkspaceProps) {
+export function GuestHomeWorkspace({ viewModel }: GuestHomeWorkspaceProps) {
+  const sectionsMap = new Map(
+    (viewModel.sections || []).map((s) => [s.config.id, s.listings])
+  );
+
   return (
     <div className="flex flex-col pb-16 pt-0 gap-6 w-full">
       <h1 className="sr-only">EliteStay - Premium Accommodation & Living</h1>
+
+      <HomeHero />
+
       <Suspense fallback={<CategoriesSkeleton />}>
-        <Categories />
+        <Categories categories={viewModel.categories} />
       </Suspense>
 
-      {/* All sections stream independently via per-section Suspense boundaries */}
+      {/* All sections render from the single composite read model */}
       {homepageConfig.map((config) => (
         <Suspense key={config.id} fallback={<SectionSkeleton />}>
-          <HomeSection config={config} />
+          <HomeSection config={config} listings={sectionsMap.get(config.id)} />
         </Suspense>
       ))}
 
       <Suspense fallback={<LocationsSkeleton />}>
-        <PopularLocations />
+        <PopularLocations locations={viewModel.locations} />
       </Suspense>
     </div>
   );

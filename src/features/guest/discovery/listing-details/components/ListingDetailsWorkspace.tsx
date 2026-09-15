@@ -35,7 +35,7 @@ export function ListingDetailsWorkspace({
   };
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 w-full">
+    <div className="mx-auto w-full max-w-7xl px-4 pb-28 pt-6 sm:px-6 sm:pb-28 sm:pt-8 lg:px-8 md:pb-8">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -222,15 +222,39 @@ export function ListingDetailsWorkspace({
 
               <a
                 href={`/reserve/${listing.publicId}`}
-                className="w-full block text-center bg-black hover:bg-gray-800 text-white font-semibold py-3 px-4 rounded-lg transition-colors"
+                className="flex min-h-11 w-full items-center justify-center rounded-lg bg-black px-4 py-3 text-center font-semibold text-white transition-colors hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2"
               >
                 Reserve
               </a>
-              <p className="text-center text-sm text-gray-500 mt-4">
+              <p className="mt-4 text-center text-sm text-gray-500">
                 You won&apos;t be charged yet
               </p>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Mobile Sticky Reservation Bar */}
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-gray-200 bg-white/95 p-3 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] backdrop-blur-md md:hidden [padding-bottom:calc(0.75rem+env(safe-area-inset-bottom))]">
+        <div className="mx-auto flex w-full max-w-7xl items-center gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-lg font-bold text-gray-900">
+              {listing.pricing.currency === 'INR'
+                ? '₹'
+                : listing.pricing.currency}
+              {listing.pricing.amount.toLocaleString('en-IN')}
+              <span className="ml-1 text-xs font-medium text-gray-500">
+                / {listing.pricing.billingPeriod.toLowerCase()}
+              </span>
+            </div>
+            <p className="truncate text-xs text-gray-500">You won&apos;t be charged yet</p>
+          </div>
+          <a
+            href={`/reserve/${listing.publicId}`}
+            className="flex min-h-11 shrink-0 items-center justify-center rounded-lg bg-black px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2"
+          >
+            Reserve
+          </a>
         </div>
       </div>
     </div>

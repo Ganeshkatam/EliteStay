@@ -72,6 +72,15 @@ export class MemoryProvider implements CacheProvider {
     return true;
   }
 
+  async compareAndDelete(key: string, expectedValue: string): Promise<boolean> {
+    const entry = this.getEntry(key);
+    if (entry && entry.value === expectedValue) {
+      this.store.delete(key);
+      return true;
+    }
+    return false;
+  }
+
   async ping(): Promise<boolean> {
     return true;
   }
@@ -168,6 +177,14 @@ export class MemoryProvider implements CacheProvider {
   clear(): void {
     this.store.clear();
     this.sets.clear();
+  }
+
+  async saddBatch(
+    operations: { key: string; member: string }[]
+  ): Promise<void> {
+    for (const op of operations) {
+      await this.sadd(op.key, op.member);
+    }
   }
 
   /** Return the number of live (non-expired) entries. */

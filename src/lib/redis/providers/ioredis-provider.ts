@@ -45,6 +45,22 @@ export class IoRedisProvider implements CacheProvider {
     return result === 'OK';
   }
 
+  async compareAndDelete(key: string, expectedValue: string): Promise<boolean> {
+    const script = `
+      if redis.call("get", KEYS[1]) == ARGV[1] then
+        return redis.call("del", KEYS[1])
+      else
+        return 0
+      end
+    `;
+    const res = await (
+      this.client as unknown as {
+        eval: (...args: unknown[]) => Promise<unknown>;
+      }
+    ).eval(script, 1, key, expectedValue);
+    return res === 1;
+  }
+
   async ping(): Promise<boolean> {
     try {
       const response = await this.client.ping();
@@ -92,5 +108,16 @@ export class IoRedisProvider implements CacheProvider {
   async srem(key: string, ...members: string[]): Promise<number> {
     if (members.length === 0) return 0;
     return this.client.srem(key, ...members);
+  }
+
+  async saddBatch(
+    operations: { key: string; member: string }[]
+  ): Promise<void> {
+    if (operations.length === 0) return;
+    const p = this.client.pipeline();
+    for (const op of operations) {
+      p.sadd(op.key, op.member);
+    }
+    await p.exec();
   }
 }

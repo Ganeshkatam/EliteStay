@@ -12,7 +12,7 @@ function resolveImageUrl(path: string | null): string | null {
   return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/listings/${path}`;
 }
 
-const fetchSectionListings = async (
+export const fetchSectionListings = async (
   config: HomeSectionConfig
 ): Promise<ListingCardData[]> => {
   const supabase = createStaticClient();
@@ -116,25 +116,31 @@ export async function getSectionListings(
   return result || [];
 }
 
-const fetchCategoryCountsInternal = async (
+export const fetchCategoryCountsInternal = async (
   typeIds: string[]
 ): Promise<Record<string, number>> => {
   if (!typeIds.length) return {};
   const supabase = createStaticClient();
 
+  const { data, error } = await supabase
+    .from('listings')
+    .select('accommodation_type_id')
+    .in('accommodation_type_id', typeIds)
+    .eq('status', 'published');
+
   const counts: Record<string, number> = {};
+  typeIds.forEach((id) => {
+    counts[id] = 0;
+  });
 
-  await Promise.all(
-    typeIds.map(async (id) => {
-      const { count } = await supabase
-        .from('listings')
-        .select('*', { count: 'exact', head: true })
-        .eq('accommodation_type_id', id)
-        .eq('status', 'published');
-
-      counts[id] = count ?? 0;
-    })
-  );
+  if (!error && data) {
+    for (const row of data) {
+      if (row.accommodation_type_id) {
+        counts[row.accommodation_type_id] =
+          (counts[row.accommodation_type_id] || 0) + 1;
+      }
+    }
+  }
 
   return counts;
 };
@@ -150,25 +156,34 @@ export async function getCategoryCounts(
   return result || {};
 }
 
-const fetchLocationCountsInternal = async (
+export const fetchLocationCountsInternal = async (
   cities: string[]
 ): Promise<Record<string, number>> => {
   if (!cities.length) return {};
   const supabase = createStaticClient();
 
+  const { data, error } = await supabase
+    .from('listings')
+    .select('city')
+    .eq('status', 'published');
+
   const counts: Record<string, number> = {};
+  cities.forEach((city) => {
+    counts[city] = 0;
+  });
 
-  await Promise.all(
-    cities.map(async (city) => {
-      const { count } = await supabase
-        .from('listings')
-        .select('*', { count: 'exact', head: true })
-        .ilike('city', city)
-        .eq('status', 'published');
-
-      counts[city] = count || 0;
-    })
-  );
+  if (!error && data) {
+    for (const row of data) {
+      if (row.city) {
+        const matchedCity = cities.find(
+          (c) => c.toLowerCase() === row.city.toLowerCase()
+        );
+        if (matchedCity) {
+          counts[matchedCity] = (counts[matchedCity] || 0) + 1;
+        }
+      }
+    }
+  }
 
   return counts;
 };

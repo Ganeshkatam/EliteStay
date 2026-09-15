@@ -3,11 +3,13 @@
 import { createClient } from '@/lib/supabase/server';
 import { PreferenceCategory, PreferenceSchemas } from '../types/preferences';
 import { revalidatePath } from 'next/cache';
+import { assertAal2IfEnrolled } from '@/lib/auth/mfa-guards';
 
 /**
- * Updates a specific category of user preferences
+ * Updates a specific category of user preferences.
+ * For sensitive security settings, asserts AAL2 assurance level when MFA is active.
  *
- * @param category The preference category to update (e.g. 'privacy')
+ * @param category The preference category to update (e.g. 'privacy', 'security')
  * @param data The partial or full data object for that category
  */
 export async function updateUserPreferences<T extends PreferenceCategory>(
@@ -15,19 +17,32 @@ export async function updateUserPreferences<T extends PreferenceCategory>(
   data: unknown
 ): Promise<{ success: boolean; error?: string }> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return { success: false, error: 'Not authenticated' };
 
   try {
-    // 1. Validate the payload using Zod before touching the database
+    // 1. Assert AAL2 if enrolled for sensitive security category
+    if (category === 'security') {
+      const isTwoFactorToggle =
+        typeof data === 'object' && data !== null && 'two_factor_auth' in data;
+
+      // If not toggling 2FA itself, enforce AAL2 for sensitive operations when MFA is active
+      if (!isTwoFactorToggle) {
+        await assertAal2IfEnrolled(supabase);
+      }
+    }
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user)
+      return { success: false, error: 'Not authenticated' };
+
+    // 2. Validate the payload using Zod before touching the database
     const schema = PreferenceSchemas[category];
     const validatedData = schema.parse(data);
 
-    // 2. Perform the update
-    // Because the columns in Postgres are JSONB, Supabase allows updating the column directly.
+    // 3. Perform the update
     const { error } = await supabase
       .from('user_preferences')
       .update({
@@ -43,7 +58,7 @@ export async function updateUserPreferences<T extends PreferenceCategory>(
     revalidatePath('/users/settings');
     return { success: true };
   } catch (err: unknown) {
-    console.error('Validation or API error:', err);
+    console.error('Validation or security guard error:', err);
     return {
       success: false,
       error: err instanceof Error ? err.message : 'Validation failed',

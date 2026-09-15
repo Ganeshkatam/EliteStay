@@ -106,11 +106,16 @@ export const CacheManifest: Record<
   }),
   searchCities: (query: string) => ({
     key: `${KEY_PREFIX}search_cities:${query.toLowerCase()}`,
-    policy: 'search',
+    policy: 'reference',
     tags: ['search', 'search_cities'],
   }),
 
   // Home
+  homeSnapshot: (version: number = 1) => ({
+    key: `${KEY_PREFIX}home:snapshot:v${version}`,
+    policy: 'homepage',
+    tags: [],
+  }),
   homeFeatured: () => ({
     key: `${KEY_PREFIX}home:featured`,
     policy: 'homepage',
@@ -140,7 +145,7 @@ export const CacheManifest: Record<
   // Reference Data
   accommodationTypes: () => ({
     key: `${KEY_PREFIX}ref:accommodation_types`,
-    policy: 'homepage',
+    policy: 'reference',
     tags: ['ref'],
   }),
 

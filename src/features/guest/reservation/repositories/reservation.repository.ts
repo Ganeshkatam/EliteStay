@@ -27,6 +27,22 @@ export class ReservationRepository {
       return null;
     }
 
+    // Check host's booking acceptance preferences
+    if (listing.host_id) {
+      const { data: hostPrefs } = await supabase
+        .from('user_preferences')
+        .select('hosting')
+        .eq('user_id', listing.host_id)
+        .maybeSingle();
+
+      const hosting = hostPrefs?.hosting as {
+        accept_booking_requests?: boolean;
+      } | null;
+      if (hosting?.accept_booking_requests === false) {
+        return null;
+      }
+    }
+
     return listing;
   }
 }

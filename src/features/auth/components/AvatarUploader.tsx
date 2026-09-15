@@ -13,6 +13,7 @@ interface AvatarUploaderProps {
 
 export function AvatarUploader({ currentPath, fullName }: AvatarUploaderProps) {
   const [isUploading, setIsUploading] = useState(false);
+  const [imageLoading, setImageLoading] = useState(Boolean(currentPath));
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -38,8 +39,8 @@ export function AvatarUploader({ currentPath, fullName }: AvatarUploaderProps) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 3 * 1024 * 1024) {
-      setError('File size must be less than 3MB');
+    if (file.size > 1 * 1024 * 1024) {
+      setError('File size must be less than 1MB');
       return;
     }
 
@@ -62,10 +63,30 @@ export function AvatarUploader({ currentPath, fullName }: AvatarUploaderProps) {
 
   return (
     <div className="flex items-center gap-6">
-      <Avatar className="h-24 w-24 border">
-        <AvatarImage src={avatarUrl} className="object-cover" />
-        <AvatarFallback className="text-2xl">{initials}</AvatarFallback>
-      </Avatar>
+      <div className="relative">
+        <Avatar className="h-24 w-24 border border-slate-200 shadow-sm relative overflow-hidden">
+          {avatarUrl && imageLoading && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center bg-slate-100 animate-pulse">
+              <div className="h-full w-full bg-gradient-to-r from-slate-100 via-slate-200 to-slate-100 animate-[shimmer_1.5s_infinite]" />
+            </div>
+          )}
+          <AvatarImage
+            src={avatarUrl}
+            className="object-cover transition-opacity duration-300"
+            onLoadingStatusChange={(status) => {
+              setImageLoading(status === 'loading');
+            }}
+          />
+          <AvatarFallback className="text-2xl bg-gradient-to-br from-slate-800 to-slate-950 text-white font-semibold">
+            {initials}
+          </AvatarFallback>
+        </Avatar>
+        {isUploading && (
+          <div className="absolute inset-0 z-20 flex items-center justify-center rounded-full bg-slate-900/60 backdrop-blur-xs">
+            <Loader2 className="h-6 w-6 text-white animate-spin" />
+          </div>
+        )}
+      </div>
 
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-4">
@@ -91,7 +112,7 @@ export function AvatarUploader({ currentPath, fullName }: AvatarUploaderProps) {
           />
         </div>
         <p className="text-xs text-muted-foreground">
-          JPG, PNG or WebP. Max size 3MB.
+          JPG, PNG or WebP. Max size 1MB.
         </p>
         {error && <p className="text-sm text-destructive">{error}</p>}
       </div>

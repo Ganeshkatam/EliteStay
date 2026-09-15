@@ -24,6 +24,9 @@ class FailingProvider implements CacheProvider {
   async setnx(): Promise<boolean> {
     throw new Error('Injected Failure');
   }
+  async compareAndDelete(): Promise<boolean> {
+    throw new Error('Injected Failure');
+  }
   async ping(): Promise<boolean> {
     throw new Error('Injected Failure');
   }

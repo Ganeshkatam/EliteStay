@@ -14,7 +14,6 @@ export const PrivacySchema = z.object({
   allow_host_messages: z.boolean(),
   show_profile_photo: z.boolean(),
   show_reviews: z.boolean(),
-  allow_search_indexing: z.boolean(),
 });
 export type PrivacyPreferences = z.infer<typeof PrivacySchema>;
 

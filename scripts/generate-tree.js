@@ -58,9 +58,8 @@ function generateTree(dirPath, prefix = '') {
 const targetDir = process.argv[2] || process.cwd();
 
 try {
-  console.log(`Generating tree for: ${path.resolve(targetDir)}\n`);
+  console.log(`Generating tree for: ${path.resolve(targetDir)}`);
   const tree = generateTree(targetDir);
-  console.log(tree);
 
   const now = new Date();
 

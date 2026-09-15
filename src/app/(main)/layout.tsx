@@ -1,5 +1,6 @@
 import { GuestNavigationBar } from '@/features/guest/discovery/shared/components/navigation/GuestNavigationBar';
 import { GuestFooter } from '@/features/guest/discovery/shared/components/navigation/GuestFooter';
+import { MobileBottomNav } from '@/features/guest/discovery/shared/components/navigation/MobileBottomNav';
 import { SearchProvider } from '@/features/search/components/GlobalSearch/SearchContext';
 import { createClient } from '@/lib/supabase/server';
 import { type ExtendedProfile } from '@/types/profile';
@@ -81,8 +82,11 @@ export default async function GuestLayout({
           isHost={isHost}
           popularCities={popularCities as LocationCity[]}
         />
-        <main className="flex-1 flex flex-col min-h-0">{children}</main>
+        <main className="flex-1 flex flex-col min-h-0 pb-16 md:pb-0">
+          {children}
+        </main>
         <GuestFooter />
+        <MobileBottomNav user={user} profile={profile} isHost={isHost} />
       </div>
     </SearchProvider>
   );

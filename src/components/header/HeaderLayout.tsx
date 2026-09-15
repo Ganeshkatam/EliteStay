@@ -118,7 +118,7 @@ export function HeaderLayout({ user, profile }: HeaderLayoutProps) {
   // If Auth, we only show a minimal top bar (e.g., logo only)
   if (variant === 'auth') {
     return (
-      <header className="sticky top-0 z-40 w-full bg-white border-b border-border/45">
+      <header className="sticky top-0 z-40 w-full bg-white border-b border-border/45 [padding-top:max(0.75rem,env(safe-area-inset-top))] sm:[padding-top:0px]">
         <Container>
           <div className="flex h-20 items-center justify-start">
             <TopBar variant="auth" />
@@ -130,11 +130,11 @@ export function HeaderLayout({ user, profile }: HeaderLayoutProps) {
 
   const headerHeightClass = isSearchRoute
     ? isExpanded
-      ? 'h-[240px]'
-      : 'h-[140px]'
+      ? 'md:h-[240px] h-[156px]'
+      : 'h-[156px] md:h-[140px]'
     : isExpanded
-      ? 'h-[176px]'
-      : 'h-[76px]';
+      ? 'h-[128px] sm:h-[136px] md:h-[176px]'
+      : 'h-[72px] sm:h-[76px]';
 
   return (
     <>
@@ -142,24 +142,26 @@ export function HeaderLayout({ user, profile }: HeaderLayoutProps) {
       <div
         className={cn(
           isSearchRoute
-            ? 'h-[140px]'
+            ? 'h-[156px] md:h-[140px]'
             : variant === 'public-home'
-              ? 'h-[176px]'
-              : 'h-[76px]'
+              ? isExpanded
+                ? 'h-[128px] sm:h-[136px] md:h-[176px]'
+                : 'h-[72px] sm:h-[76px]'
+              : 'h-[72px] sm:h-[76px]'
         )}
       />
 
       <header
         ref={headerRef}
         className={cn(
-          'fixed top-0 left-0 z-40 w-full overflow-visible border-none bg-transparent transition-all duration-300 ease-premium',
+          'fixed top-0 left-0 z-40 w-full overflow-visible border-none bg-transparent transition-[height] duration-300 ease-premium',
           headerHeightClass
         )}
       >
         {/* Glass Layer: GPU-accelerated height scaling */}
         <div
           className={cn(
-            'absolute inset-x-0 top-0 bg-white/85 backdrop-blur-md border-b border-border/45 transition-all duration-300 ease-premium',
+            'absolute inset-x-0 top-0 bg-white/85 backdrop-blur-md border-b border-border/45 transition-[height] duration-300 ease-premium',
             headerHeightClass
           )}
         />
@@ -167,13 +169,13 @@ export function HeaderLayout({ user, profile }: HeaderLayoutProps) {
         {/* Shadow Layer: Fades in only when collapsed and docked */}
         <div
           className={cn(
-            'absolute inset-x-0 top-0 h-[76px] shadow-[0_2px_12px_rgba(0,0,0,0.08)] motion-opacity ease-premium pointer-events-none',
+            'absolute inset-x-0 top-0 h-[72px] sm:h-[76px] shadow-[0_2px_12px_rgba(0,0,0,0.08)] motion-opacity ease-premium pointer-events-none',
             isExpanded ? 'opacity-0' : 'opacity-100'
           )}
         />
 
         <div className="relative z-10 h-full flex flex-col justify-between">
-          <Container className="flex h-[76px] items-center justify-between gap-4 relative py-0 px-4 md:px-8 xl:px-12 max-w-[1800px]">
+          <Container className="flex h-full md:h-[76px] items-center justify-between gap-1.5 sm:gap-4 relative px-3 sm:px-6 md:px-8 xl:px-12 max-w-[1800px] [padding-top:max(0.5rem,env(safe-area-inset-top))] md:[padding-top:0px]">
             <TopBar
               variant={variant}
               user={user}

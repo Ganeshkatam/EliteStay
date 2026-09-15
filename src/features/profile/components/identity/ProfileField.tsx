@@ -27,7 +27,7 @@ export function ProfileField({
   const [isEditing, setIsEditing] = useState(false);
 
   return (
-    <div className="py-6 border-b border-slate-100 last:border-0">
+    <div className="py-4 border-b border-slate-100 last:border-0">
       {!isEditing ? (
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1">

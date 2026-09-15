@@ -230,8 +230,8 @@ export function MoreFiltersDrawer() {
       {/* overlayClassName="bg-transparent" ensures the background is NOT dimmed.
           Reduced max-h and adjusted top position to stay clear of the top header. */}
       <DialogContent
-        overlayClassName="bg-transparent"
-        className="sm:max-w-xl max-h-[62vh] top-[56%] p-0 flex flex-col gap-0 overflow-hidden sm:rounded-2xl border border-gray-200 shadow-2xl bg-white z-50"
+        overlayClassName="bg-black/20 backdrop-blur-xs"
+        className="max-sm:fixed max-sm:bottom-0 max-sm:top-auto max-sm:left-0 max-sm:right-0 max-sm:translate-x-0 max-sm:translate-y-0 max-sm:w-full max-sm:max-w-none max-sm:max-h-[85vh] max-sm:rounded-t-3xl max-sm:rounded-b-none sm:max-w-xl sm:max-h-[65vh] sm:top-[56%] p-0 flex flex-col gap-0 overflow-hidden sm:rounded-2xl border border-gray-200 shadow-2xl bg-white z-50"
       >
         <DialogHeader className="p-5 border-b border-gray-100 text-center relative sm:text-center">
           <DialogTitle className="text-base font-bold text-gray-900">
@@ -269,7 +269,7 @@ export function MoreFiltersDrawer() {
                       )
                     }
                     className={cn(
-                      'py-2.5 px-3 rounded-xl text-xs font-medium border text-center transition-all duration-150',
+                      'min-h-11 py-2.5 px-3 rounded-xl text-xs font-medium border text-center flex items-center justify-center transition-all duration-150',
                       isSelected
                         ? 'border-slate-900 bg-slate-900 text-white font-semibold shadow-sm'
                         : 'border-gray-200 bg-white text-gray-700 hover:border-gray-900 hover:text-gray-900'
@@ -311,7 +311,7 @@ export function MoreFiltersDrawer() {
                       )
                     }
                     className={cn(
-                      'py-2 px-3.5 rounded-full text-xs font-medium border transition-all duration-150',
+                      'min-h-11 inline-flex items-center justify-center py-2 px-3.5 rounded-full text-xs font-medium border transition-all duration-150',
                       isSelected
                         ? 'border-slate-900 bg-slate-900 text-white font-semibold shadow-sm'
                         : 'border-gray-200 bg-white text-gray-700 hover:border-gray-900 hover:text-gray-900'
@@ -348,7 +348,7 @@ export function MoreFiltersDrawer() {
                     type="button"
                     onClick={() => toggleAmenity(amenity.name)}
                     className={cn(
-                      'flex items-center gap-2 px-3 py-2.5 rounded-xl border text-left text-xs font-medium transition-all duration-150',
+                      'min-h-11 flex items-center gap-2 px-3 py-2.5 rounded-xl border text-left text-xs font-medium transition-all duration-150',
                       isSelected
                         ? 'border-slate-900 bg-slate-900 text-white font-semibold shadow-sm'
                         : 'border-gray-200 bg-white text-gray-700 hover:border-gray-900 hover:text-gray-900'
@@ -375,13 +375,13 @@ export function MoreFiltersDrawer() {
           <Button
             variant="ghost"
             onClick={handleClearAll}
-            className="text-xs font-semibold text-gray-600 hover:text-gray-900 hover:bg-transparent underline px-2 h-9"
+            className="min-h-11 text-xs font-semibold text-gray-600 hover:text-gray-900 hover:bg-transparent underline px-2"
           >
             Clear all
           </Button>
           <Button
             onClick={handleApply}
-            className="px-5 h-9 text-xs rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold shadow-md transition-transform active:scale-95"
+            className="min-h-11 px-5 text-xs rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold shadow-md transition-transform active:scale-95"
           >
             Show results
           </Button>

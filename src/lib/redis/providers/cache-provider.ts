@@ -25,6 +25,13 @@ export interface CacheProvider {
    */
   setnx(key: string, value: string, ttlMs: number): Promise<boolean>;
 
+  /**
+   * Compare and delete key atomically.
+   * Deletes the key only if its current value matches expectedValue.
+   * Returns true if deleted, false otherwise.
+   */
+  compareAndDelete(key: string, expectedValue: string): Promise<boolean>;
+
   /** Lightweight connectivity check. Returns `true` when the store is reachable. */
   ping(): Promise<boolean>;
 
@@ -59,4 +66,7 @@ export interface CacheProvider {
 
   /** Remove one or more members from a set. */
   srem(key: string, ...members: string[]): Promise<number>;
+
+  /** Optionally batch multiple sadd operations across keys into a single pipelined round-trip. */
+  saddBatch?(operations: { key: string; member: string }[]): Promise<void>;
 }

@@ -36,6 +36,24 @@ export class MessagingService {
       throw new Error('STAY conversations require a stayId');
     }
 
+    // Validate guest privacy preference for inquiries
+    if (params.type === 'INQUIRY') {
+      const { data: guestPrefs } = await this.supabase
+        .from('user_preferences')
+        .select('privacy')
+        .eq('user_id', params.guestId)
+        .maybeSingle();
+
+      const privacy = guestPrefs?.privacy as {
+        allow_host_messages?: boolean;
+      } | null;
+      if (privacy?.allow_host_messages === false) {
+        throw new Error(
+          'This resident has chosen not to receive direct host inquiries.'
+        );
+      }
+    }
+
     const conversation = await this.conversationRepo.createConversation(params);
 
     if (params.type === 'INQUIRY') {

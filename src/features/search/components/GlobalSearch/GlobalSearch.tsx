@@ -8,7 +8,7 @@ import { SearchWhere } from './SearchWhere';
 import { SearchDates } from './SearchDates';
 import { SearchType } from './SearchType';
 import { SearchButton } from './SearchButton';
-import { SearchDropdown } from './SearchDropdown';
+import { SearchDropdown, type StayDuration } from './SearchDropdown';
 import { type SearchVariant } from './types';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { format, parseISO, isValid } from 'date-fns';
@@ -29,9 +29,7 @@ export function GlobalSearch({
   const router = useRouter();
   const searchParams = useSearchParams();
   const isCompact = variant === 'compact';
-  const [duration, setDuration] = useState<'weekend' | 'week' | 'month'>(
-    'weekend'
-  );
+  const [duration, setDuration] = useState<StayDuration>('1 month');
 
   const handleSearch = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -98,25 +96,27 @@ export function GlobalSearch({
           {/* Compact Summary Panel */}
           <div
             className={cn(
-              'absolute inset-y-0 left-0 right-0 flex items-center justify-start pl-6 pr-14 motion-opacity motion-transform ease-premium',
+              'absolute inset-y-0 left-0 right-0 flex items-center justify-start pl-3.5 pr-11 sm:pl-6 sm:pr-14 motion-opacity motion-transform ease-premium',
               isCompact
                 ? 'opacity-100 scale-100 pointer-events-auto'
                 : 'opacity-0 scale-95 pointer-events-none'
             )}
           >
-            <div className="flex items-center gap-4 text-sm font-semibold text-gray-800 truncate">
+            <div className="flex items-center gap-1.5 sm:gap-3 text-xs sm:text-sm font-medium text-gray-800 truncate">
               {/* Location (always visible) */}
-              <span className="text-gray-900">{citySummary}</span>
+              <span className="text-gray-900 font-semibold truncate">
+                {citySummary}
+              </span>
 
-              {/* Date (hidden on mobile, visible on sm and up) */}
-              <span className="text-gray-300 sm:inline hidden">•</span>
-              <span className="text-gray-500 sm:inline hidden">
+              {/* Date (visible on all screens) */}
+              <span className="text-gray-300 inline">•</span>
+              <span className="text-gray-500 font-normal truncate">
                 {dateSummary}
               </span>
 
-              {/* Type (hidden on mobile and tablet, visible on md and up) */}
-              <span className="text-gray-300 md:inline hidden">•</span>
-              <span className="text-gray-500 md:inline hidden">
+              {/* Type (visible on sm and up) */}
+              <span className="text-gray-300 sm:inline hidden">•</span>
+              <span className="text-gray-500 font-normal sm:inline hidden truncate">
                 {typeSummary}
               </span>
             </div>

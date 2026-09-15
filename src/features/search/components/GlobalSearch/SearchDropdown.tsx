@@ -1,15 +1,12 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { useSearchContext } from './SearchContext';
 import { cn } from '@/lib/utils';
 import { Navigation, MapPin, Check } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
-import { format, parseISO, isValid } from 'date-fns';
-import {
-  searchCitiesAction,
-  getPopularCitiesAction,
-} from '@/features/location/actions/search-city';
+import { format, parseISO, isValid, addMonths } from 'date-fns';
+import { searchCitiesAction } from '@/features/location/actions/search-city';
 import { type LocationCity } from '@/features/location/types';
 import { useRouter } from 'next/navigation';
 import { buildSearchUrl } from '@/features/search/lib/search-params';
@@ -67,9 +64,11 @@ const accommodationTypes = [
   { label: 'Private Room', value: 'private-room' },
 ];
 
+export type StayDuration = '1 month' | '3 months' | '6 months' | '12+ months';
+
 interface SearchDropdownProps {
-  duration: 'weekend' | 'week' | 'month';
-  setDuration: (dur: 'weekend' | 'week' | 'month') => void;
+  duration: StayDuration;
+  setDuration: (dur: StayDuration) => void;
   popularCities: LocationCity[];
 }
 
@@ -108,7 +107,26 @@ export function SearchDropdown({
   }, [setActiveSection]);
 
   const today = new Date();
-  const months = Array.from({ length: 6 }).map((_, i) => {
+  const currentMonth = useMemo(() => {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth(), 1);
+  }, []);
+  const maxBookingMonth = useMemo(() => {
+    const d = new Date();
+    return addMonths(new Date(d.getFullYear(), d.getMonth(), 1), 3);
+  }, []);
+  const maxAvailableDate = useMemo(() => {
+    const d = new Date();
+    d.setHours(23, 59, 59, 999);
+    return addMonths(d, 3);
+  }, []);
+  const todayStartOfDay = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
+
+  const months = Array.from({ length: 4 }).map((_, i) => {
     return new Date(today.getFullYear(), today.getMonth() + i, 1);
   });
 
@@ -334,7 +352,9 @@ export function SearchDropdown({
               <Calendar
                 mode="single"
                 numberOfMonths={2}
-                captionLayout="dropdown"
+                captionLayout="label"
+                startMonth={currentMonth}
+                endMonth={maxBookingMonth}
                 selected={selectedDate}
                 onSelect={handleDateSelect}
                 className="w-full flex justify-center [--cell-size:2.65rem] gap-6"
@@ -349,11 +369,9 @@ export function SearchDropdown({
                   week: 'flex w-full justify-between mt-1',
                   day: 'group/day relative aspect-square h-[--cell-size] w-[--cell-size] select-none p-0 text-center flex items-center justify-center',
                 }}
-                disabled={(date) => {
-                  const todayDate = new Date();
-                  todayDate.setHours(0, 0, 0, 0);
-                  return date < todayDate;
-                }}
+                disabled={(date) =>
+                  date < todayStartOfDay || date > maxAvailableDate
+                }
               />
             </div>
           ) : (
@@ -363,13 +381,15 @@ export function SearchDropdown({
                   How long would you like to stay?
                 </h4>
                 <div className="flex justify-center gap-3">
-                  {(['weekend', 'week', 'month'] as const).map((dur) => (
+                  {(
+                    ['1 month', '3 months', '6 months', '12+ months'] as const
+                  ).map((dur) => (
                     <button
                       key={dur}
                       type="button"
                       onClick={() => setDuration(dur)}
                       className={cn(
-                        'px-6 py-2.5 rounded-full text-xs font-semibold border transition-all duration-200 capitalize',
+                        'px-5 py-2.5 rounded-full text-xs font-semibold border transition-all duration-200 whitespace-nowrap',
                         duration === dur
                           ? 'border-2 border-gray-900 bg-gray-50 text-gray-900 font-bold shadow-sm'
                           : 'border border-gray-200 bg-white text-gray-600 hover:border-gray-900'

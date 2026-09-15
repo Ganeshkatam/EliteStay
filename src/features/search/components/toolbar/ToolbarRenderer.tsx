@@ -16,7 +16,7 @@ export function ToolbarRenderer() {
 
   return (
     <>
-      <div className="flex items-center gap-3 w-full">
+      <div className="flex items-center gap-2 sm:gap-3 w-max py-1 pr-4 sm:pr-0">
         {SEARCH_TOOLBAR_SCHEMA.sort((a, b) => a.order - b.order).map((def) => {
           // Just as an example, rendering chips
           const isActive =

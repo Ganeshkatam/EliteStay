@@ -1,0 +1,25 @@
+{
+  "name": "Homepage Composite Snapshot - Real Production Gate Metrics",
+  "passed": true,
+  "durationMs": 26899.942900000002,
+  "metrics": {
+    "totalListingsInSnapshot": 0,
+    "uncompressedBytes": 4205,
+    "uncompressedKB": 4.11,
+    "compressedBytes": 1514,
+    "compressedKB": 1.48,
+    "compressionRatio": 2.78,
+    "serialize_p50_ms": 6.972,
+    "serialize_p95_ms": 9.521,
+    "serialize_p99_ms": 10.547,
+    "deserialize_p50_ms": 0.185,
+    "deserialize_p95_ms": 0.31,
+    "deserialize_p99_ms": 0.43,
+    "redis_get_p50_ms": 73.308,
+    "redis_get_p95_ms": 113.89,
+    "redis_get_p99_ms": 184.09,
+    "e2e_hit_p50_ms": 73.575,
+    "e2e_hit_p95_ms": 114.515,
+    "e2e_hit_p99_ms": 184.234
+  }
+}

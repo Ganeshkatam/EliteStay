@@ -13,7 +13,7 @@ export default async function HostDashboardPage() {
   const viewModel = await HostDashboardService.getOverview(supabase, user.id);
 
   return (
-    <div className="p-6 md:p-8 max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500">
+    <div className="mx-auto max-w-4xl space-y-8 p-4 animate-in fade-in duration-500 sm:p-6 md:p-8">
       {/* Workspace Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -33,11 +33,11 @@ export default async function HostDashboardPage() {
       <section>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card className="border-slate-200 shadow-sm">
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-6">
               <p className="text-sm font-medium text-slate-500 mb-2">
                 Properties
               </p>
-              <p className="text-3xl font-semibold text-slate-900">
+              <p className="text-2xl font-semibold text-slate-900 sm:text-3xl">
                 {viewModel.metrics.propertiesCount}
               </p>
             </CardContent>
