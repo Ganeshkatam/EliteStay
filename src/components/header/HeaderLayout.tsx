@@ -133,8 +133,8 @@ export function HeaderLayout({ user, profile }: HeaderLayoutProps) {
       ? 'md:h-[240px] h-[156px]'
       : 'h-[156px] md:h-[140px]'
     : isExpanded
-      ? 'h-[160px] md:h-[176px]'
-      : 'h-[88px] md:h-[76px]';
+      ? 'h-[128px] sm:h-[136px] md:h-[176px]'
+      : 'h-[72px] sm:h-[76px]';
 
   return (
     <>
@@ -145,9 +145,9 @@ export function HeaderLayout({ user, profile }: HeaderLayoutProps) {
             ? 'h-[156px] md:h-[140px]'
             : variant === 'public-home'
               ? isExpanded
-                ? 'h-[160px] md:h-[176px]'
-                : 'h-[88px] md:h-[76px]'
-              : 'h-[88px] md:h-[76px]'
+                ? 'h-[128px] sm:h-[136px] md:h-[176px]'
+                : 'h-[72px] sm:h-[76px]'
+              : 'h-[72px] sm:h-[76px]'
         )}
       />
 
@@ -169,13 +169,13 @@ export function HeaderLayout({ user, profile }: HeaderLayoutProps) {
         {/* Shadow Layer: Fades in only when collapsed and docked */}
         <div
           className={cn(
-            'absolute inset-x-0 top-0 h-[88px] md:h-[76px] shadow-[0_2px_12px_rgba(0,0,0,0.08)] motion-opacity ease-premium pointer-events-none',
+            'absolute inset-x-0 top-0 h-[72px] sm:h-[76px] shadow-[0_2px_12px_rgba(0,0,0,0.08)] motion-opacity ease-premium pointer-events-none',
             isExpanded ? 'opacity-0' : 'opacity-100'
           )}
         />
 
         <div className="relative z-10 h-full flex flex-col justify-between">
-          <Container className="flex h-[88px] md:h-[76px] items-end pb-3 md:pb-0 md:items-center justify-between gap-1.5 sm:gap-4 relative px-2.5 sm:px-6 md:px-8 xl:px-12 max-w-[1800px] [padding-top:max(0.75rem,env(safe-area-inset-top))] md:[padding-top:0px]">
+          <Container className="flex h-full md:h-[76px] items-center justify-between gap-1.5 sm:gap-4 relative px-3 sm:px-6 md:px-8 xl:px-12 max-w-[1800px] [padding-top:max(0.5rem,env(safe-area-inset-top))] md:[padding-top:0px]">
             <TopBar
               variant={variant}
               user={user}
