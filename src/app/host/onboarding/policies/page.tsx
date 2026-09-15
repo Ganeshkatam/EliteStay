@@ -69,10 +69,10 @@ export default function PoliciesStepPage() {
 
         <div className="flex justify-between items-center pt-4">
           <Link
-            href="/host/onboarding/bank"
+            href="/host/onboarding/specialization"
             className="text-xs font-bold text-slate-500 hover:text-slate-900"
           >
-            Back to Payout Account
+            Back to Specialization
           </Link>
           <OnboardingSubmitButton
             label="Agree to SLAs & Unlock Capabilities"

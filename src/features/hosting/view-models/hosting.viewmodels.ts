@@ -49,12 +49,7 @@ export function buildOnboardingWizardViewModel(
     formData: {
       fullName: userContext?.fullName ?? userContext?.displayName ?? '',
       phone: userContext?.phone ?? '',
-      bankName: hostProfile?.bank_name ?? '',
-      accountLast4: hostProfile?.bank_account_last4 ?? '',
-
       primaryAccommodationSlug: accommodationInfo?.slug ?? '',
-      taxIdLast4: hostProfile?.tax_id_last4 ?? '',
-      taxIdType: hostProfile?.tax_id_type ?? 'PAN',
       supportPhone: hostProfile?.support_phone ?? userContext?.phone ?? '',
       supportEmail: hostProfile?.support_email ?? userContext?.email ?? '',
     },

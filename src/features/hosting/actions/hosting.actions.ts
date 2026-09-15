@@ -9,14 +9,18 @@ import { HostProfileService } from '../services/host-profile.service';
 import { createDraftListing } from '@/features/host/actions/listing-actions';
 import {
   IdentityStepSchema,
-  BankStepSchema,
+  SpecializationStepSchema,
   PolicyStepSchema,
+  PayoutAccountSchema,
+  TaxRegistrationSchema,
   HostProfileSettingsSchema,
   OperationalStatusToggleSchema,
 } from '../schemas/hosting.schemas';
 import { AuditContext } from '../types/hosting.types';
+import { HostReadinessService } from '../services/host-readiness.service';
 
 const hostingService = new HostingService();
+const readinessService = new HostReadinessService();
 const profileService = new HostProfileService();
 
 async function getAuthenticatedUser() {
@@ -52,7 +56,7 @@ export async function startHostingAction() {
 }
 
 /**
- * Submits verified identity details (Step 1) and navigates to bank setup.
+ * Submits verified identity details (Step 1) and navigates to accommodation specialization (Step 2).
  */
 export async function submitIdentityStepAction(formData: FormData) {
   const user = await getAuthenticatedUser();
@@ -69,28 +73,76 @@ export async function submitIdentityStepAction(formData: FormData) {
   );
 
   revalidatePath('/host/onboarding', 'layout');
-  redirect('/host/onboarding/bank');
+  redirect('/host/onboarding/specialization');
 }
 
 /**
- * Submits payout bank account details (Step 2) and navigates to business configuration.
+ * Submits accommodation specialization selection (Step 2) and navigates to mandatory policies (Step 3).
  */
-export async function submitBankStepAction(formData: FormData) {
+export async function submitSpecializationStepAction(formData: FormData) {
   const user = await getAuthenticatedUser();
 
-  const parsed = BankStepSchema.parse({
+  const parsed = SpecializationStepSchema.parse({
+    primaryAccommodationSlug: formData.get('primaryAccommodationSlug'),
+  });
+
+  await hostingService.submitSpecializationStep(
+    user.id,
+    parsed.primaryAccommodationSlug
+  );
+
+  revalidatePath('/host/onboarding', 'layout');
+  redirect('/host/onboarding/policies');
+}
+
+/**
+ * Workspace Compliance Action: Saves payout bank details from within host workspace.
+ * Does not alter or gate onboarding state.
+ */
+export async function savePayoutAccountAction(formData: FormData) {
+  const user = await getAuthenticatedUser();
+
+  const parsed = PayoutAccountSchema.parse({
     bankName: formData.get('bankName'),
     accountNumber: formData.get('accountNumber'),
   });
 
-  await hostingService.submitBankStep(
+  await readinessService.savePayoutAccount(
     user.id,
     parsed.bankName,
     parsed.accountNumber
   );
 
-  revalidatePath('/host/onboarding', 'layout');
-  redirect('/host/onboarding/policies');
+  revalidatePath('/host/profile');
+  revalidatePath('/host');
+}
+
+/**
+ * Workspace Compliance Action: Saves tax registration details from within host workspace.
+ * Does not alter or gate onboarding state.
+ */
+export async function saveTaxRegistrationAction(formData: FormData) {
+  const user = await getAuthenticatedUser();
+
+  const parsed = TaxRegistrationSchema.parse({
+    taxId: formData.get('taxId'),
+  });
+
+  await profileService.updatePayoutDetails(
+    user.id,
+    'TAX_REGISTRATION',
+    parsed.taxId
+  );
+
+  revalidatePath('/host/profile');
+  revalidatePath('/host');
+}
+
+/**
+ * Legacy Step 2 alias / Backward compatibility: redirect or delegate to payout saving.
+ */
+export async function submitBankStepAction(formData: FormData) {
+  return savePayoutAccountAction(formData);
 }
 
 /**

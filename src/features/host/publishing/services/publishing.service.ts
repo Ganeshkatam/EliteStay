@@ -70,11 +70,54 @@ export class PublishingService {
     listingId: string,
     hostId: string
   ): Promise<void> {
-    const workspace = await this.getWorkspace(supabase, listingId, hostId);
+    const rawListingRows = await HostRepository.getListings(supabase, hostId);
+    const listingRow = rawListingRows.find((l) => l.id === listingId);
 
-    if (!workspace.publishing.ready) {
+    if (!listingRow) {
+      throw new Error('Listing not found or unauthorized');
+    }
+
+    const rawListing = listingRow as unknown as RawListingData;
+
+    // 1. Fetch host profile and policy acceptances via HostingRepository
+    const { HostingRepository } =
+      await import('@/features/hosting/repositories/hosting.repository');
+    const hostingRepo = new HostingRepository();
+    const hostProfileData = await hostingRepo.getHostProfileByUserId(hostId);
+    const policyRows = hostProfileData
+      ? await hostingRepo.getPolicyAcceptances(hostProfileData.id)
+      : [];
+
+    // 2. Evaluate Listing Publication Eligibility Policy (Host Compliance + Listing Health)
+    const { ListingPublicationEligibilityPolicy } =
+      await import('@/features/hosting/policies/ListingPublicationEligibilityPolicy');
+    const imagesCount =
+      rawListing.images?.length || rawListing.listing_images?.length || 0;
+    const priceAmount =
+      rawListing.prices?.[0]?.amount ||
+      rawListing.listing_prices?.[0]?.amount ||
+      0;
+    const hasLocation = Boolean(
+      rawListing.city ||
+      rawListing.locality ||
+      (rawListing.listing_locations && rawListing.listing_locations.length > 0)
+    );
+
+    const publicationEligibility = ListingPublicationEligibilityPolicy.evaluate(
+      hostProfileData,
+      policyRows,
+      {
+        id: listingId,
+        title: rawListing.title,
+        images_count: imagesCount,
+        price: priceAmount,
+        has_location: hasLocation,
+      }
+    );
+
+    if (!publicationEligibility.eligible) {
       throw new Error(
-        'Cannot publish: listing does not meet minimum requirements.'
+        `Cannot publish listing: missing mandatory requirements (${publicationEligibility.missingRequirements.join(', ')})`
       );
     }
 

@@ -13,34 +13,57 @@ export default function ReadyStepPage() {
 
         <div className="space-y-2">
           <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight">
-            You&apos;re Ready to Host!
+            Your Host Workspace is Ready
           </h3>
           <p className="text-sm text-slate-500 leading-relaxed">
-            Congratulations! Your hosting capabilities are fully verified and
-            active. Your user account now possesses dual Guest and Host
-            operational capabilities.
+            You now have access to the EliteStay Host Workspace. You can create
+            draft listings, configure property details, and complete your payout
+            and tax compliance setup.
           </p>
         </div>
 
-        <div className="p-4 rounded-xl bg-white border border-slate-200 text-left space-y-2 text-xs shadow-sm">
-          <div className="font-bold text-emerald-600 flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4" /> Capability Bridge Complete
+        <div className="p-5 rounded-xl bg-white border border-slate-200 text-left space-y-4 text-xs shadow-sm">
+          <div className="font-bold text-slate-800 flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Host Setup
+            Complete
           </div>
-          <p className="text-slate-500">
-            When you click below, you will enter our dedicated Publishing
-            Workspace to assemble photos, pricing, and accommodation terms. Your
-            host status will transition to{' '}
-            <span className="text-slate-900 font-bold">ACTIVE</span> the instant
-            your first listing goes live!
-          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            <div className="flex items-center gap-2 text-slate-700">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+              <span>Host Profile Created</span>
+            </div>
+            <div className="flex items-center gap-2 text-slate-700">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+              <span>Specialization Selected</span>
+            </div>
+            <div className="flex items-center gap-2 text-slate-700">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+              <span>Mandatory Policies Accepted</span>
+            </div>
+            <div className="flex items-center gap-2 text-slate-700">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+              <span>Workspace Access Granted</span>
+            </div>
+          </div>
+
+          <div className="pt-3 border-t border-slate-100">
+            <p className="text-slate-500 leading-relaxed">
+              <strong className="text-slate-700">
+                Listing Publication Requirements:
+              </strong>{' '}
+              Before publishing your listing to live residents, you will verify
+              your identity, configure your payout bank account, and complete
+              tax registration directly inside the host workspace.
+            </p>
+          </div>
         </div>
 
         <form action={launchFirstListingAction} className="pt-4">
           <OnboardingSubmitButton
-            label="Create Your First Listing"
+            label="Enter Host Workspace & Create Listing"
             loadingLabel="Launching Workspace..."
             fullWidth
-            className="py-4 text-lg"
+            className="py-4 text-base"
           />
         </form>
       </div>

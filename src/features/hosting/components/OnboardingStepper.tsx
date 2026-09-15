@@ -8,8 +8,7 @@ interface OnboardingStepperProps {
 }
 
 export function OnboardingStepper({ steps }: OnboardingStepperProps) {
-  // Filter out the 'eligibility' step as it's an overview and not part of the active linear flow in the UI.
-  const visualSteps = steps.filter((step) => step.id !== 'eligibility');
+  const visualSteps = steps;
 
   return (
     <div className="w-full py-6 border-b border-slate-200 bg-white mb-8 transition-all duration-300">

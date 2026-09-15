@@ -1,12 +1,12 @@
 import {
   HostProfileRow,
-  EligibilityFactAudit,
+  HostOnboardingFactAudit,
   OnboardingStep,
 } from '../types/hosting.types';
 
 /**
- * Domain Policy governing configuration-driven host onboarding step transitions and completion.
- * Derives completion state and enforces prerequisite transition rules.
+ * Domain Policy governing the 3-step Host Onboarding state machine.
+ * Lifecycle: Identity -> Specialization -> Policies -> READY.
  */
 export class HostingOnboardingPolicy {
   /**
@@ -15,10 +15,10 @@ export class HostingOnboardingPolicy {
   public static canEnterStep(
     stepId: string,
     hostProfile: HostProfileRow | null,
-    eligibilityAudit: EligibilityFactAudit
+    eligibilityAudit: HostOnboardingFactAudit
   ): boolean {
     if (!hostProfile) {
-      return stepId === 'eligibility' || stepId === 'identity';
+      return stepId === 'identity';
     }
 
     if (hostProfile.status === 'READY' || hostProfile.status === 'ACTIVE') {
@@ -26,32 +26,21 @@ export class HostingOnboardingPolicy {
     }
 
     switch (stepId) {
-      case 'eligibility':
       case 'identity':
         return true;
-      case 'bank':
+      case 'specialization':
         // Requires identity submitted
         return Boolean(
           hostProfile.identity_submitted_at ||
-          eligibilityAudit.hasIdentityVerifiedFact
-        );
-      case 'tax':
-        // Requires identity and bank submitted
-        return Boolean(
-          hostProfile.identity_submitted_at &&
-          (hostProfile.bank_name || eligibilityAudit.hasBankLinkedFact)
-        );
-      case 'specialization':
-        return Boolean(
-          hostProfile.identity_submitted_at &&
-          (hostProfile.bank_name || eligibilityAudit.hasBankLinkedFact)
+          eligibilityAudit.hasIdentitySubmittedFact
         );
       case 'policies':
-        // Requires previous steps submitted
+        // Requires identity submitted and specialization set
         return Boolean(
-          hostProfile.identity_submitted_at &&
-          (hostProfile.bank_name || eligibilityAudit.hasBankLinkedFact) &&
-          hostProfile.primary_accommodation_type_id
+          (hostProfile.identity_submitted_at ||
+            eligibilityAudit.hasIdentitySubmittedFact) &&
+          (hostProfile.primary_accommodation_type_id ||
+            eligibilityAudit.hasSpecializationFact)
         );
       case 'ready':
         return eligibilityAudit.isEligible;
@@ -61,11 +50,11 @@ export class HostingOnboardingPolicy {
   }
 
   /**
-   * Generates the dynamic step configuration sequence based on verified underlying facts.
+   * Generates the 3-step onboarding sequence based on verified underlying facts.
    */
   public static evaluateSteps(
     hostProfile: HostProfileRow | null,
-    eligibilityAudit: EligibilityFactAudit,
+    eligibilityAudit: HostOnboardingFactAudit,
     activeStepParam?: string | null
   ): {
     steps: OnboardingStep[];
@@ -74,10 +63,11 @@ export class HostingOnboardingPolicy {
   } {
     const isIdentityDone = Boolean(
       hostProfile?.identity_submitted_at ||
-      eligibilityAudit.hasIdentityVerifiedFact
+      eligibilityAudit.hasIdentitySubmittedFact
     );
-    const isBankDone = Boolean(
-      hostProfile?.bank_name || eligibilityAudit.hasBankLinkedFact
+    const isSpecializationDone = Boolean(
+      hostProfile?.primary_accommodation_type_id ||
+      eligibilityAudit.hasSpecializationFact
     );
     const isPoliciesDone = eligibilityAudit.hasPoliciesAgreedFact;
 
@@ -87,53 +77,44 @@ export class HostingOnboardingPolicy {
 
     const baseSteps: Array<Omit<OnboardingStep, 'isCurrent'>> = [
       {
-        id: 'eligibility',
-        title: 'Eligibility Overview',
-        description:
-          'Review mandatory criteria required to publish and operate accommodations on EliteStay.',
-        required: false,
-        isCompleted: eligibilityAudit.isEligible,
-        nextStepId: 'identity',
-      },
-      {
         id: 'identity',
-        title: 'Identity & Contact',
+        title: 'Identity & Host Profile',
         description:
-          'Confirm official legal name, verified phone number, and primary identity details.',
+          'Declare legal name and primary phone contact to initialize your host profile.',
         required: true,
         isCompleted: isIdentityDone,
-        nextStepId: 'bank',
+        nextStepId: 'specialization',
       },
       {
-        id: 'bank',
-        title: 'Payout Bank Account',
+        id: 'specialization',
+        title: 'Accommodation Specialization',
         description:
-          'Link a bank account where resident reservation settlements will be disbursed.',
+          'Select your primary accommodation domain (PG, Hostel, Apartment, or Other).',
         required: true,
-        isCompleted: isBankDone,
+        isCompleted: isSpecializationDone,
         nextStepId: 'policies',
       },
       {
         id: 'policies',
         title: 'Trust & Operational SLAs',
         description:
-          'Agree to EliteStay resident anti-discrimination policies and response time standards.',
+          'Agree to EliteStay resident anti-discrimination standards and operational SLAs.',
         required: true,
         isCompleted: isPoliciesDone,
         nextStepId: 'ready',
       },
       {
         id: 'ready',
-        title: 'Ready to Host',
+        title: 'Ready for Workspace',
         description:
-          'Onboarding complete! Launch into the Publishing Workspace to build your first listing.',
+          'Onboarding complete! Access your host workspace to build listings and manage compliance.',
         required: false,
         isCompleted: isAlreadyReadyOrActive || allRequiredCompleted,
       },
     ];
 
     // Determine current active step
-    let currentStepId: string = 'eligibility';
+    let currentStepId: string = 'identity';
     if (activeStepParam && baseSteps.some((s) => s.id === activeStepParam)) {
       currentStepId = activeStepParam;
     } else if (isAlreadyReadyOrActive || allRequiredCompleted) {
@@ -161,11 +142,11 @@ export class HostingOnboardingPolicy {
 
   /**
    * Validates whether a host profile can advance to READY status.
-   * Requires all 5 categories evaluated by HostingEligibilityPolicy to be true.
+   * Requires all 3 onboarding requirements to be met.
    */
   public static canTransitionToReady(
     hostProfile: HostProfileRow | null,
-    eligibilityAudit: EligibilityFactAudit
+    eligibilityAudit: HostOnboardingFactAudit
   ): boolean {
     if (!hostProfile) {
       return false;

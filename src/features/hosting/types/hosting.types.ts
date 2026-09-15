@@ -135,23 +135,65 @@ export interface HostPolicyFact {
 }
 
 /**
- * Itemized audit of runtime facts evaluating whether a host is eligible to operate.
+ * Itemized audit of runtime facts evaluating whether a host is eligible to enter the workspace (READY).
+ * Requires exactly 3 onboarding facts: Identity submitted, Specialization selected, and Policies accepted.
  */
-export interface EligibilityFactAudit {
+export interface HostOnboardingFactAudit {
   isEligible: boolean;
-  hasIdentityVerifiedFact: boolean;
-  hasBankLinkedFact: boolean;
-  hasTaxRegisteredFact: boolean;
-  hasPoliciesAgreedFact: boolean;
+  hasIdentitySubmittedFact: boolean;
   hasSpecializationFact: boolean;
+  hasPoliciesAgreedFact: boolean;
   missingRequirements: string[];
 }
 
 /**
- * Configuration-driven onboarding step representing a stage in the transformation journey.
+ * Publication requirements evaluated before a listing can transition to published/active.
+ */
+export type PublicationRequirement =
+  | 'IDENTITY_VERIFICATION_REQUIRED'
+  | 'PAYOUT_ACCOUNT_REQUIRED'
+  | 'PAYOUT_VERIFICATION_REQUIRED'
+  | 'TAX_REGISTRATION_REQUIRED'
+  | 'TAX_VERIFICATION_REQUIRED'
+  | 'SPECIALIZATION_REQUIRED'
+  | 'POLICY_ACCEPTANCE_REQUIRED'
+  | 'LISTING_CONTENT_INCOMPLETE'
+  | 'LISTING_PHOTOS_REQUIRED'
+  | 'LISTING_PRICING_REQUIRED'
+  | 'LISTING_LOCATION_REQUIRED';
+
+/**
+ * Result of the Listing Publication Eligibility evaluation.
+ */
+export interface ListingPublicationEligibility {
+  eligible: boolean;
+  missingRequirements: PublicationRequirement[];
+  evaluatedAt: string;
+  hostRequirements: {
+    identityVerified: boolean;
+    payoutVerified: boolean;
+    taxVerified: boolean;
+    specializationSet: boolean;
+    policiesAgreed: boolean;
+  };
+  listingRequirements: {
+    contentComplete: boolean;
+    photosPresent: boolean;
+    pricingConfigured: boolean;
+    locationComplete: boolean;
+  };
+}
+
+/**
+ * Legacy compatibility alias for Onboarding Audit
+ */
+export type EligibilityFactAudit = HostOnboardingFactAudit;
+
+/**
+ * Configuration-driven 3-step onboarding wizard stages.
  */
 export interface OnboardingStep {
-  id: 'eligibility' | 'identity' | 'bank' | 'policies' | 'ready';
+  id: 'identity' | 'specialization' | 'policies' | 'ready';
   title: string;
   description: string;
   required: boolean;
@@ -170,15 +212,11 @@ export interface OnboardingWorkspaceViewModel {
   isOnboardingComplete: boolean;
   currentStepId: string;
   steps: OnboardingStep[];
-  eligibilityAudit: EligibilityFactAudit;
+  eligibilityAudit: HostOnboardingFactAudit;
   formData: {
     fullName: string;
     phone: string;
-    bankName: string;
-    accountLast4: string;
     primaryAccommodationSlug: HostSpecializationSlug | string;
-    taxIdLast4: string;
-    taxIdType: string;
     supportPhone: string;
     supportEmail: string;
   };

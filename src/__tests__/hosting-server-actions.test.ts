@@ -1,8 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
 import {
   IdentityStepSchema,
-  BankStepSchema,
+  SpecializationStepSchema,
   PolicyStepSchema,
+  PayoutAccountSchema,
+  TaxRegistrationSchema,
   HostProfileSettingsSchema,
   OperationalStatusToggleSchema,
 } from '../features/hosting/schemas/hosting.schemas';
@@ -51,39 +53,72 @@ describe('Hosting Server Action & Schema Boundary Hardening', () => {
       });
     });
 
-    describe('BankStepSchema', () => {
-      it('accepts valid bank name and account number', () => {
-        const input = {
-          bankName: '  State Bank of India  ',
-          accountNumber: '  123456789012  ',
-        };
-        const parsed = BankStepSchema.parse(input);
-        expect(parsed.bankName).toBe('State Bank of India');
-        expect(parsed.accountNumber).toBe('123456789012');
+    describe('SpecializationStepSchema', () => {
+      it('accepts valid accommodation specialization slug', () => {
+        const parsed = SpecializationStepSchema.parse({
+          primaryAccommodationSlug: '  pg  ',
+        });
+        expect(parsed.primaryAccommodationSlug).toBe('pg');
       });
 
-      it('rejects accounts with special characters or invalid length', () => {
+      it('rejects empty specialization slug', () => {
         expect(() =>
-          BankStepSchema.parse({
-            bankName: 'HDFC',
-            accountNumber: '12', // Too short (<4)
-          })
-        ).toThrow();
-
-        expect(() =>
-          BankStepSchema.parse({
-            bankName: 'HDFC',
-            accountNumber: '1234-5678-9012', // Disallowed hyphens
+          SpecializationStepSchema.parse({
+            primaryAccommodationSlug: '',
           })
         ).toThrow();
       });
 
       it('rejects unknown/extra fields', () => {
         expect(() =>
-          BankStepSchema.parse({
+          SpecializationStepSchema.parse({
+            primaryAccommodationSlug: 'hostel',
+            status: 'ACTIVE',
+          })
+        ).toThrow();
+      });
+    });
+
+    describe('PayoutAccountSchema', () => {
+      it('accepts valid bank name and account number', () => {
+        const input = {
+          bankName: '  State Bank of India  ',
+          accountNumber: '  123456789012  ',
+        };
+        const parsed = PayoutAccountSchema.parse(input);
+        expect(parsed.bankName).toBe('State Bank of India');
+        expect(parsed.accountNumber).toBe('123456789012');
+      });
+
+      it('rejects accounts with special characters or invalid length', () => {
+        expect(() =>
+          PayoutAccountSchema.parse({
             bankName: 'HDFC',
-            accountNumber: '123456789',
-            payout_verification_status: 'VERIFIED', // Forged field
+            accountNumber: '12', // Too short (<4)
+          })
+        ).toThrow();
+
+        expect(() =>
+          PayoutAccountSchema.parse({
+            bankName: 'HDFC',
+            accountNumber: '1234-5678-9012', // Disallowed hyphens
+          })
+        ).toThrow();
+      });
+    });
+
+    describe('TaxRegistrationSchema', () => {
+      it('accepts valid tax ID', () => {
+        const parsed = TaxRegistrationSchema.parse({
+          taxId: '  AAAPB1234C  ',
+        });
+        expect(parsed.taxId).toBe('AAAPB1234C');
+      });
+
+      it('rejects short tax IDs', () => {
+        expect(() =>
+          TaxRegistrationSchema.parse({
+            taxId: '12',
           })
         ).toThrow();
       });
@@ -168,7 +203,7 @@ describe('Hosting Server Action & Schema Boundary Hardening', () => {
     });
   });
 
-  describe('2. HostingService Out-Of-Order Gating & Audit Context', () => {
+  describe('2. HostingService 3-Step Out-Of-Order Gating & Audit Context', () => {
     const dummyDate = '2026-09-15T12:00:00.000Z';
 
     const createProfile = (
@@ -200,9 +235,8 @@ describe('Hosting Server Action & Schema Boundary Hardening', () => {
       ...overrides,
     });
 
-    it('rejects submitBankStep if identity step has not been submitted', async () => {
+    it('rejects submitSpecializationStep if identity step has not been submitted', async () => {
       const service = new HostingService();
-      // Mock repository to return profile with no identity submitted
       vi.spyOn(
         service['repository'],
         'getHostProfileByUserId'
@@ -212,13 +246,13 @@ describe('Hosting Server Action & Schema Boundary Hardening', () => {
       );
 
       await expect(
-        service.submitBankStep('usr_test', 'HDFC Bank', '123456789')
+        service.submitSpecializationStep('usr_test', 'pg')
       ).rejects.toThrow(
-        'Cannot submit payout details: Identity verification step must be completed first.'
+        'Cannot select specialization: Identity profile declaration must be completed first.'
       );
     });
 
-    it('rejects submitPoliciesStep if bank and specialization prerequisites are missing', async () => {
+    it('rejects submitPoliciesStep if identity or specialization prerequisites are missing', async () => {
       const service = new HostingService();
       vi.spyOn(
         service['repository'],
@@ -226,7 +260,6 @@ describe('Hosting Server Action & Schema Boundary Hardening', () => {
       ).mockResolvedValue(
         createProfile({
           identity_submitted_at: dummyDate,
-          bank_name: null,
           primary_accommodation_type_id: null,
         })
       );
@@ -240,7 +273,7 @@ describe('Hosting Server Action & Schema Boundary Hardening', () => {
           ipAddress: '127.0.0.1',
         })
       ).rejects.toThrow(
-        'Cannot submit policy agreements: Prior onboarding prerequisites (Identity & Bank Setup) must be completed first.'
+        'Cannot submit policy agreements: Prior onboarding prerequisites (Identity & Specialization) must be completed first.'
       );
     });
 
@@ -252,7 +285,6 @@ describe('Hosting Server Action & Schema Boundary Hardening', () => {
       ).mockResolvedValue(
         createProfile({
           identity_submitted_at: dummyDate,
-          bank_name: 'HDFC Bank',
           primary_accommodation_type_id: 'acc_type_pg',
         })
       );
@@ -340,12 +372,12 @@ describe('Hosting Server Action & Schema Boundary Hardening', () => {
         tax_id_last4: null,
         tax_id_type: null,
         identity_submitted_at: null,
-        identity_verification_status: 'VERIFIED',
+        identity_verification_status: 'UNVERIFIED',
         identity_verification_ref: null,
         identity_verified_at: null,
-        payout_verification_status: 'VERIFIED',
+        payout_verification_status: 'UNVERIFIED',
         payout_verified_at: null,
-        tax_verification_status: 'VERIFIED',
+        tax_verification_status: 'UNVERIFIED',
         tax_verified_at: null,
         agreed_to_policies_at: null,
         support_phone: null,

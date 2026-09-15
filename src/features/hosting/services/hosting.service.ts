@@ -67,17 +67,16 @@ export class HostingService {
   }
 
   /**
-   * Step 2 Submission: Records payout bank fact references after validating step prerequisites.
+   * Step 2 Submission: Selects accommodation specialization after validating step prerequisites.
    */
-  public async submitBankStep(
+  public async submitSpecializationStep(
     userId: string,
-    bankName: string,
-    accountNumber: string
+    slug: string
   ): Promise<void> {
     const hostProfile = await this.repository.getHostProfileByUserId(userId);
     if (!hostProfile) {
       throw new Error(
-        'Cannot submit payout details: Host onboarding not initialized.'
+        'Cannot select specialization: Host onboarding not initialized.'
       );
     }
 
@@ -89,21 +88,26 @@ export class HostingService {
       policyAcceptances
     );
     const canEnter = HostingOnboardingPolicy.canEnterStep(
-      'bank',
+      'specialization',
       hostProfile,
       audit
     );
 
     if (!canEnter) {
       throw new Error(
-        'Cannot submit payout details: Identity verification step must be completed first.'
+        'Cannot select specialization: Identity profile declaration must be completed first.'
       );
     }
 
-    await this.repository.recordPayoutInstrument(
+    const accommodationTypeId =
+      await this.repository.getAccommodationTypeIdBySlug(slug);
+    if (!accommodationTypeId) {
+      throw new Error(`Invalid accommodation specialization: ${slug}`);
+    }
+
+    await this.repository.setAccommodationSpecialization(
       userId,
-      bankName,
-      accountNumber
+      accommodationTypeId
     );
   }
 
@@ -123,8 +127,8 @@ export class HostingService {
   }
 
   /**
-   * Step 4 Submission: Records operational SLA and anti-discrimination policy agreements.
-   * Gated strictly by step prerequisites and attaches server-side audit context.
+   * Step 3 Submission: Records operational SLA and anti-discrimination policy agreements.
+   * Gated strictly by step prerequisites (Identity + Specialization) and attaches server-side audit context.
    */
   public async submitPoliciesStep(
     userId: string,
@@ -152,7 +156,7 @@ export class HostingService {
 
     if (!canEnter) {
       throw new Error(
-        'Cannot submit policy agreements: Prior onboarding prerequisites (Identity & Bank Setup) must be completed first.'
+        'Cannot submit policy agreements: Prior onboarding prerequisites (Identity & Specialization) must be completed first.'
       );
     }
 

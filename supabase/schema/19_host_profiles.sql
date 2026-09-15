@@ -272,27 +272,23 @@ BEGIN
     );
   END IF;
 
-  IF v_profile.identity_verification_status <> 'VERIFIED' THEN
-    v_missing := array_append(v_missing, 'IDENTITY_NOT_VERIFIED');
+  -- 1. Onboarding Requirement 1: Identity Submitted
+  IF v_profile.identity_submitted_at IS NULL THEN
+    v_missing := array_append(v_missing, 'IDENTITY_NOT_SUBMITTED');
   END IF;
 
-  IF v_profile.payout_verification_status <> 'VERIFIED' THEN
-    v_missing := array_append(v_missing, 'PAYOUT_NOT_VERIFIED');
-  END IF;
-
-  IF v_profile.tax_verification_status <> 'VERIFIED' THEN
-    v_missing := array_append(v_missing, 'TAX_NOT_VERIFIED');
-  END IF;
-
+  -- 2. Onboarding Requirement 2: Accommodation Specialization Selected
   IF v_profile.primary_accommodation_type_id IS NULL THEN
     v_missing := array_append(v_missing, 'SPECIALIZATION_NOT_SET');
   END IF;
 
+  -- 3. Onboarding Requirement 3: Mandatory Policies Accepted
   IF NOT EXISTS (
     SELECT 1
     FROM public.host_policy_acceptances hpa
     WHERE hpa.host_profile_id = v_profile.id
       AND hpa.policy_type = 'ANTI_DISCRIMINATION'
+      AND hpa.policy_version = '2026.1'
   ) THEN
     v_missing := array_append(v_missing, 'ANTI_DISCRIMINATION_POLICY_NOT_ACCEPTED');
   END IF;
@@ -302,6 +298,7 @@ BEGIN
     FROM public.host_policy_acceptances hpa
     WHERE hpa.host_profile_id = v_profile.id
       AND hpa.policy_type = 'MAINTENANCE_SLA'
+      AND hpa.policy_version = '2026.1'
   ) THEN
     v_missing := array_append(v_missing, 'MAINTENANCE_SLA_POLICY_NOT_ACCEPTED');
   END IF;
@@ -309,7 +306,7 @@ BEGIN
   IF COALESCE(array_length(v_missing, 1), 0) > 0 THEN
     RETURN jsonb_build_object(
       'success', false,
-      'error', 'ELIGIBILITY_REQUIREMENTS_NOT_MET',
+      'error', 'ONBOARDING_REQUIREMENTS_NOT_MET',
       'missing', v_missing
     );
   END IF;

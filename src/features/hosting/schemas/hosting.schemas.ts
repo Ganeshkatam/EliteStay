@@ -38,9 +38,23 @@ export const IdentityStepSchema = z
 export type IdentityStepInput = z.infer<typeof IdentityStepSchema>;
 
 /**
- * Step 2: Payout Bank Account Setup Schema
+ * Step 2: Accommodation Specialization Selection Schema
  */
-export const BankStepSchema = z
+export const SpecializationStepSchema = z
+  .object({
+    primaryAccommodationSlug: z
+      .string({ message: 'Primary accommodation specialization is required' })
+      .trim()
+      .min(1, 'Please select an accommodation specialization'),
+  })
+  .strict();
+
+export type SpecializationStepInput = z.infer<typeof SpecializationStepSchema>;
+
+/**
+ * Host Workspace Compliance: Payout Setup Schema
+ */
+export const PayoutAccountSchema = z
   .object({
     bankName: z
       .string({ message: 'Bank name is required' })
@@ -59,7 +73,28 @@ export const BankStepSchema = z
   })
   .strict();
 
-export type BankStepInput = z.infer<typeof BankStepSchema>;
+export type PayoutAccountInput = z.infer<typeof PayoutAccountSchema>;
+
+/**
+ * Host Workspace Compliance: Tax Registration Schema
+ */
+export const TaxRegistrationSchema = z
+  .object({
+    taxId: z
+      .string({ message: 'Tax identification number is required' })
+      .trim()
+      .min(4, 'Tax ID must be at least 4 characters')
+      .max(50, 'Tax ID cannot exceed 50 characters'),
+  })
+  .strict();
+
+export type TaxRegistrationInput = z.infer<typeof TaxRegistrationSchema>;
+
+/**
+ * Obsolete Step 2 / Backwards compatibility: BankStepSchema
+ */
+export const BankStepSchema = PayoutAccountSchema;
+export type BankStepInput = PayoutAccountInput;
 
 /**
  * Step 4: Mandatory Trust & SLA Agreements Schema
