@@ -28,6 +28,7 @@ export default defineConfig({
       '.cache',
       'scripts/**',
       'tests/**',
+      'supabase/tests/**',
     ],
   },
 });

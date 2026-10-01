@@ -16,6 +16,7 @@
     "format": "prettier --write \"src/**/*.{ts,tsx,md,json}\"",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:db": "vitest run --config vitest.config.db.ts",
     "prepare": "husky",
     "db:build": "node supabase/schema/build_migration.mjs",
     "tree": "node scripts/generate-tree.js"
