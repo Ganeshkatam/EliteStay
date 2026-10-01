@@ -378,8 +378,15 @@ CREATE POLICY "Authorized users can insert reservations"
 -- Revoke unrestricted client write access; cache writes belong to backend/admin
 DROP POLICY IF EXISTS "Enable insert access for authenticated users" ON public.geocoding_cache;
 DROP POLICY IF EXISTS "Enable update access for authenticated users" ON public.geocoding_cache;
+DROP POLICY IF EXISTS "Authenticated users can insert cache entries" ON public.geocoding_cache;
+DROP POLICY IF EXISTS "Authenticated users can update cache entries" ON public.geocoding_cache;
 REVOKE INSERT, UPDATE, DELETE ON public.geocoding_cache FROM anon, authenticated, PUBLIC;
 GRANT INSERT, UPDATE, DELETE ON public.geocoding_cache TO postgres;
+
+CREATE POLICY "Admin write access on geocoding cache" ON public.geocoding_cache
+  FOR ALL TO authenticated
+  USING (public.is_admin())
+  WITH CHECK (public.is_admin());
 
 
 -- 6. Notifications RLS Hardening
