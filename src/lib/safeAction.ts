@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { User, SupabaseClient } from '@supabase/supabase-js';
-import { checkRateLimit } from './security/rate-limiter';
+import { checkRateLimitAsync } from './security/rate-limiter';
 import {
   instrumentExecution,
   RequestContext,
@@ -42,7 +42,7 @@ export async function safeAction<T>(
         RequestContext.setAttribute('userId', user.id);
 
         // Rate Limiting verification
-        const rateLimit = checkRateLimit(user.id, actionName);
+        const rateLimit = await checkRateLimitAsync(user.id, actionName);
         if (!rateLimit.success) {
           logger
             .category('SECURITY')

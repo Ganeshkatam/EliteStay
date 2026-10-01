@@ -63,14 +63,4 @@ CREATE POLICY "Hosts can view their external events" ON public.external_calendar
 CREATE POLICY "Hosts can manage their external events" ON public.external_calendar_events
   FOR ALL USING (public.is_listing_owner(listing_id) OR public.is_admin());
 
--- Schedule pg_cron sync job (Replace URLs and keys with actual environment values in deployment)
-SELECT cron.schedule(
-    'sync-ical-hourly',
-    '0 * * * *',
-    $$
-    SELECT net.http_post(
-        url:='YOUR_SUPABASE_PROJECT_URL/functions/v1/sync-ical',
-        headers:='{"Content-Type": "application/json", "Authorization": "Bearer YOUR_ANON_KEY"}'::jsonb
-    );
-    $$
-);
+-- pg_cron sync job should be scheduled in deployment environment with actual project credentials.

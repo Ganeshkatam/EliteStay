@@ -17,14 +17,14 @@ export class TimelineService {
   ): Promise<void> {
     const supabase = createStaticClient();
 
-    const { error } = await supabase.from('domain_timeline').insert({
-      entity_type: entityType,
-      entity_id: entityId,
-      event_type: event.type,
-      actor_id: event.metadata?.actorId || null,
-      correlation_id: event.metadata?.traceId || null,
-      causation_id: null, // Depending on if we added causationId to event metadata
-      metadata: event.payload,
+    const { error } = await supabase.rpc('append_timeline_event', {
+      p_entity_type: entityType,
+      p_entity_id: entityId,
+      p_event_type: event.type,
+      p_actor_id: event.metadata?.actorId || null,
+      p_metadata: event.payload as Record<string, unknown>,
+      p_correlation_id: event.metadata?.traceId || null,
+      p_causation_id: null,
     });
 
     if (error) {

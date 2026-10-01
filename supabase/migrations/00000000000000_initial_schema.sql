@@ -885,8 +885,7 @@ CREATE POLICY "Only admins can manage cities" ON public.cities FOR ALL USING (pu
 
 -- Geocoding Cache Policies
 CREATE POLICY "Enable read access for authenticated users" ON public.geocoding_cache FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Enable insert access for authenticated users" ON public.geocoding_cache FOR INSERT TO authenticated WITH CHECK (true);
-CREATE POLICY "Enable update access for authenticated users" ON public.geocoding_cache FOR UPDATE TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Enable admin write access on geocoding cache" ON public.geocoding_cache FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
 
 -- 8. Create Localities Table
 CREATE TABLE public.localities (
@@ -1886,6 +1885,269 @@ CREATE POLICY "Hosts can manage availability" ON public.listing_availability
         AND (l.host_id = auth.uid() OR public.is_admin())
     )
   );
+
+
+-- SOURCE: 04_booking_schema.sql
+-- 04_booking_schema.sql
+-- Booking domain tables and types
+
+-- Create reservation status enum
+CREATE TYPE reservation_status AS ENUM (
+  'DRAFT',
+  'VALIDATING',
+  'VALIDATED',
+  'LOCKED',
+  'PENDING_PAYMENT',
+  'PAYMENT_AUTHORIZED',
+  'CONFIRMED',
+  'FAILED',
+  'VALIDATION_FAILED',
+  'PAYMENT_FAILED',
+  'LOCK_EXPIRED',
+  'BOOKING_EXPIRED',
+  'SYSTEM_ERROR',
+  'CANCELLED',
+  'REFUNDED'
+);
+
+-- Reservations table
+CREATE TABLE IF NOT EXISTS public.reservations (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  property_id uuid NOT NULL REFERENCES public.listings(id) ON DELETE RESTRICT,
+  guest_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
+  
+  -- Stay details
+  check_in date NOT NULL,
+  check_out date NOT NULL,
+  guests_count integer NOT NULL CHECK (guests_count > 0),
+  
+  -- State Machine
+  status reservation_status NOT NULL DEFAULT 'DRAFT',
+  
+  -- Hybrid Pricing Snapshot
+  base_price numeric(10, 2) NOT NULL,
+  cleaning_fee numeric(10, 2) NOT NULL DEFAULT 0,
+  service_fee numeric(10, 2) NOT NULL DEFAULT 0,
+  tax_amount numeric(10, 2) NOT NULL DEFAULT 0,
+  total_amount numeric(10, 2) NOT NULL,
+  currency text NOT NULL,
+  snapshot_json jsonb NOT NULL,
+  
+  -- Payment
+  payment_intent_id text,
+  
+  -- Optimistic Concurrency & Idempotency
+  version integer NOT NULL DEFAULT 1,
+  idempotency_key text UNIQUE,
+  
+  -- Audit
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
+  updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
+
+  CONSTRAINT valid_dates CHECK (check_in < check_out)
+);
+
+-- Create overlap check function (can be used directly or translated to RPC)
+-- This enforces that for a given property, there are no overlapping confirmed or pending reservations.
+CREATE OR REPLACE FUNCTION public.check_availability(
+  p_property_id uuid,
+  p_check_in date,
+  p_check_out date
+) RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  overlap_count integer;
+BEGIN
+  SELECT count(*)
+  INTO overlap_count
+  FROM public.reservations
+  WHERE property_id = p_property_id
+    AND status IN ('CONFIRMED', 'LOCKED', 'PENDING_PAYMENT', 'PAYMENT_AUTHORIZED')
+    AND check_in < p_check_out
+    AND check_out > p_check_in;
+    
+  RETURN overlap_count = 0;
+END;
+$$;
+
+-- RLS Policies
+ALTER TABLE public.reservations ENABLE ROW LEVEL SECURITY;
+
+-- Guests can read their own reservations
+CREATE POLICY "Guests can view own reservations"
+  ON public.reservations
+  FOR SELECT
+  USING (auth.uid() = guest_id);
+
+-- Hosts can read reservations for their properties
+CREATE POLICY "Hosts can view property reservations"
+  ON public.reservations
+  FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.listings
+      WHERE listings.id = reservations.property_id
+        AND listings.host_id = auth.uid()
+    )
+  );
+
+-- Guests and Hosts can update authorized reservations
+CREATE POLICY "Guests and Hosts can update authorized reservations"
+  ON public.reservations
+  FOR UPDATE TO authenticated
+  USING (
+    auth.uid() = guest_id
+    OR public.is_listing_owner(property_id)
+    OR public.is_admin()
+  )
+  WITH CHECK (
+    auth.uid() = guest_id
+    OR public.is_listing_owner(property_id)
+    OR public.is_admin()
+  );
+
+-- Authorized users can insert reservations
+CREATE POLICY "Authorized users can insert reservations"
+  ON public.reservations
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    auth.uid() = guest_id
+    OR public.is_admin()
+  );
+
+
+-- SOURCE: 05_booking_rpc.sql
+-- 05_booking_rpc.sql
+-- Transactional Reservation Creation
+
+CREATE OR REPLACE FUNCTION public.create_reservation_safe(
+  p_property_id uuid,
+  p_guest_id uuid,
+  p_check_in date,
+  p_check_out date,
+  p_guests_count integer,
+  p_base_price numeric,
+  p_cleaning_fee numeric,
+  p_service_fee numeric,
+  p_tax_amount numeric,
+  p_total_amount numeric,
+  p_currency text,
+  p_snapshot_json jsonb,
+  p_idempotency_key text DEFAULT NULL,
+  p_lease_duration_months integer DEFAULT NULL,
+  p_move_in_date date DEFAULT NULL,
+  p_security_deposit_amount numeric DEFAULT 0,
+  p_maintenance_fee_amount numeric DEFAULT 0,
+  p_utilities_amount numeric DEFAULT 0,
+  p_brokerage_fee_amount numeric DEFAULT 0
+) RETURNS public.reservations
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_user_id uuid;
+  v_guest_id uuid;
+  v_overlap_count integer;
+  v_reservation public.reservations;
+BEGIN
+  -- 1. Derive or validate guest actor
+  v_user_id := (SELECT auth.uid());
+  IF v_user_id IS NOT NULL THEN
+    v_guest_id := v_user_id;
+  ELSE
+    IF p_guest_id IS NOT NULL THEN
+      v_guest_id := p_guest_id;
+    ELSE
+      RAISE EXCEPTION 'UNAUTHENTICATED' USING ERRCODE = '42501';
+    END IF;
+  END IF;
+
+  -- 2. Idempotency Check: Return existing reservation if already created by this guest
+  IF p_idempotency_key IS NOT NULL AND length(trim(p_idempotency_key)) > 0 THEN
+    SELECT * INTO v_reservation
+    FROM public.reservations
+    WHERE idempotency_key = p_idempotency_key
+      AND guest_id = v_guest_id;
+
+    IF FOUND THEN
+      RETURN v_reservation;
+    END IF;
+  END IF;
+
+  -- 3. Row-lock parent listing to serialize concurrent bookings on the same property
+  PERFORM 1 FROM public.listings WHERE id = p_property_id FOR UPDATE;
+
+  -- 4. Check date overlap availability inside row-locked transaction
+  SELECT count(*)
+  INTO v_overlap_count
+  FROM public.reservations
+  WHERE property_id = p_property_id
+    AND status IN ('CONFIRMED', 'LOCKED', 'PENDING_PAYMENT', 'PAYMENT_AUTHORIZED')
+    AND check_in < p_check_out
+    AND check_out > p_check_in;
+
+  IF v_overlap_count > 0 THEN
+    RAISE EXCEPTION 'AVAILABILITY_CONFLICT' USING ERRCODE = 'P0001';
+  END IF;
+
+  -- 5. Insert the reservation
+  INSERT INTO public.reservations (
+    property_id,
+    guest_id,
+    check_in,
+    check_out,
+    guests_count,
+    status,
+    base_price,
+    cleaning_fee,
+    service_fee,
+    tax_amount,
+    total_amount,
+    currency,
+    snapshot_json,
+    idempotency_key,
+    version,
+    lease_duration_months,
+    move_in_date,
+    security_deposit_amount,
+    maintenance_fee_amount,
+    utilities_amount,
+    brokerage_fee_amount
+  ) VALUES (
+    p_property_id,
+    v_guest_id,
+    p_check_in,
+    p_check_out,
+    p_guests_count,
+    'DRAFT',
+    p_base_price,
+    p_cleaning_fee,
+    p_service_fee,
+    p_tax_amount,
+    p_total_amount,
+    p_currency,
+    p_snapshot_json,
+    p_idempotency_key,
+    1,
+    p_lease_duration_months,
+    p_move_in_date,
+    p_security_deposit_amount,
+    p_maintenance_fee_amount,
+    p_utilities_amount,
+    p_brokerage_fee_amount
+  ) RETURNING * INTO v_reservation;
+
+  RETURN v_reservation;
+END;
+$$;
+
+ALTER FUNCTION public.create_reservation_safe(uuid, uuid, date, date, integer, numeric, numeric, numeric, numeric, numeric, text, jsonb, text, integer, date, numeric, numeric, numeric, numeric) OWNER TO postgres;
+REVOKE ALL ON FUNCTION public.create_reservation_safe(uuid, uuid, date, date, integer, numeric, numeric, numeric, numeric, numeric, text, jsonb, text, integer, date, numeric, numeric, numeric, numeric) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.create_reservation_safe(uuid, uuid, date, date, integer, numeric, numeric, numeric, numeric, numeric, text, jsonb, text, integer, date, numeric, numeric, numeric, numeric) TO authenticated;
+
 
 
 -- SOURCE: 10_bookings.sql
@@ -3032,8 +3294,9 @@ CREATE POLICY "Users can view own notifications" ON public.notifications
 CREATE POLICY "Users can mark own notifications as read" ON public.notifications
   FOR UPDATE USING (user_id = auth.uid() OR public.is_admin());
 
-CREATE POLICY "System can insert notifications" ON public.notifications
-  FOR INSERT WITH CHECK (true);
+CREATE POLICY "Admin can insert notifications" ON public.notifications
+  FOR INSERT TO authenticated
+  WITH CHECK (public.is_admin());
 
 
 -- SOURCE: 14_messaging.sql
@@ -3243,17 +3506,7 @@ CREATE POLICY "Hosts can view their external events" ON public.external_calendar
 CREATE POLICY "Hosts can manage their external events" ON public.external_calendar_events
   FOR ALL USING (public.is_listing_owner(listing_id) OR public.is_admin());
 
--- Schedule pg_cron sync job (Replace URLs and keys with actual environment values in deployment)
-SELECT cron.schedule(
-    'sync-ical-hourly',
-    '0 * * * *',
-    $$
-    SELECT net.http_post(
-        url:='YOUR_SUPABASE_PROJECT_URL/functions/v1/sync-ical',
-        headers:='{"Content-Type": "application/json", "Authorization": "Bearer YOUR_ANON_KEY"}'::jsonb
-    );
-    $$
-);
+-- pg_cron sync job should be scheduled in deployment environment with actual project credentials.
 
 
 -- SOURCE: 16_storage_buckets.sql
@@ -3289,47 +3542,36 @@ USING (bucket_id = 'listings');
 CREATE POLICY "Public Access Avatars" ON storage.objects FOR SELECT 
 USING (bucket_id = 'avatars');
 
--- Allow authenticated users to upload
-CREATE POLICY "Auth Upload Listings" ON storage.objects FOR INSERT 
-WITH CHECK (bucket_id = 'listings' AND auth.role() = 'authenticated');
+-- Allow authenticated hosts to upload and manage listing photos
+CREATE POLICY "Hosts can upload listing photos" ON storage.objects
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    bucket_id = 'listings'
+    AND (
+      public.is_admin()
+      OR public.is_listing_owner(((storage.foldername(name))[1])::uuid)
+    )
+  );
 
--- Allow authenticated users to update/delete their uploaded objects
-CREATE POLICY "Users can modify own avatars" 
-ON storage.objects FOR INSERT 
-WITH CHECK (
-  bucket_id = 'avatars' 
-  AND auth.uid()::text = (storage.foldername(name))[1]
-  AND name = auth.uid()::text || '/avatar.webp'
-);
+CREATE POLICY "Hosts can update listing photos" ON storage.objects
+  FOR UPDATE TO authenticated
+  USING (
+    bucket_id = 'listings'
+    AND (
+      public.is_admin()
+      OR public.is_listing_owner(((storage.foldername(name))[1])::uuid)
+    )
+  );
 
-CREATE POLICY "Users can update their own avatar"
-ON storage.objects FOR UPDATE
-USING (
-  bucket_id = 'avatars' 
-  AND auth.uid()::text = (storage.foldername(name))[1]
-)
-WITH CHECK (
-  bucket_id = 'avatars' 
-  AND auth.uid()::text = (storage.foldername(name))[1]
-  AND name = auth.uid()::text || '/avatar.webp'
-);
-
-CREATE POLICY "Users can delete their own avatar"
-ON storage.objects FOR DELETE
-USING (
-  bucket_id = 'avatars' 
-  AND auth.uid()::text = (storage.foldername(name))[1]
-);
-
-CREATE POLICY "Users can select their own avatar"
-ON storage.objects FOR SELECT
-USING (
-  bucket_id = 'avatars' 
-  AND auth.uid()::text = (storage.foldername(name))[1]
-);
-
-CREATE POLICY "Users modify own listing photos" ON storage.objects FOR ALL
-USING (bucket_id = 'listings' AND auth.uid() = owner);
+CREATE POLICY "Hosts can delete listing photos" ON storage.objects
+  FOR DELETE TO authenticated
+  USING (
+    bucket_id = 'listings'
+    AND (
+      public.is_admin()
+      OR public.is_listing_owner(((storage.foldername(name))[1])::uuid)
+    )
+  );
 
 
 -- SOURCE: 17_search_functions.sql

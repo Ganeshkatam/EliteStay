@@ -103,4 +103,26 @@ CREATE POLICY "Hosts can view property reservations"
     )
   );
 
--- Service Role (Server Actions) handles inserts/updates, bypassing RLS
+-- Guests and Hosts can update authorized reservations
+CREATE POLICY "Guests and Hosts can update authorized reservations"
+  ON public.reservations
+  FOR UPDATE TO authenticated
+  USING (
+    auth.uid() = guest_id
+    OR public.is_listing_owner(property_id)
+    OR public.is_admin()
+  )
+  WITH CHECK (
+    auth.uid() = guest_id
+    OR public.is_listing_owner(property_id)
+    OR public.is_admin()
+  );
+
+-- Authorized users can insert reservations
+CREATE POLICY "Authorized users can insert reservations"
+  ON public.reservations
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    auth.uid() = guest_id
+    OR public.is_admin()
+  );

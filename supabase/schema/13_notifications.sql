@@ -40,5 +40,6 @@ CREATE POLICY "Users can view own notifications" ON public.notifications
 CREATE POLICY "Users can mark own notifications as read" ON public.notifications
   FOR UPDATE USING (user_id = auth.uid() OR public.is_admin());
 
-CREATE POLICY "System can insert notifications" ON public.notifications
-  FOR INSERT WITH CHECK (true);
+CREATE POLICY "Admin can insert notifications" ON public.notifications
+  FOR INSERT TO authenticated
+  WITH CHECK (public.is_admin());

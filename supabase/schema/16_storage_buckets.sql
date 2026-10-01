@@ -30,44 +30,33 @@ USING (bucket_id = 'listings');
 CREATE POLICY "Public Access Avatars" ON storage.objects FOR SELECT 
 USING (bucket_id = 'avatars');
 
--- Allow authenticated users to upload
-CREATE POLICY "Auth Upload Listings" ON storage.objects FOR INSERT 
-WITH CHECK (bucket_id = 'listings' AND auth.role() = 'authenticated');
+-- Allow authenticated hosts to upload and manage listing photos
+CREATE POLICY "Hosts can upload listing photos" ON storage.objects
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    bucket_id = 'listings'
+    AND (
+      public.is_admin()
+      OR public.is_listing_owner(((storage.foldername(name))[1])::uuid)
+    )
+  );
 
--- Allow authenticated users to update/delete their uploaded objects
-CREATE POLICY "Users can modify own avatars" 
-ON storage.objects FOR INSERT 
-WITH CHECK (
-  bucket_id = 'avatars' 
-  AND auth.uid()::text = (storage.foldername(name))[1]
-  AND name = auth.uid()::text || '/avatar.webp'
-);
+CREATE POLICY "Hosts can update listing photos" ON storage.objects
+  FOR UPDATE TO authenticated
+  USING (
+    bucket_id = 'listings'
+    AND (
+      public.is_admin()
+      OR public.is_listing_owner(((storage.foldername(name))[1])::uuid)
+    )
+  );
 
-CREATE POLICY "Users can update their own avatar"
-ON storage.objects FOR UPDATE
-USING (
-  bucket_id = 'avatars' 
-  AND auth.uid()::text = (storage.foldername(name))[1]
-)
-WITH CHECK (
-  bucket_id = 'avatars' 
-  AND auth.uid()::text = (storage.foldername(name))[1]
-  AND name = auth.uid()::text || '/avatar.webp'
-);
-
-CREATE POLICY "Users can delete their own avatar"
-ON storage.objects FOR DELETE
-USING (
-  bucket_id = 'avatars' 
-  AND auth.uid()::text = (storage.foldername(name))[1]
-);
-
-CREATE POLICY "Users can select their own avatar"
-ON storage.objects FOR SELECT
-USING (
-  bucket_id = 'avatars' 
-  AND auth.uid()::text = (storage.foldername(name))[1]
-);
-
-CREATE POLICY "Users modify own listing photos" ON storage.objects FOR ALL
-USING (bucket_id = 'listings' AND auth.uid() = owner);
+CREATE POLICY "Hosts can delete listing photos" ON storage.objects
+  FOR DELETE TO authenticated
+  USING (
+    bucket_id = 'listings'
+    AND (
+      public.is_admin()
+      OR public.is_listing_owner(((storage.foldername(name))[1])::uuid)
+    )
+  );

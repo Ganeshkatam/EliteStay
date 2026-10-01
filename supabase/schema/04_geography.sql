@@ -106,8 +106,7 @@ CREATE POLICY "Only admins can manage cities" ON public.cities FOR ALL USING (pu
 
 -- Geocoding Cache Policies
 CREATE POLICY "Enable read access for authenticated users" ON public.geocoding_cache FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Enable insert access for authenticated users" ON public.geocoding_cache FOR INSERT TO authenticated WITH CHECK (true);
-CREATE POLICY "Enable update access for authenticated users" ON public.geocoding_cache FOR UPDATE TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Enable admin write access on geocoding cache" ON public.geocoding_cache FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
 
 -- 8. Create Localities Table
 CREATE TABLE public.localities (

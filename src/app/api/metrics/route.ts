@@ -16,6 +16,15 @@ import { getProvider } from '@/lib/redis/client';
 import { isCircuitClosed } from '@/lib/redis/circuit-breaker';
 
 export async function GET(request: Request) {
+  // Authorization check: Require valid Bearer token in production or configured secret
+  const authHeader = request.headers.get('authorization') || '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.substring(7) : '';
+  const expectedSecret = process.env.METRICS_SECRET || process.env.CRON_SECRET;
+
+  if (expectedSecret && token !== expectedSecret) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const url = new URL(request.url);
   const format = url.searchParams.get('format') || 'json';
 

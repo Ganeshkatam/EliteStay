@@ -28,6 +28,7 @@ export function initializeTimelineEventHandlers() {
             `Failed to handle domain timeline for event ${event.type}`,
             { error }
           );
+          throw error;
         }
       }
     );

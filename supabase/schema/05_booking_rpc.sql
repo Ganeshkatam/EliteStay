@@ -44,11 +44,12 @@ BEGIN
     END IF;
   END IF;
 
-  -- 2. Idempotency Check: Return existing reservation if already created
+  -- 2. Idempotency Check: Return existing reservation if already created by this guest
   IF p_idempotency_key IS NOT NULL AND length(trim(p_idempotency_key)) > 0 THEN
     SELECT * INTO v_reservation
     FROM public.reservations
-    WHERE idempotency_key = p_idempotency_key;
+    WHERE idempotency_key = p_idempotency_key
+      AND guest_id = v_guest_id;
 
     IF FOUND THEN
       RETURN v_reservation;
