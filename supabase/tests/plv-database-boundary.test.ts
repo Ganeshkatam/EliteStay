@@ -75,8 +75,15 @@ describeDatabase(
         p_listing_id: '00000000-0000-0000-0000-000000000000',
       });
 
-      expect(error).not.toBeNull();
-      expect(data).toBeNull();
+      if (error) {
+        expect(['P0001', '42501', 'PGRST301', '401']).toContain(error.code);
+      } else {
+        expect(data).toMatchObject({
+          success: false,
+          error: 'UNAUTHENTICATED',
+          code: '401',
+        });
+      }
     });
 
     it('PLV-04 - Direct INSERT/UPDATE trying to bypass publish_listing to set published status is rejected', async () => {
