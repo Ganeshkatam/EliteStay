@@ -1995,7 +1995,7 @@ CREATE OR REPLACE FUNCTION public.transition_booking(
   p_booking_id uuid,
   p_current_status public.booking_status,
   p_new_status public.booking_status,
-  p_actor_id uuid,
+  p_actor_id uuid DEFAULT NULL,
   p_metadata jsonb DEFAULT '{}'::jsonb
 )
 RETURNS jsonb
@@ -2005,7 +2005,18 @@ SET search_path = ''
 AS $$
 DECLARE
   v_booking public.bookings%ROWTYPE;
+  v_actor_id uuid;
 BEGIN
+  -- Authoritative actor identity derivation
+  v_actor_id := auth.uid();
+  IF v_actor_id IS NULL THEN
+    IF p_actor_id IS NOT NULL AND public.is_admin() THEN
+      v_actor_id := p_actor_id;
+    ELSE
+      RAISE EXCEPTION 'UNAUTHENTICATED' USING ERRCODE = '42501';
+    END IF;
+  END IF;
+
   -- Lock the row to prevent race conditions
   SELECT * INTO v_booking
   FROM public.bookings
@@ -2014,6 +2025,11 @@ BEGIN
 
   IF NOT FOUND THEN
     RAISE EXCEPTION 'Booking not found';
+  END IF;
+
+  -- Authorization check: Actor must be guest, host of listing, or admin
+  IF NOT (v_booking.guest_id = v_actor_id OR public.is_listing_owner(v_booking.listing_id) OR public.is_admin()) THEN
+    RAISE EXCEPTION 'UNAUTHORIZED' USING ERRCODE = '42501';
   END IF;
 
   IF v_booking.status != p_current_status THEN
@@ -2036,7 +2052,7 @@ BEGIN
   ) VALUES (
     p_booking_id,
     p_new_status::text,
-    p_actor_id,
+    v_actor_id,
     p_current_status,
     p_new_status,
     p_metadata
@@ -2220,7 +2236,7 @@ CREATE OR REPLACE FUNCTION public.transition_stay(
   p_stay_id uuid,
   p_current_status public.stay_status,
   p_new_status public.stay_status,
-  p_actor_id uuid,
+  p_actor_id uuid DEFAULT NULL,
   p_updates jsonb DEFAULT '{}'::jsonb,
   p_metadata jsonb DEFAULT '{}'::jsonb
 )
@@ -2231,7 +2247,18 @@ SET search_path = ''
 AS $$
 DECLARE
   v_stay public.stays%ROWTYPE;
+  v_actor_id uuid;
 BEGIN
+  -- Authoritative actor identity derivation
+  v_actor_id := auth.uid();
+  IF v_actor_id IS NULL THEN
+    IF p_actor_id IS NOT NULL AND public.is_admin() THEN
+      v_actor_id := p_actor_id;
+    ELSE
+      RAISE EXCEPTION 'UNAUTHENTICATED' USING ERRCODE = '42501';
+    END IF;
+  END IF;
+
   -- Lock row against concurrent transitions
   SELECT * INTO v_stay
   FROM public.stays
@@ -2240,6 +2267,11 @@ BEGIN
 
   IF NOT FOUND THEN
     RAISE EXCEPTION 'Stay not found';
+  END IF;
+
+  -- Authorization check: Actor must be guest, host of listing, or admin
+  IF NOT (v_stay.guest_id = v_actor_id OR public.is_listing_owner(v_stay.listing_id) OR public.is_admin()) THEN
+    RAISE EXCEPTION 'UNAUTHORIZED' USING ERRCODE = '42501';
   END IF;
 
   IF v_stay.status != p_current_status THEN
@@ -2265,7 +2297,7 @@ BEGIN
   ) VALUES (
     p_stay_id,
     p_new_status::text,
-    p_actor_id,
+    v_actor_id,
     p_current_status,
     p_new_status,
     p_metadata

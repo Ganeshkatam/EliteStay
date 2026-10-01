@@ -19,11 +19,11 @@ export class EventBus {
     this.globalSubscribers.add(handler);
   }
 
-  public publish<T>(
+  public async publish<T>(
     type: DomainEventType,
     payload: T,
     options?: { actorId?: string; correlationId?: string; causationId?: string }
-  ): void {
+  ): Promise<void> {
     const event: DomainEvent<T> = {
       id: randomUUID(),
       type,
@@ -40,12 +40,23 @@ export class EventBus {
       ...this.globalSubscribers,
     ];
 
-    // Fire and forget - don't block the caller's business transaction
-    Promise.allSettled(
+    const results = await Promise.allSettled(
       handlers.map((handler) => handler(event as DomainEvent))
-    ).catch((err) => {
-      console.error('[EventBus] Error dispatching event:', err);
-    });
+    );
+
+    const failures = results.filter(
+      (r): r is PromiseRejectedResult => r.status === 'rejected'
+    );
+
+    if (failures.length > 0) {
+      console.error(
+        `[EventBus] Errors dispatching event ${type}:`,
+        failures.map((f) => f.reason)
+      );
+      throw new Error(
+        `Failed to process event ${type}: ${failures.map((f) => f.reason?.message || String(f.reason)).join(', ')}`
+      );
+    }
   }
 }
 

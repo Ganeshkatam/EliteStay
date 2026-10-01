@@ -1,11 +1,9 @@
-import {
-  RentalApplication,
-  RentalApplicationStatus,
-} from '../types/application.types';
+import { RentalApplication } from '../types/application.types';
 import { ApplicationRepository } from '../repositories/application.repository';
 import { ApplicationLifecyclePolicy } from '../domain/lifecycle.policy';
 import { OutboxRepository } from '@/lib/events/outbox-repository';
 import { DomainEventType } from '@/lib/events/domain-events';
+import { createClient } from '@/lib/supabase/server';
 
 export class ApplicationService {
   static async createDraft(
@@ -40,8 +38,16 @@ export class ApplicationService {
     const app = await ApplicationRepository.getById(applicationId);
     if (!app) throw new Error('Application not found');
 
-    // Authorization: Verify hostId owns the property. This should ideally be done in a HostService,
-    // but for now we assume it's checked by the caller or we can rely on RLS if using a logged-in user context.
+    const supabase = await createClient();
+    const { data: listing, error: listingError } = await supabase
+      .from('listings')
+      .select('id, host_id')
+      .eq('id', app.propertyId)
+      .single();
+
+    if (listingError || !listing || listing.host_id !== hostId) {
+      throw new Error('Unauthorized: Host does not own this property');
+    }
 
     ApplicationLifecyclePolicy.validateTransition(app.status, 'APPROVED');
 
@@ -63,6 +69,17 @@ export class ApplicationService {
   static async reject(applicationId: string, hostId: string): Promise<void> {
     const app = await ApplicationRepository.getById(applicationId);
     if (!app) throw new Error('Application not found');
+
+    const supabase = await createClient();
+    const { data: listing, error: listingError } = await supabase
+      .from('listings')
+      .select('id, host_id')
+      .eq('id', app.propertyId)
+      .single();
+
+    if (listingError || !listing || listing.host_id !== hostId) {
+      throw new Error('Unauthorized: Host does not own this property');
+    }
 
     ApplicationLifecyclePolicy.validateTransition(app.status, 'REJECTED');
 

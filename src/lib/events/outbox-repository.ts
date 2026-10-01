@@ -19,14 +19,13 @@ export class OutboxRepository {
   static async append(event: OutboxEvent): Promise<void> {
     const supabase = await createClient();
 
-    const { error } = await supabase.from('outbox_events').insert({
-      type: event.type,
-      aggregate_type: event.aggregateType,
-      aggregate_id: event.aggregateId,
-      payload: event.payload,
-      correlation_id: event.correlationId || null,
-      causation_id: event.causationId || null,
-      status: 'PENDING',
+    const { error } = await supabase.rpc('append_outbox_event', {
+      p_type: event.type,
+      p_aggregate_type: event.aggregateType,
+      p_aggregate_id: event.aggregateId,
+      p_payload: event.payload as Record<string, unknown>,
+      p_correlation_id: event.correlationId || null,
+      p_causation_id: event.causationId || null,
     });
 
     if (error) {

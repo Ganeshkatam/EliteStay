@@ -1,8 +1,10 @@
 import { LeaseRepository } from '../repositories/lease.repository';
-import { Lease, LeaseStatus } from '../types/lease.types';
+import { Lease } from '../types/lease.types';
 import { LeaseLifecyclePolicy } from '../domain/lifecycle.policy';
 import { OutboxRepository } from '@/lib/events/outbox-repository';
 import { DomainEventType } from '@/lib/events/domain-events';
+
+import { createClient } from '@/lib/supabase/server';
 
 export class LeaseService {
   /**
@@ -45,6 +47,27 @@ export class LeaseService {
   static async issueLease(leaseId: string, hostId: string): Promise<void> {
     const lease = await LeaseRepository.getById(leaseId);
     if (!lease) throw new Error('Lease not found');
+
+    const supabase = await createClient();
+    const { data: reservation, error: resError } = await supabase
+      .from('reservations')
+      .select('property_id')
+      .eq('id', lease.reservationId)
+      .single();
+
+    if (resError || !reservation) {
+      throw new Error('Associated reservation not found');
+    }
+
+    const { data: listing, error: listingError } = await supabase
+      .from('listings')
+      .select('host_id')
+      .eq('id', reservation.property_id)
+      .single();
+
+    if (listingError || !listing || listing.host_id !== hostId) {
+      throw new Error('Unauthorized: Host does not own this property');
+    }
 
     LeaseLifecyclePolicy.validateTransition(lease.status, 'ISSUED');
 

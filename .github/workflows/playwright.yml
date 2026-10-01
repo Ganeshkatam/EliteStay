@@ -4,7 +4,6 @@ on:
 
 jobs:
   test:
-    if: false # Skipped in CI
     timeout-minutes: 60
     runs-on: ubuntu-latest
     steps:
