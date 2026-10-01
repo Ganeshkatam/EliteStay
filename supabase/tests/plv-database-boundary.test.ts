@@ -1,12 +1,34 @@
 import { describe, it, expect } from 'vitest';
 import { createClient } from '@supabase/supabase-js';
+import fs from 'fs';
+import path from 'path';
 
-const SUPABASE_URL =
-  process.env.NEXT_PUBLIC_SUPABASE_URL ||
-  'https://ybeidsnuijipacnmybfo.supabase.co';
+try {
+  const envLocalPath = path.resolve(process.cwd(), '.env.local');
+  if (fs.existsSync(envLocalPath)) {
+    const envContent = fs.readFileSync(envLocalPath, 'utf8');
+    for (const line of envContent.split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const [key, ...rest] = trimmed.split('=');
+      const val = rest
+        .join('=')
+        .trim()
+        .replace(/^["']|["']$/g, '');
+      if (key && !process.env[key.trim()]) {
+        process.env[key.trim()] = val;
+      }
+    }
+  }
+} catch {
+  // Ignore env read failures
+}
+
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const SUPABASE_ANON_KEY =
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InliZWlkc251aWppcGFjbm15YmZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA3MjAyNjEsImV4cCI6MjA4NjI5NjI2MX0.g6-J1UfG3GffV9gV07x8-fE_wQ4_761Y_Xj1vCg7nNo';
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+  '';
 
 describe('Phase 5 — Database Boundary & Security PLV Suite (PLV-01 - PLV-05)', () => {
   const anonClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {

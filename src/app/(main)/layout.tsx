@@ -18,9 +18,12 @@ export default async function GuestLayout({
   const cookieStore = await cookies();
 
   // 1. Instantly parse the unverified user ID out of the local cookie string
-  const authCookie = cookieStore.get(
-    'sb-ybeidsnuijipacnmybfo-auth-token.0'
-  )?.value;
+  const projectRef =
+    process.env.NEXT_PUBLIC_SUPABASE_URL?.split('//')[1]?.split('.')[0] || '';
+  const authCookie = projectRef
+    ? cookieStore.get(`sb-${projectRef}-auth-token.0`)?.value ||
+      cookieStore.get(`sb-${projectRef}-auth-token`)?.value
+    : null;
   let potentialUserId: string | null = null;
 
   if (authCookie) {

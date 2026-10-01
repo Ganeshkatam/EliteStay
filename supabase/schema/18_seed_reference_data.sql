@@ -91,6 +91,7 @@ DECLARE
     ch_id BIGINT;
     kl_id BIGINT;
     mp_id BIGINT;
+    ap_id BIGINT;
 BEGIN
     SELECT id INTO in_id FROM public.countries WHERE external_code = 'IN';
     IF in_id IS NULL THEN
@@ -150,6 +151,7 @@ BEGIN
     SELECT id INTO ch_id FROM public.states WHERE external_code = 'IN-CH';
     SELECT id INTO kl_id FROM public.states WHERE external_code = 'IN-KL';
     SELECT id INTO mp_id FROM public.states WHERE external_code = 'IN-MP';
+    SELECT id INTO ap_id FROM public.states WHERE external_code = 'IN-AP';
 
     -- 5. Seed Featured Cities
     INSERT INTO public.cities (state_id, external_code, name, search_aliases, slug, latitude, longitude, timezone, is_capital, is_metro, is_featured, sort_order, description) VALUES

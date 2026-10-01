@@ -286,6 +286,42 @@ CREATE POLICY "Users can update own preferences" ON public.user_preferences
 CREATE POLICY "Users can insert own preferences" ON public.user_preferences
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+CREATE OR REPLACE FUNCTION public.is_aal2_authenticated()
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+  SELECT coalesce(
+    (nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'aal') = 'aal2',
+    false
+  );
+$$;
+
+-- Enforce AAL2 when modifying security settings if 2FA was already enabled
+CREATE OR REPLACE FUNCTION public.guard_user_preferences_security_aal()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  IF (OLD.security->>'two_factor_auth')::boolean IS TRUE AND NOT public.is_aal2_authenticated() AND NOT public.is_admin() THEN
+    RAISE EXCEPTION 'Two-Factor Authentication (AAL2) required to modify security preferences.'
+      USING ERRCODE = '42501';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_guard_user_preferences_security_aal ON public.user_preferences;
+CREATE TRIGGER trg_guard_user_preferences_security_aal
+  BEFORE UPDATE ON public.user_preferences
+  FOR EACH ROW
+  WHEN (NEW.security IS DISTINCT FROM OLD.security)
+  EXECUTE FUNCTION public.guard_user_preferences_security_aal();
+
 -- 6. Profile Immutability Protection
 CREATE OR REPLACE FUNCTION public.protect_identity_fields()
 RETURNS TRIGGER
@@ -680,6 +716,64 @@ REVOKE ALL ON FUNCTION public.anonymize_user_applicant_profile() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.prevent_protected_user_deletion() TO postgres, authenticated;
 GRANT EXECUTE ON FUNCTION public.anonymize_user_applicant_profile() TO postgres, authenticated;
 
+-- Helper to check if current request has AAL2 authentication
+CREATE OR REPLACE FUNCTION public.is_aal2_authenticated()
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+  SELECT coalesce(
+    (nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'aal') = 'aal2',
+    false
+  );
+$$;
+
+-- Enforce AAL2 when modifying security settings if verified 2FA factors are active
+CREATE OR REPLACE FUNCTION public.guard_user_preferences_security_aal()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_has_verified_factors BOOLEAN;
+BEGIN
+  -- Check if user currently has verified MFA factors in Supabase Auth
+  SELECT EXISTS (
+    SELECT 1 FROM auth.mfa_factors
+    WHERE user_id = NEW.user_id
+      AND status = 'verified'
+  ) INTO v_has_verified_factors;
+
+  -- If verified factors exist, mutating security requires AAL2 or admin
+  -- (If user has unenrolled their factors, this allows updating preference to false)
+  IF v_has_verified_factors AND NOT public.is_aal2_authenticated() AND NOT public.is_admin() THEN
+    -- If user is completing enrollment (factor verified, turning 2fa true), allow syncing preference
+    IF (NEW.security->>'two_factor_auth')::boolean IS TRUE AND (OLD.security->>'two_factor_auth')::boolean IS NOT TRUE THEN
+      RETURN NEW;
+    END IF;
+
+    RAISE EXCEPTION 'Two-Factor Authentication (AAL2) required to modify security preferences.'
+      USING ERRCODE = '42501';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_guard_user_preferences_security_aal ON public.user_preferences;
+CREATE TRIGGER trg_guard_user_preferences_security_aal
+  BEFORE UPDATE ON public.user_preferences
+  FOR EACH ROW
+  WHEN (NEW.security IS DISTINCT FROM OLD.security)
+  EXECUTE FUNCTION public.guard_user_preferences_security_aal();
+
+ALTER FUNCTION public.is_aal2_authenticated() OWNER TO postgres;
+ALTER FUNCTION public.guard_user_preferences_security_aal() OWNER TO postgres;
+GRANT EXECUTE ON FUNCTION public.is_aal2_authenticated() TO postgres, authenticated;
+GRANT EXECUTE ON FUNCTION public.guard_user_preferences_security_aal() TO postgres, authenticated;
 
 
 -- SOURCE: 04_geography.sql
@@ -1421,6 +1515,233 @@ ALTER FUNCTION public.prevent_protected_listing_deletion() OWNER TO postgres;
 REVOKE ALL ON FUNCTION public.prevent_protected_listing_deletion() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.prevent_protected_listing_deletion() TO postgres, authenticated;
 
+-- Direct Listing Publication Guard Trigger Function
+CREATE OR REPLACE FUNCTION public.guard_direct_listing_publication()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  IF NEW.status = 'published'::public.listing_status AND OLD.status <> 'published'::public.listing_status THEN
+    IF current_setting('elitestay.authorized_publication', true) <> 'true' THEN
+      RAISE EXCEPTION 'Direct listing publication is prohibited. You must use the publish_listing() RPC.'
+        USING ERRCODE = '42501';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_guard_direct_listing_publication ON public.listings;
+CREATE TRIGGER trg_guard_direct_listing_publication
+  BEFORE UPDATE OF status ON public.listings
+  FOR EACH ROW
+  EXECUTE FUNCTION public.guard_direct_listing_publication();
+
+ALTER FUNCTION public.guard_direct_listing_publication() OWNER TO postgres;
+REVOKE ALL ON FUNCTION public.guard_direct_listing_publication() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.guard_direct_listing_publication() TO postgres, authenticated;
+
+-- Transactional Publication RPC: publish_listing(p_listing_id uuid)
+CREATE OR REPLACE FUNCTION public.publish_listing(p_listing_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_user_id uuid;
+  v_listing public.listings%ROWTYPE;
+  v_profile public.host_profiles%ROWTYPE;
+  v_missing text[] := ARRAY[]::text[];
+  v_has_photos boolean;
+  v_has_pricing boolean;
+  v_has_location boolean;
+BEGIN
+  -- 1. Caller authentication
+  v_user_id := (SELECT auth.uid());
+  IF v_user_id IS NULL THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'UNAUTHENTICATED',
+      'code', '401'
+    );
+  END IF;
+
+  -- 2. Lock listing row
+  SELECT *
+    INTO v_listing
+  FROM public.listings
+  WHERE id = p_listing_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'LISTING_NOT_FOUND',
+      'code', '404'
+    );
+  END IF;
+
+  -- 3. Verify Listing Ownership
+  IF v_listing.host_id <> v_user_id THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'UNAUTHORIZED_NOT_OWNER',
+      'code', '403'
+    );
+  END IF;
+
+  -- 4. Idempotent check: already published
+  IF v_listing.status = 'published'::public.listing_status THEN
+    RETURN jsonb_build_object(
+      'success', true,
+      'status', 'published',
+      'message', 'ALREADY_PUBLISHED'
+    );
+  END IF;
+
+  -- 5. Lock host profile row
+  SELECT *
+    INTO v_profile
+  FROM public.host_profiles
+  WHERE user_id = v_user_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'HOST_PROFILE_NOT_FOUND',
+      'code', '404'
+    );
+  END IF;
+
+  -- 6. Host Status Check (must be READY or ACTIVE; ONBOARDING / NOT_STARTED cannot publish)
+  IF v_profile.status NOT IN ('READY'::public.host_status, 'ACTIVE'::public.host_status) THEN
+    v_missing := array_append(v_missing, 'HOST_ONBOARDING_NOT_COMPLETED');
+  END IF;
+
+  -- 7. Host Compliance Checks
+  -- 7.1 Identity verification (VERIFIED)
+  IF v_profile.identity_verification_status <> 'VERIFIED'::public.host_verification_status OR v_profile.identity_verified_at IS NULL THEN
+    v_missing := array_append(v_missing, 'IDENTITY_VERIFICATION_REQUIRED');
+  END IF;
+
+  -- 7.2 Payout bank account linked & verified
+  IF (v_profile.bank_name IS NULL OR length(trim(v_profile.bank_name)) = 0) AND 
+     (v_profile.bank_account_last4 IS NULL OR length(trim(v_profile.bank_account_last4)) = 0) THEN
+    v_missing := array_append(v_missing, 'PAYOUT_ACCOUNT_REQUIRED');
+  ELSIF v_profile.payout_verification_status <> 'VERIFIED'::public.host_verification_status OR v_profile.payout_verified_at IS NULL THEN
+    v_missing := array_append(v_missing, 'PAYOUT_VERIFICATION_REQUIRED');
+  END IF;
+
+  -- 7.3 Tax registration & verified
+  IF (v_profile.tax_id_last4 IS NULL OR length(trim(v_profile.tax_id_last4)) = 0) AND 
+     v_profile.tax_profile_id IS NULL THEN
+    v_missing := array_append(v_missing, 'TAX_REGISTRATION_REQUIRED');
+  ELSIF v_profile.tax_verification_status <> 'VERIFIED'::public.host_verification_status OR v_profile.tax_verified_at IS NULL THEN
+    v_missing := array_append(v_missing, 'TAX_VERIFICATION_REQUIRED');
+  END IF;
+
+  -- 7.4 Specialization selected
+  IF v_profile.primary_accommodation_type_id IS NULL THEN
+    v_missing := array_append(v_missing, 'SPECIALIZATION_REQUIRED');
+  END IF;
+
+  -- 7.5 Current mandatory policy versions accepted
+  IF NOT EXISTS (
+    SELECT 1
+    FROM public.host_policy_acceptances hpa
+    WHERE hpa.host_profile_id = v_profile.id
+      AND hpa.policy_type = 'ANTI_DISCRIMINATION'
+      AND hpa.policy_version = '2026.1'
+  ) THEN
+    v_missing := array_append(v_missing, 'ANTI_DISCRIMINATION_POLICY_REQUIRED');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM public.host_policy_acceptances hpa
+    WHERE hpa.host_profile_id = v_profile.id
+      AND hpa.policy_type = 'MAINTENANCE_SLA'
+      AND hpa.policy_version = '2026.1'
+  ) THEN
+    v_missing := array_append(v_missing, 'MAINTENANCE_SLA_POLICY_REQUIRED');
+  END IF;
+
+  -- 8. Listing Health Checks
+  -- 8.1 Title present
+  IF v_listing.title IS NULL OR LENGTH(TRIM(v_listing.title)) = 0 THEN
+    v_missing := array_append(v_missing, 'LISTING_TITLE_REQUIRED');
+  END IF;
+
+  -- 8.2 Location & Coordinate Requirements
+  v_has_location := (
+    (v_listing.city IS NOT NULL AND LENGTH(TRIM(v_listing.city)) > 0) OR
+    (v_listing.formatted_address IS NOT NULL AND LENGTH(TRIM(v_listing.formatted_address)) > 0)
+  ) AND (v_listing.latitude IS NOT NULL AND v_listing.longitude IS NOT NULL);
+
+  IF NOT v_has_location THEN
+    v_missing := array_append(v_missing, 'LISTING_LOCATION_REQUIRED');
+  END IF;
+
+  -- 8.3 Pricing configured
+  v_has_pricing := EXISTS (
+    SELECT 1 FROM public.listing_prices lp 
+    WHERE lp.listing_id = v_listing.id AND lp.amount > 0
+  );
+  IF NOT v_has_pricing THEN
+    v_missing := array_append(v_missing, 'LISTING_PRICING_REQUIRED');
+  END IF;
+
+  -- 8.4 Photos present
+  v_has_photos := EXISTS (
+    SELECT 1 FROM public.listing_images li 
+    WHERE li.listing_id = v_listing.id
+  );
+  IF NOT v_has_photos THEN
+    v_missing := array_append(v_missing, 'LISTING_PHOTOS_REQUIRED');
+  END IF;
+
+  -- 9. Check if any requirements failed
+  IF COALESCE(array_length(v_missing, 1), 0) > 0 THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'PUBLICATION_REQUIREMENTS_NOT_MET',
+      'missing', v_missing
+    );
+  END IF;
+
+  -- 10. Atomic Publication
+  PERFORM set_config('elitestay.authorized_publication', 'true', true);
+
+  UPDATE public.listings
+  SET status = 'published'::public.listing_status,
+      updated_at = now()
+  WHERE id = v_listing.id;
+
+  -- If host is in READY state, transition host to ACTIVE
+  IF v_profile.status = 'READY'::public.host_status THEN
+    UPDATE public.host_profiles
+    SET status = 'ACTIVE'::public.host_status,
+        updated_at = now()
+    WHERE id = v_profile.id;
+  END IF;
+
+  RETURN jsonb_build_object(
+    'success', true,
+    'status', 'published',
+    'host_status', 'ACTIVE'
+  );
+END;
+$$;
+
+ALTER FUNCTION public.publish_listing(uuid) OWNER TO postgres;
+REVOKE ALL ON FUNCTION public.publish_listing(uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.publish_listing(uuid) FROM anon;
+GRANT EXECUTE ON FUNCTION public.publish_listing(uuid) TO authenticated;
+
 
 
 
@@ -2065,7 +2386,14 @@ CREATE TABLE IF NOT EXISTS public.host_profiles (
     tax_profile_id UUID,
     tax_id_last4 TEXT,
     tax_id_type TEXT,
+    identity_submitted_at TIMESTAMPTZ,
+    identity_verification_status TEXT NOT NULL DEFAULT 'UNVERIFIED' CHECK (identity_verification_status IN ('UNVERIFIED', 'PENDING', 'VERIFIED', 'REJECTED')),
+    identity_verification_ref TEXT,
     identity_verified_at TIMESTAMPTZ,
+    payout_verification_status TEXT NOT NULL DEFAULT 'UNVERIFIED' CHECK (payout_verification_status IN ('UNVERIFIED', 'PENDING', 'VERIFIED', 'REJECTED')),
+    payout_verified_at TIMESTAMPTZ,
+    tax_verification_status TEXT NOT NULL DEFAULT 'UNVERIFIED' CHECK (tax_verification_status IN ('UNVERIFIED', 'PENDING', 'VERIFIED', 'REJECTED')),
+    tax_verified_at TIMESTAMPTZ,
     agreed_to_policies_at TIMESTAMPTZ,
     support_phone TEXT,
     support_email TEXT,
@@ -2084,16 +2412,464 @@ CREATE POLICY "Users can view their own host profile"
     FOR SELECT
     USING (auth.uid() = user_id);
 
-CREATE POLICY "Users can create their own host profile"
-    ON public.host_profiles
-    FOR INSERT
-    WITH CHECK (auth.uid() = user_id);
+-- Restrict direct client UPDATE/DELETE privileges
+REVOKE ALL ON public.host_profiles FROM PUBLIC, anon;
+REVOKE UPDATE, DELETE ON public.host_profiles FROM authenticated;
 
-CREATE POLICY "Users can update their own host profile"
-    ON public.host_profiles
-    FOR UPDATE
-    USING (auth.uid() = user_id)
-    WITH CHECK (auth.uid() = user_id);
+-- Grant column-level UPDATE only on presentation fields
+GRANT UPDATE (support_phone, support_email) ON public.host_profiles TO authenticated;
+GRANT SELECT ON public.host_profiles TO authenticated;
+
+-- ==================================================
+-- Domain: Host Policy Acceptances (Append-Only)
+-- ==================================================
+
+CREATE TABLE IF NOT EXISTS public.host_policy_acceptances (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    host_profile_id UUID REFERENCES public.host_profiles(id) ON DELETE CASCADE NOT NULL,
+    policy_type TEXT NOT NULL CHECK (policy_type IN ('ANTI_DISCRIMINATION', 'MAINTENANCE_SLA')),
+    policy_version TEXT NOT NULL,
+    accepted_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    client_context JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_host_policy_acceptances_host_type
+    ON public.host_policy_acceptances(host_profile_id, policy_type, policy_version);
+
+ALTER TABLE public.host_policy_acceptances ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Hosts can read own policy acceptances"
+    ON public.host_policy_acceptances
+    FOR SELECT
+    USING (
+        host_profile_id IN (
+            SELECT id FROM public.host_profiles WHERE user_id = auth.uid()
+        )
+    );
+
+REVOKE ALL ON public.host_policy_acceptances FROM PUBLIC, anon;
+GRANT SELECT ON public.host_policy_acceptances TO authenticated;
+
+-- ==================================================
+-- Domain: Controlled Host Transition RPCs
+-- ==================================================
+
+CREATE OR REPLACE FUNCTION public.initialize_host_onboarding()
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_user_id uuid;
+  v_profile_id uuid;
+BEGIN
+  v_user_id := (SELECT auth.uid());
+
+  IF v_user_id IS NULL THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'UNAUTHENTICATED',
+      'code', '401'
+    );
+  END IF;
+
+  INSERT INTO public.host_profiles (user_id, status)
+  VALUES (v_user_id, 'ONBOARDING'::public.host_status)
+  ON CONFLICT (user_id) DO NOTHING
+  RETURNING id INTO v_profile_id;
+
+  IF v_profile_id IS NULL THEN
+    SELECT id INTO v_profile_id
+    FROM public.host_profiles
+    WHERE user_id = v_user_id;
+  END IF;
+
+  RETURN jsonb_build_object(
+    'success', true,
+    'hostProfileId', v_profile_id,
+    'status', (
+      SELECT status::text
+      FROM public.host_profiles
+      WHERE id = v_profile_id
+    )
+  );
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.record_host_policy_acceptance(
+  p_policy_type text,
+  p_policy_version text,
+  p_client_context jsonb DEFAULT '{}'::jsonb
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_user_id uuid;
+  v_host_profile_id uuid;
+  v_acceptance_id uuid;
+  v_server_context jsonb;
+BEGIN
+  v_user_id := (SELECT auth.uid());
+
+  IF v_user_id IS NULL THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'UNAUTHENTICATED',
+      'code', '401'
+    );
+  END IF;
+
+  IF p_policy_type IS NULL
+     OR p_policy_type NOT IN ('ANTI_DISCRIMINATION', 'MAINTENANCE_SLA') THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'INVALID_POLICY_TYPE',
+      'code', '400'
+    );
+  END IF;
+
+  IF p_policy_version IS NULL
+     OR length(btrim(p_policy_version)) NOT BETWEEN 1 AND 128 THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'INVALID_POLICY_VERSION',
+      'code', '400'
+    );
+  END IF;
+
+  SELECT id
+    INTO v_host_profile_id
+  FROM public.host_profiles
+  WHERE user_id = v_user_id
+  FOR UPDATE;
+
+  IF v_host_profile_id IS NULL THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'HOST_PROFILE_NOT_FOUND',
+      'code', '404'
+    );
+  END IF;
+
+  v_server_context := jsonb_build_object(
+    'user_agent',
+    current_setting('request.headers', true)::json->>'user-agent',
+    'x_forwarded_for',
+    split_part(
+      current_setting('request.headers', true)::json->>'x-forwarded-for',
+      ',',
+      1
+    )
+  );
+
+  INSERT INTO public.host_policy_acceptances (
+    host_profile_id,
+    policy_type,
+    policy_version,
+    client_context
+  )
+  VALUES (
+    v_host_profile_id,
+    p_policy_type,
+    p_policy_version,
+    jsonb_build_object(
+      'declared', COALESCE(p_client_context, '{}'::jsonb),
+      'request', COALESCE(v_server_context, '{}'::jsonb)
+    )
+  )
+  RETURNING id INTO v_acceptance_id;
+
+  RETURN jsonb_build_object(
+    'success', true,
+    'acceptanceId', v_acceptance_id
+  );
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.transition_host_to_ready()
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_user_id uuid;
+  v_profile public.host_profiles%ROWTYPE;
+  v_missing text[] := ARRAY[]::text[];
+BEGIN
+  v_user_id := (SELECT auth.uid());
+
+  IF v_user_id IS NULL THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'UNAUTHENTICATED',
+      'code', '401'
+    );
+  END IF;
+
+  SELECT *
+    INTO v_profile
+  FROM public.host_profiles
+  WHERE user_id = v_user_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'HOST_PROFILE_NOT_FOUND',
+      'code', '404'
+    );
+  END IF;
+
+  IF v_profile.status IN ('READY'::public.host_status, 'ACTIVE'::public.host_status) THEN
+    RETURN jsonb_build_object(
+      'success', true,
+      'status', v_profile.status::text
+    );
+  END IF;
+
+  IF v_profile.status <> 'ONBOARDING'::public.host_status THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'INVALID_HOST_STATUS',
+      'status', v_profile.status::text,
+      'code', '409'
+    );
+  END IF;
+
+  -- 1. Onboarding Requirement 1: Identity Submitted
+  IF v_profile.identity_submitted_at IS NULL THEN
+    v_missing := array_append(v_missing, 'IDENTITY_NOT_SUBMITTED');
+  END IF;
+
+  -- 2. Onboarding Requirement 2: Accommodation Specialization Selected
+  IF v_profile.primary_accommodation_type_id IS NULL THEN
+    v_missing := array_append(v_missing, 'SPECIALIZATION_NOT_SET');
+  END IF;
+
+  -- 3. Onboarding Requirement 3: Mandatory Policies Accepted
+  IF NOT EXISTS (
+    SELECT 1
+    FROM public.host_policy_acceptances hpa
+    WHERE hpa.host_profile_id = v_profile.id
+      AND hpa.policy_type = 'ANTI_DISCRIMINATION'
+      AND hpa.policy_version = '2026.1'
+  ) THEN
+    v_missing := array_append(v_missing, 'ANTI_DISCRIMINATION_POLICY_NOT_ACCEPTED');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM public.host_policy_acceptances hpa
+    WHERE hpa.host_profile_id = v_profile.id
+      AND hpa.policy_type = 'MAINTENANCE_SLA'
+      AND hpa.policy_version = '2026.1'
+  ) THEN
+    v_missing := array_append(v_missing, 'MAINTENANCE_SLA_POLICY_NOT_ACCEPTED');
+  END IF;
+
+  IF COALESCE(array_length(v_missing, 1), 0) > 0 THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'ONBOARDING_REQUIREMENTS_NOT_MET',
+      'missing', v_missing
+    );
+  END IF;
+
+  UPDATE public.host_profiles
+  SET status = 'READY'::public.host_status,
+      updated_at = now()
+  WHERE id = v_profile.id
+    AND status = 'ONBOARDING'::public.host_status;
+
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'CONCURRENT_STATUS_CHANGE',
+      'code', '409'
+    );
+  END IF;
+
+  RETURN jsonb_build_object(
+    'success', true,
+    'status', 'READY'
+  );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.initialize_host_onboarding() FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.record_host_policy_acceptance(text, text, jsonb) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.transition_host_to_ready() FROM PUBLIC, anon;
+
+GRANT EXECUTE ON FUNCTION public.initialize_host_onboarding() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.record_host_policy_acceptance(text, text, jsonb) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.transition_host_to_ready() TO authenticated;
+
+-- 8. Controlled RPC: transition_host_to_active
+CREATE OR REPLACE FUNCTION public.transition_host_to_active()
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_user_id uuid;
+  v_profile public.host_profiles%ROWTYPE;
+BEGIN
+  v_user_id := (SELECT auth.uid());
+
+  IF v_user_id IS NULL THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'UNAUTHENTICATED',
+      'code', '401'
+    );
+  END IF;
+
+  SELECT *
+    INTO v_profile
+  FROM public.host_profiles
+  WHERE user_id = v_user_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'HOST_PROFILE_NOT_FOUND',
+      'code', '404'
+    );
+  END IF;
+
+  IF v_profile.status = 'ACTIVE'::public.host_status THEN
+    RETURN jsonb_build_object(
+      'success', true,
+      'status', 'ACTIVE'
+    );
+  END IF;
+
+  IF v_profile.status <> 'READY'::public.host_status THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'INVALID_HOST_STATUS',
+      'current_status', v_profile.status::text,
+      'message', 'Host must be in READY status to activate',
+      'code', '409'
+    );
+  END IF;
+
+  UPDATE public.host_profiles
+  SET status = 'ACTIVE'::public.host_status,
+      updated_at = now()
+  WHERE id = v_profile.id
+    AND status = 'READY'::public.host_status;
+
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'CONCURRENT_STATUS_CHANGE',
+      'code', '409'
+    );
+  END IF;
+
+  RETURN jsonb_build_object(
+    'success', true,
+    'status', 'ACTIVE'
+  );
+END;
+$$;
+
+-- 9. Controlled RPC: transition_host_operational_status
+CREATE OR REPLACE FUNCTION public.transition_host_operational_status(p_status text)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_user_id uuid;
+  v_profile public.host_profiles%ROWTYPE;
+BEGIN
+  v_user_id := (SELECT auth.uid());
+
+  IF v_user_id IS NULL THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'UNAUTHENTICATED',
+      'code', '401'
+    );
+  END IF;
+
+  IF p_status IS NULL OR p_status NOT IN ('ACTIVE', 'PAUSED') THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'INVALID_STATUS_TARGET',
+      'message', 'Operational status can only toggle between ACTIVE and PAUSED',
+      'code', '400'
+    );
+  END IF;
+
+  SELECT *
+    INTO v_profile
+  FROM public.host_profiles
+  WHERE user_id = v_user_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'HOST_PROFILE_NOT_FOUND',
+      'code', '404'
+    );
+  END IF;
+
+  IF v_profile.status::text = p_status THEN
+    RETURN jsonb_build_object(
+      'success', true,
+      'status', p_status
+    );
+  END IF;
+
+  IF v_profile.status NOT IN ('ACTIVE'::public.host_status, 'PAUSED'::public.host_status, 'READY'::public.host_status) THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'INVALID_HOST_STATUS',
+      'current_status', v_profile.status::text,
+      'message', 'Host must be ACTIVE, PAUSED, or READY to toggle operational status',
+      'code', '409'
+    );
+  END IF;
+
+  UPDATE public.host_profiles
+  SET status = p_status::public.host_status,
+      updated_at = now()
+  WHERE id = v_profile.id
+    AND status IN ('ACTIVE'::public.host_status, 'PAUSED'::public.host_status, 'READY'::public.host_status);
+
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'CONCURRENT_STATUS_CHANGE',
+      'code', '409'
+    );
+  END IF;
+
+  RETURN jsonb_build_object(
+    'success', true,
+    'status', p_status
+  );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.transition_host_to_active() FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.transition_host_operational_status(text) FROM PUBLIC, anon;
+
+GRANT EXECUTE ON FUNCTION public.transition_host_to_active() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.transition_host_operational_status(text) TO authenticated;
 
 
 -- SOURCE: 20_host_settings.sql
@@ -2903,6 +3679,7 @@ DECLARE
     ch_id BIGINT;
     kl_id BIGINT;
     mp_id BIGINT;
+    ap_id BIGINT;
 BEGIN
     SELECT id INTO in_id FROM public.countries WHERE external_code = 'IN';
     IF in_id IS NULL THEN
@@ -2962,6 +3739,7 @@ BEGIN
     SELECT id INTO ch_id FROM public.states WHERE external_code = 'IN-CH';
     SELECT id INTO kl_id FROM public.states WHERE external_code = 'IN-KL';
     SELECT id INTO mp_id FROM public.states WHERE external_code = 'IN-MP';
+    SELECT id INTO ap_id FROM public.states WHERE external_code = 'IN-AP';
 
     -- 5. Seed Featured Cities
     INSERT INTO public.cities (state_id, external_code, name, search_aliases, slug, latitude, longitude, timezone, is_capital, is_metro, is_featured, sort_order, description) VALUES
